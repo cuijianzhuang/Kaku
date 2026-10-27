@@ -19,6 +19,7 @@
     <option value="tg" {{if eq .Channel "tg"}}selected{{end}}>Telegram</option>
   </select>
   <button class="secondary">筛选</button>
+  <a class="btn secondary" href="{{$p}}/orders.csv?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}">导出 CSV</a>
 </form>
 <div class="card table-wrap"><table>
   <tr><th>订单号</th><th>商品</th><th>金额</th><th>买家</th><th>支付</th><th>状态</th><th>下单时间</th></tr>

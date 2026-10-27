@@ -120,6 +120,7 @@ var funcs = template.FuncMap{
 	"contains": strings.Contains,
 	"join":     strings.Join,
 	"query":    url.QueryEscape,
+	"kb":       func(n int64) float64 { return float64(n) / 1024 },
 }
 
 func (s *Server) parsePages() map[string]*template.Template {

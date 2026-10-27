@@ -11,6 +11,7 @@ import (
 	"net/mail"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"gorm.io/gorm"
@@ -32,6 +33,10 @@ type Service struct {
 	Notify *notify.Notifier
 	Log    *slog.Logger
 	Now    func() time.Time
+	// BackupDir holds automatic backups ("" = backups off).
+	BackupDir string
+
+	backupMu sync.Mutex
 
 	// Overridable in tests.
 	PolarisClient *polaris.Client

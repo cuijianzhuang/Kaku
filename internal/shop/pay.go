@@ -79,6 +79,13 @@ func (s *Service) MarkPaid(ctx context.Context, in PaidInput) (*model.Order, err
 			extra = true
 			return nil
 		}
+		// Expiry gave the coupon use back; a late payment takes it again
+		// (no cap check: the buyer has already paid the discounted price).
+		if o.Status == model.OrderExpired && o.CouponID != nil {
+			if err := tx.Model(&model.Coupon{}).Where("id = ?", *o.CouponID).Update("used", gorm.Expr("used + 1")).Error; err != nil {
+				return err
+			}
+		}
 		o.Status, o.PaidAt = model.OrderPaid, &now
 		return store.Enqueue(tx, "deliver", fmt.Sprintf("deliver:%d", o.ID), o.ID, now)
 	})
@@ -106,6 +113,7 @@ func (s *Service) JobHandlers() map[string]store.JobFunc {
 	return map[string]store.JobFunc{
 		"deliver":   s.deliverJob,
 		"delivered": s.deliveredJob,
+		"remind":    s.remindJob,
 	}
 }
 
@@ -383,8 +391,10 @@ func (s *Service) Run(ctx context.Context) {
 	go s.Store.RunJobs(ctx, s.JobHandlers(), 2*time.Second)
 	expire := time.NewTicker(30 * time.Second)
 	usdt := time.NewTicker(20 * time.Second)
+	daily := time.NewTicker(time.Minute)
 	defer expire.Stop()
 	defer usdt.Stop()
+	defer daily.Stop()
 	for {
 		select {
 		case <-ctx.Done():
@@ -395,6 +405,9 @@ func (s *Service) Run(ctx context.Context) {
 			if err := s.PollUSDT(ctx); err != nil {
 				s.Log.Warn("usdt poll failed", "err", err)
 			}
+		case <-daily.C:
+			s.maybeBackup(ctx)
+			s.maybeRemind()
 		}
 	}
 }
