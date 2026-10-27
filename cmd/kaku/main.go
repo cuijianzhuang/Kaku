@@ -3,6 +3,7 @@
 //	kaku serve          run the shop (default)
 //	kaku keygen         print a new KAKU_MASTER_KEY
 //	kaku reset-admin    reset the admin password to ADMIN_PASSWORD and turn off 2FA
+//	kaku backup FILE    copy the SQLite database (safe while running)
 package main
 
 import (
@@ -35,6 +36,7 @@ const usage = `用法：kaku <命令>
   serve        启动商店（默认）
   keygen       生成新的主密钥 KAKU_MASTER_KEY
   reset-admin  将管理员密码重置为 ADMIN_PASSWORD，并关闭两步验证
+  backup FILE  在线备份 SQLite 数据库到 FILE（PostgreSQL 请用 pg_dump）
   version      显示版本
 
 环境变量：
@@ -62,6 +64,8 @@ func main() {
 		fmt.Println(secure.NewMasterKey())
 	case "reset-admin":
 		err = resetAdmin()
+	case "backup":
+		err = backup(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("kaku", Version)
 	case "help", "-h", "--help":
@@ -171,5 +175,28 @@ func resetAdmin() error {
 		return err
 	}
 	fmt.Println("已重置管理员", user, "的密码，并关闭两步验证")
+	return nil
+}
+
+// backup writes a consistent copy of the SQLite database.
+func backup(args []string) error {
+	if len(args) != 1 {
+		return errors.New("用法：kaku backup 目标文件")
+	}
+	if d := env("DB_DRIVER", "sqlite"); d != "sqlite" {
+		return fmt.Errorf("backup 只支持 SQLite；%s 请使用数据库自带的备份工具（如 pg_dump）", d)
+	}
+	if _, err := os.Stat(args[0]); err == nil {
+		return fmt.Errorf("%s 已存在", args[0])
+	}
+	st, err := openStore()
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	if err := st.DB.Exec("VACUUM INTO ?", args[0]).Error; err != nil {
+		return err
+	}
+	fmt.Println("已备份到", args[0])
 	return nil
 }

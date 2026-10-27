@@ -10,29 +10,50 @@
 
 ## 快速开始
 
-### Docker Compose（推荐）
+### 方式一：一键安装（Linux + systemd，推荐）
+
+准备一台 amd64 / arm64 / armv7 的 Linux 服务器，把域名解析到它，以 root 执行：
 
 ```bash
-git clone https://github.com/cuijianzhuang/Kaku.git && cd Kaku
-cp deploy/kaku.env.example .env
-docker compose run --rm kaku keygen     # 把输出填到 .env 的 KAKU_MASTER_KEY，并另外备份
-vi .env                                  # 填 ADMIN_PASSWORD（≥12 位），建议改 ADMIN_PATH
-vi deploy/Caddyfile                      # 把 shop.example.com 换成你的域名
+bash <(curl -fsSL https://github.com/cuijianzhuang/Kaku/releases/latest/download/install.sh) install --domain shop.example.com
+```
+
+脚本会下载最新版本并校验 SHA-256，生成主密钥、管理员密码和随机后台路径，配置 systemd 服务，并安装 Caddy 自动申请 HTTPS 证书。完成后打印商店地址、后台地址和密码（密码只显示一次）。
+
+| 项目 | 位置 |
+| --- | --- |
+| 配置（含主密钥） | `/etc/kaku/kaku.env`，请离线备份 |
+| 数据 | `/var/lib/kaku` |
+| 管理命令 | `kaku-ctl status \| log \| update \| backup \| info \| reset-password \| uninstall` |
+
+常用选项：`--port N`（默认 8080）、`--version vX.Y.Z`、`--no-caddy`（自备反向代理）。不带 `--domain` 时以 HTTP 监听公网端口，仅适合测试。服务器访问 GitHub 慢时可设置下载代理前缀：`GH_PROXY=https://你的代理/ bash <(curl …) install …`。
+
+`kaku-ctl update` 升级到最新版本，新版本启动失败会自动回滚；`kaku-ctl backup` 把数据库和配置打包到 `/root`。
+
+### 方式二：Docker Compose
+
+```bash
+mkdir kaku && cd kaku
+base=https://github.com/cuijianzhuang/Kaku/releases/latest/download
+curl -fsSLO $base/compose.yaml && mkdir deploy && curl -fsSL -o deploy/Caddyfile $base/Caddyfile
+curl -fsSL -o .env $base/kaku.env.example
+docker run --rm ghcr.io/cuijianzhuang/kaku keygen   # 填到 .env 的 KAKU_MASTER_KEY，并另外备份
+vi .env                  # 填 ADMIN_PASSWORD（≥12 位），建议改 ADMIN_PATH
+vi deploy/Caddyfile      # 把 shop.example.com 换成你的域名
 docker compose up -d
 ```
 
-打开 `https://你的域名/admin`（或你设置的 ADMIN_PATH）登录。
+镜像 `ghcr.io/cuijianzhuang/kaku` 支持 amd64 / arm64，标签有 `latest`、`1.2.3`、`1.2`。
 
-### 直接运行
+### 方式三：二进制
+
+从 [Releases](https://github.com/cuijianzhuang/Kaku/releases) 下载对应系统的文件（Linux / macOS / Windows / FreeBSD），然后：
 
 ```bash
-go build -o kaku ./cmd/kaku
 export KAKU_MASTER_KEY=$(./kaku keygen)   # 务必保存
 export ADMIN_PASSWORD='至少12位的密码'
 ./kaku serve                               # 默认 :8080，数据在 ./data
 ```
-
-systemd 单元示例见 [deploy/kaku.service](deploy/kaku.service)。
 
 ### 上架第一个商品
 
@@ -135,6 +156,10 @@ polaris-license 还没有部署管理接口时，可以先在授权后台批量�
 go test -race ./...
 go vet ./...
 ```
+
+## 发布
+
+每次合并到 `main` 自动发布：版本号在最新 tag 上递增补丁号，跑完测试后构建各系统二进制发布到 GitHub Release，并推送多架构镜像到 GHCR。提交信息带 `[skip release]` 可跳过；也可在 Actions 里手动运行 release 选择 minor / major，或直接推送 `v*` tag。
 
 代码结构：
 
