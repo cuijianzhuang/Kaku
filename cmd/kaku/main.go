@@ -131,6 +131,7 @@ func serve() error {
 	}
 	n := &notify.Notifier{Store: st, Log: log}
 	svc := shop.New(st, n, log)
+	svc.BackupDir = filepath.Join(env("DATA_DIR", "data"), "backups")
 	bot := tgbot.New(svc, log)
 	srv := web.New(web.Config{
 		AdminPath: env("ADMIN_PATH", "/admin"), TrustProxy: os.Getenv("TRUST_PROXY") == "1",

@@ -285,3 +285,73 @@ func TestMarkdownEscapes(t *testing.T) {
 		t.Fatalf("markdown output: %s", out)
 	}
 }
+
+func (e *env) login() *http.Client {
+	e.t.Helper()
+	c := e.client()
+	resp, err := c.PostForm(e.ts.URL+"/manage/login", url.Values{"username": {"admin"}, "password": {"correct horse battery"}})
+	if err != nil || resp.StatusCode != http.StatusSeeOther {
+		e.t.Fatalf("login: %v", err)
+	}
+	return c
+}
+
+func (e *env) post(c *http.Client, path string, form url.Values) *http.Response {
+	e.t.Helper()
+	req, _ := http.NewRequest(http.MethodPost, e.ts.URL+path, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Origin", e.ts.URL)
+	resp, err := c.Do(req)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return resp
+}
+
+func TestExportStatsAndBackups(t *testing.T) {
+	e := setup(t)
+	o := e.stockOrder(500)
+	e.st.DB.Model(o).Update("remark", "=HYPERLINK(\"http://evil\")")
+	e.shop.MarkPaid(context.Background(), shop.PaidInput{OrderNo: o.OrderNo, Channel: model.PayManual, TradeNo: "x", Trusted: true})
+	e.st.RunDueJobs(context.Background(), e.shop.JobHandlers())
+
+	if resp, _ := e.client().Get(e.ts.URL + "/manage/orders.csv"); resp.StatusCode != http.StatusSeeOther {
+		t.Fatalf("export without login: %d", resp.StatusCode)
+	}
+	c := e.login()
+	resp, _ := c.Get(e.ts.URL + "/manage/orders.csv")
+	body, _ := io.ReadAll(resp.Body)
+	csvText := string(body)
+	if !strings.HasPrefix(csvText, "\uFEFF订单号") || !strings.Contains(csvText, o.OrderNo) || !strings.Contains(csvText, "'=HYPERLINK") {
+		t.Fatalf("csv: %s", csvText)
+	}
+	if strings.Contains(csvText, "CARD-1") {
+		t.Fatal("csv leaks delivered content")
+	}
+	for _, p := range []string{"/manage/stats", "/manage/stats?range=year&currency=CNY", "/manage/backups"} {
+		resp, _ := c.Get(e.ts.URL + p)
+		b, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != 200 || !strings.Contains(string(b), "<h1>") {
+			t.Fatalf("%s: %d", p, resp.StatusCode)
+		}
+	}
+
+	e.shop.BackupDir = filepath.Join(t.TempDir(), "backups")
+	resp = e.post(c, "/manage/backups/run", url.Values{})
+	if loc := resp.Header.Get("Location"); !strings.Contains(loc, "msg=") {
+		t.Fatalf("backup run: %s", loc)
+	}
+	files, _ := e.shop.Backups()
+	if len(files) != 1 {
+		t.Fatalf("backups %v", files)
+	}
+	resp = e.post(c, "/manage/backups/download", url.Values{"name": {files[0].Name}, "confirm_password": {"wrong"}})
+	if resp.Header.Get("Content-Disposition") != "" {
+		t.Fatal("backup downloaded without the password")
+	}
+	resp = e.post(c, "/manage/backups/download", url.Values{"name": {files[0].Name}, "confirm_password": {"correct horse battery"}})
+	b, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(resp.Header.Get("Content-Disposition"), files[0].Name) || len(b) < 100 || b[0] != 0x1f {
+		t.Fatalf("download: %v %d", resp.Header, len(b))
+	}
+}

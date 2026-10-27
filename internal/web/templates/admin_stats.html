@@ -1,0 +1,47 @@
+{{define "title"}}销售统计{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>销售统计 · {{.RangeLabel}}</h1>
+<div class="filters">
+  {{range .Ranges}}<a class="btn {{if ne (index . 0) $.Range}}secondary{{end}}" href="?range={{index . 0}}&currency={{$.Currency}}">{{index . 1}}</a>{{end}}
+</div>
+<div class="stats">
+  {{range .Stats.Totals}}
+  <div class="stat">
+    <span class="muted">{{.Currency}} 净收入</span><b>{{money .Amount .Currency}}</b>
+    <span class="muted">{{.Orders}} 单（新购 {{.NewOrders}} / 续费 {{.RenewOrders}}）{{if .Refunds}} · 退款 {{.Refunds}} 单 {{money .RefundedAmount .Currency}}{{end}}</span>
+  </div>
+  {{else}}<div class="stat"><span class="muted">这段时间没有付款订单</span><b>0</b></div>{{end}}
+  <div class="stat"><span class="muted">购买者</span><b>{{.Stats.Buyers}}</b></div>
+</div>
+
+{{if .Stats.Totals}}
+<div class="card" style="margin-top:16px">
+  <div class="row">
+    <h2 style="margin:0">{{if .Stats.ByMonth}}按月{{else}}按天{{end}}收入（{{.Currency}}）</h2>
+    <div class="filters" style="margin:0">{{range .Stats.Currencies}}<a class="btn {{if ne . $.Currency}}secondary{{end}}" href="?range={{$.Range}}&currency={{.}}">{{.}}</a>{{end}}</div>
+  </div>
+  <div class="bars">
+    {{range .Bars}}
+    <div class="bar-row" title="{{.Label}} · {{.Orders}} 单 · {{money .Amount $.Currency}}">
+      <span class="bar-label">{{.Label}}</span>
+      <span class="bar-track"><span class="bar-fill" style="width: {{.Percent}}%"></span></span>
+      <span class="bar-value">{{if .Amount}}{{money .Amount $.Currency}} · {{.Orders}} 单{{end}}</span>
+    </div>
+    {{end}}
+  </div>
+</div>
+
+<div class="card table-wrap">
+  <h2 style="margin-top:0">按商品</h2>
+  <table>
+    <tr><th>商品</th><th>规格</th><th>订单</th><th>数量</th>{{range .Stats.Currencies}}<th>{{.}}</th>{{end}}</tr>
+    {{range $r := .Stats.Products}}
+    <tr><td>{{$r.Title}}</td><td>{{$r.SKU}}</td><td>{{$r.Orders}}</td><td>{{$r.Qty}}</td>
+      {{range $cur := $.Stats.Currencies}}<td>{{with index $r.Amount $cur}}{{money . $cur}}{{end}}</td>{{end}}</tr>
+    {{end}}
+  </table>
+</div>
+<p class="muted">按付款时间统计；净收入不含已退款订单。</p>
+{{end}}
+{{end}}

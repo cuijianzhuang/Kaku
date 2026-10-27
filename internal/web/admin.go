@@ -65,6 +65,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/security/totp/enable", s.totpEnable)
 	a.POST("/security/totp/disable", s.totpDisable)
 	a.GET("/audit", s.auditPage)
+	s.extraRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -857,6 +858,7 @@ func (s *Server) saveSettings(c *gin.Context) {
 		st.OrderTTL, _ = strconv.Atoi(str("order_ttl"))
 		st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
 		st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
+		st.RemindEnabled = on("remind_enabled")
 		st.TurnstileSite = str("turnstile_site")
 		secret("turnstile_secret", &st.TurnstileSecret)
 		if st.SiteName == "" {

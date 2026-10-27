@@ -1,0 +1,57 @@
+{{define "title"}}备份{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+{{$s := .S}}
+<h1>数据库备份</h1>
+{{if .Postgres}}
+<div class="card"><p>当前使用 PostgreSQL，请用 <code>pg_dump</code> 等数据库工具备份。</p></div>
+{{else}}
+<div class="two">
+  <div class="card">
+    <h2 style="margin-top:0">自动备份</h2>
+    <form method="post" action="{{$p}}/backups/settings" class="stack">
+      <label class="check"><input type="checkbox" name="backup_enabled" {{if $s.BackupEnabled}}checked{{end}}> 每天自动备份</label>
+      <div class="filters">
+        <label>备份时间（时，0–23） <input type="number" name="backup_hour" value="{{$s.BackupHour}}" min="0" max="23" style="width:90px"></label>
+        <label>保留份数 <input type="number" name="backup_keep" value="{{$s.BackupKeep}}" min="1" max="90" style="width:90px"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="backup_telegram" {{if $s.BackupTelegram}}checked{{end}}> 同时发送到 Telegram 管理员（需在设置中填写 Bot Token 和 Chat ID；超过 50 MB 只保存在服务器）</label>
+      <button>保存</button>
+      {{if .LastDay}}<p class="muted">上次自动备份：{{.LastDay}}</p>{{end}}
+    </form>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">立即备份</h2>
+    <form method="post" action="{{$p}}/backups/run" class="stack">
+      <label class="check"><input type="checkbox" name="send"> 备份后发送到 Telegram</label>
+      <button>立即备份</button>
+    </form>
+    <p class="muted">备份是 gzip 压缩的 SQLite 数据库。卡密和支付密钥在其中是加密的，<b>恢复时必须使用同一个 KAKU_MASTER_KEY</b>：停止服务，解压后替换数据目录中的 kaku.db，再启动。</p>
+  </div>
+</div>
+
+<div class="card table-wrap">
+  <h2 style="margin-top:0">已有备份</h2>
+  <table>
+    <tr><th>文件</th><th>大小</th><th>时间</th><th>操作</th></tr>
+    {{range .Files}}
+    <tr>
+      <td><code>{{.Name}}</code></td><td>{{printf "%.1f" (kb .Size)}} KB</td><td>{{date .ModTime}}</td>
+      <td>
+        <details>
+          <summary>下载</summary>
+          <form method="post" action="{{$p}}/backups/download" class="stack" style="margin-top:8px">
+            <input type="hidden" name="name" value="{{.Name}}">
+            <input type="password" name="confirm_password" placeholder="确认密码" required>
+            <input name="confirm_code" placeholder="两步验证码（如已开启）" inputmode="numeric" maxlength="6">
+            <button class="secondary">下载</button>
+          </form>
+        </details>
+        <form method="post" action="{{$p}}/backups/send" class="inline"><input type="hidden" name="name" value="{{.Name}}"><button class="link">发送到 Telegram</button></form>
+      </td>
+    </tr>
+    {{else}}<tr><td colspan="4" class="muted">还没有备份</td></tr>{{end}}
+  </table>
+</div>
+{{end}}
+{{end}}

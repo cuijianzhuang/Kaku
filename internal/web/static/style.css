@@ -113,3 +113,10 @@ pre { background: var(--code); padding: 10px; border-radius: 8px; overflow-x: au
   th, td { padding: 6px; }
   h1 { font-size: 19px; }
 }
+.bars { display: flex; flex-direction: column; gap: 4px; margin-top: 12px; }
+.bar-row { display: grid; grid-template-columns: 56px 1fr minmax(120px, auto); gap: 8px; align-items: center; font-size: 13px; }
+.bar-label { color: var(--muted); }
+.bar-track { background: var(--code); border-radius: 4px; height: 14px; overflow: hidden; }
+.bar-fill { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.bar-value { color: var(--muted); white-space: nowrap; }
+@media (max-width: 640px) { .bar-row { grid-template-columns: 44px 1fr; } .bar-value { display: none; } }

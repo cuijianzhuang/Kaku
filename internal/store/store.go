@@ -135,10 +135,18 @@ type Settings struct {
 
 	TurnstileSite   string `json:"turnstile_site"`
 	TurnstileSecret string `json:"turnstile_secret" secret:"1"`
+
+	BackupEnabled  bool `json:"backup_enabled"`
+	BackupHour     int  `json:"backup_hour"`     // local hour of the daily backup
+	BackupKeep     int  `json:"backup_keep"`     // backups kept on disk
+	BackupTelegram bool `json:"backup_telegram"` // also send each backup to the admin chat
+
+	RemindEnabled bool `json:"remind_enabled"` // license expiry reminders (7 days and 1 day before)
 }
 
 func defaults() *Settings {
-	return &Settings{SiteName: "Kaku 发卡", OrderTTL: 15, MaxUnpaid: 3, SMTPPort: 465, EPayAlipay: true, EPayWxpay: true}
+	return &Settings{SiteName: "Kaku 发卡", OrderTTL: 15, MaxUnpaid: 3, SMTPPort: 465, EPayAlipay: true, EPayWxpay: true,
+		BackupHour: 4, BackupKeep: 7, RemindEnabled: true}
 }
 
 const settingsKey = "settings"
@@ -205,6 +213,22 @@ func (s *Store) SaveSettings(st Settings) error {
 }
 
 var secretFields = []string{"epay_key", "trongrid_key", "smtp_pass", "tg_token", "tg_webhook_secret", "polaris_secret", "turnstile_secret"}
+
+// ---- small internal values (not admin settings) ----
+
+// Value reads an internal value ("" when unset).
+func (s *Store) Value(key string) string {
+	var row model.Setting
+	if s.DB.Where("key = ?", "v:"+key).Take(&row).Error != nil {
+		return ""
+	}
+	return row.Value
+}
+
+// SetValue stores an internal value.
+func (s *Store) SetValue(key, value string) error {
+	return s.DB.Save(&model.Setting{Key: "v:" + key, Value: value, UpdatedAt: time.Now()}).Error
+}
 
 // ---- audit ----
 
