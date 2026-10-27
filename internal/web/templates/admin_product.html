@@ -1,0 +1,50 @@
+{{define "title"}}编辑商品{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+{{$prod := .Product}}
+<div class="row"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a href="{{$p}}/products">← 商品列表</a></div>
+<div class="card">
+  <form method="post" action="{{$p}}/products" class="stack">
+    <input type="hidden" name="id" value="{{$prod.ID}}">
+    <div class="two">
+      <label>名称 <input name="title" value="{{$prod.Title}}" required maxlength="200"></label>
+      <label>分类
+        <select name="category_id" required>
+          {{range .Categories}}<option value="{{.ID}}" {{if eq .ID $prod.CategoryID}}selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </label>
+    </div>
+    <label>封面图片地址（可选） <input name="cover" value="{{$prod.Cover}}" maxlength="500"></label>
+    <label>商品详情（Markdown：# 标题、- 列表、**加粗**、[链接](https://…)） <textarea name="description" style="min-height:200px">{{$prod.DescriptionMD}}</textarea></label>
+    <div class="filters">
+      <label>状态 <select name="status"><option value="on" {{if eq $prod.Status "on"}}selected{{end}}>上架</option><option value="off" {{if eq $prod.Status "off"}}selected{{end}}>下架</option></select></label>
+      <label>排序 <input type="number" name="sort" value="{{$prod.Sort}}"></label>
+    </div>
+    <button>保存商品</button>
+  </form>
+</div>
+
+{{if $prod.ID}}
+<div class="card">
+  <div class="row"><h2 style="margin:0">规格（SKU）</h2><a class="btn" href="{{$p}}/skus/new?product={{$prod.ID}}">新增规格</a></div>
+  <div class="table-wrap"><table>
+    <tr><th>名称</th><th>价格</th><th>发货方式</th><th>库存</th><th>每单上限</th><th>状态</th><th></th></tr>
+    {{range $prod.SKUs}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{if .PriceCNY}}{{money .PriceCNY "CNY"}}<br>{{end}}{{if .PriceUSDT}}{{money .PriceUSDT "USDT"}}<br>{{end}}{{if .PriceStars}}{{money .PriceStars "XTR"}}{{end}}</td>
+      <td>{{index $.Kinds .DelivererKind}}</td>
+      <td>{{if eq .DelivererKind "stock"}}<a href="{{$p}}/cards?sku={{.ID}}">{{.StockCache}}</a>{{else}}∞{{end}}</td>
+      <td>{{.LimitPerOrder}}</td>
+      <td>{{if .Active}}启用{{else}}停用{{end}}</td>
+      <td><a href="{{$p}}/skus/{{.ID}}">编辑</a></td>
+    </tr>
+    {{else}}<tr><td colspan="7" class="muted">还没有规格，添加后商品才会在前台展示</td></tr>{{end}}
+  </table></div>
+</div>
+<div class="card row">
+  <form method="post" action="{{$p}}/products/{{$prod.ID}}/announce" class="inline" data-confirm="推送到 Telegram 频道？"><button class="secondary">推送到频道</button></form>
+  <form method="post" action="{{$p}}/products/{{$prod.ID}}/delete" class="inline" data-confirm="删除商品及其规格和未售卡密？"><button class="danger">删除商品</button></form>
+</div>
+{{end}}
+{{end}}

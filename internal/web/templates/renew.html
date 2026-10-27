@@ -1,0 +1,40 @@
+{{define "title"}}续费许可证 · {{.Site}}{{end}}
+{{define "content"}}
+<div class="card">
+  <h1>续费 Polaris 许可证</h1>
+  {{if not .LicenseID}}
+  <form method="get" action="/renew" class="stack">
+    <label>许可证编号（面板「许可证」页可见，形如 lic_…） <input name="lid" required maxlength="64"></label>
+    <button>下一步</button>
+  </form>
+  {{else if .Binding}}
+    {{$b := .Binding}}
+    <p>许可证 <code>{{$b.LicenseID}}</code> · {{$b.Plan}} · 当前到期 {{if $b.ExpiresAt}}{{$b.ExpiresAt}}{{else}}永久{{end}}</p>
+    {{if not .SKUs}}
+      <p class="flash err">暂无可用于续费的商品，请联系客服。</p>
+    {{else}}
+    <form method="post" action="/renew" class="stack" data-order>
+      <input type="hidden" name="lid" value="{{$b.LicenseID}}">
+      <div class="options">
+        {{range $i, $k := .SKUs}}
+        <label class="option">
+          <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{$k.LimitPerOrder}}"
+            data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}" {{if eq $i 0}}checked{{end}} required>
+          <span>{{index $.Titles $k.ID}} · {{$k.Name}}<br><span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}} {{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}</span></span>
+        </label>
+        {{end}}
+      </div>
+      <label>续费份数 <input type="number" name="qty" value="1" min="1" max="10"></label>
+      <label>购买时使用的邮箱（用于验证身份） <input type="email" name="email" required maxlength="200"></label>
+      <label>查询密码（查本次续费订单用） <input type="password" name="password" required minlength="4" maxlength="64"></label>
+      <label>优惠码（可选） <input name="coupon" maxlength="64"></label>
+      <div class="options">
+        {{range .Methods}}<label class="option"><input type="radio" name="method" value="{{.ID}}" required> {{.Label}}</label>{{end}}
+      </div>
+      <button>下单续费</button>
+      <p class="muted">续费成功后，面板下次校验（每日自动，或在「许可证」页手动刷新）即生效，无需重新激活。</p>
+    </form>
+    {{end}}
+  {{end}}
+</div>
+{{end}}

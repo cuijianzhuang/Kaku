@@ -1,0 +1,25 @@
+{{define "content"}}
+{{if not .Categories}}
+<div class="card"><p>暂无在售商品。</p></div>
+{{end}}
+{{range .Categories}}
+<h2>{{.Name}}</h2>
+<div class="grid">
+  {{range .Products}}
+  <a class="card product-card" href="/p/{{.ID}}">
+    {{if .Cover}}<img src="{{.Cover}}" alt="" loading="lazy">{{end}}
+    <b>{{.Title}}</b>
+    {{range .SKUs}}
+    <div class="row muted">
+      <span>{{.Name}}</span>
+      <span>
+        {{if .PriceCNY}}<span class="price">{{money .PriceCNY "CNY"}}</span>{{else if .PriceUSDT}}<span class="price">{{money .PriceUSDT "USDT"}}</span>{{else if .PriceStars}}<span class="price">{{money .PriceStars "XTR"}}</span>{{end}}
+        {{$n := index $.Stock .ID}}{{if eq $n 0}} · 缺货{{else if gt $n 0}} · 库存 {{$n}}{{end}}
+      </span>
+    </div>
+    {{end}}
+  </a>
+  {{end}}
+</div>
+{{end}}
+{{end}}

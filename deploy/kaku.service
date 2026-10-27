@@ -1,0 +1,20 @@
+# systemd 单元示例：/etc/systemd/system/kaku.service
+[Unit]
+Description=Kaku shop
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kaku
+EnvironmentFile=/etc/kaku/kaku.env
+Environment=DATA_DIR=/var/lib/kaku LISTEN=127.0.0.1:8080 TRUST_PROXY=1 SECURE_COOKIE=1
+ExecStart=/usr/local/bin/kaku serve
+Restart=on-failure
+StateDirectory=kaku
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

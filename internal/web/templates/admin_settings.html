@@ -1,0 +1,109 @@
+{{define "title"}}设置{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+{{$s := .S}}
+<h1>设置</h1>
+
+<div class="card" id="site">
+  <h2 style="margin-top:0">站点</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="site">
+    <div class="two">
+      <label>站点名称 <input name="site_name" value="{{$s.SiteName}}" maxlength="60"></label>
+      <label>站点地址（HTTPS，用于支付回调、邮件链接、续费链接） <input name="public_url" value="{{$s.PublicURL}}" placeholder="https://shop.example.com"></label>
+    </div>
+    <label>首页公告 <textarea name="notice" style="min-height:60px;font-family:inherit">{{$s.Notice}}</textarea></label>
+    <div class="filters">
+      <label>订单超时（分钟） <input type="number" name="order_ttl" value="{{$s.OrderTTL}}" min="5" max="120"></label>
+      <label>每个 IP / 邮箱 / TG 账号最多未付订单 <input type="number" name="max_unpaid" value="{{$s.MaxUnpaid}}" min="1" max="20"></label>
+      <label>客服链接 <input name="support_url" value="{{$s.SupportURL}}" placeholder="https://t.me/…"></label>
+    </div>
+    <div class="two">
+      <label>Cloudflare Turnstile Site Key（可选） <input name="turnstile_site" value="{{$s.TurnstileSite}}"></label>
+      <label>Turnstile Secret Key {{if index .Secrets "TurnstileSecret"}}<span class="muted">（已设置，留空不变）</span>{{end}} <input type="password" name="turnstile_secret" autocomplete="off"></label>
+    </div>
+    <button>保存</button>
+  </form>
+</div>
+
+<div class="card" id="payment">
+  <h2 style="margin-top:0">支付</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="payment">
+    <h3>易支付（支付宝 / 微信）</h3>
+    <div class="filters">
+      <label>网关地址 <input name="epay_url" value="{{$s.EPayURL}}" placeholder="https://pay.example.com" style="width:260px"></label>
+      <label>商户 ID <input name="epay_pid" value="{{$s.EPayPID}}"></label>
+      <label>商户密钥 {{if index .Secrets "EPayKey"}}<span class="muted">（已设置）</span>{{end}} <input type="password" name="epay_key" autocomplete="off"></label>
+      <label class="check"><input type="checkbox" name="epay_alipay" {{if $s.EPayAlipay}}checked{{end}}> 支付宝</label>
+      <label class="check"><input type="checkbox" name="epay_wxpay" {{if $s.EPayWxpay}}checked{{end}}> 微信支付</label>
+    </div>
+    <p class="muted">异步通知地址：<code>{{.Base}}/notify/epay</code>。收到通知后会验签、比对金额，并调用网关 api.php 二次查单确认。</p>
+    <h3>USDT（TRC20）</h3>
+    <div class="filters">
+      <label class="check"><input type="checkbox" name="usdt_enabled" {{if $s.USDTEnabled}}checked{{end}}> 启用</label>
+      <label>收款地址 <input name="usdt_address" value="{{$s.USDTAddress}}" placeholder="T…" style="width:340px"></label>
+      <label>TronGrid API Key（可选） {{if index .Secrets "TronGridKey"}}<span class="muted">（已设置）</span>{{end}} <input type="password" name="trongrid_key" autocomplete="off"></label>
+    </div>
+    <p class="muted">每个订单金额带唯一尾数，链上确认后按金额自动匹配，约 20 秒检查一次。</p>
+    <h3>Telegram Stars</h3>
+    <label class="check"><input type="checkbox" name="stars_enabled" {{if $s.StarsEnabled}}checked{{end}}> 在 Telegram 机器人中启用 Stars 支付（需配置 Bot）</label>
+    <button>保存</button>
+  </form>
+</div>
+
+<div class="card" id="mail">
+  <h2 style="margin-top:0">邮件（SMTP）</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="mail">
+    <div class="filters">
+      <label>服务器 <input name="smtp_host" value="{{$s.SMTPHost}}" placeholder="smtp.example.com"></label>
+      <label>端口 <input type="number" name="smtp_port" value="{{$s.SMTPPort}}" style="width:90px"></label>
+      <label>用户名 <input name="smtp_user" value="{{$s.SMTPUser}}"></label>
+      <label>密码 {{if index .Secrets "SMTPPass"}}<span class="muted">（已设置）</span>{{end}} <input type="password" name="smtp_pass" autocomplete="off"></label>
+      <label>发件人 <input name="smtp_from" value="{{$s.SMTPFrom}}" placeholder="Kaku &lt;noreply@example.com&gt;"></label>
+    </div>
+    <p class="muted">465 端口使用 SSL，其他端口使用 STARTTLS。</p>
+    <button>保存</button>
+  </form>
+  <form method="post" action="{{$p}}/settings/test-mail" class="filters" style="margin-top:12px">
+    <input type="email" name="to" placeholder="测试收件地址" required>
+    <button class="secondary">发送测试邮件</button>
+  </form>
+</div>
+
+<div class="card" id="telegram">
+  <h2 style="margin-top:0">Telegram Bot</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="telegram">
+    <div class="filters">
+      <label>Bot Token {{if index .Secrets "TGToken"}}<span class="muted">（已设置{{if $s.TGBotUsername}}：@{{$s.TGBotUsername}}{{end}}）</span>{{end}} <input type="password" name="tg_token" autocomplete="off" style="width:320px"></label>
+      <label>管理员 Chat ID（接收告警） <input name="tg_admin_chat" value="{{if $s.TGAdminChat}}{{$s.TGAdminChat}}{{end}}"></label>
+      <label>公告频道（@name 或 -100…） <input name="tg_channel" value="{{$s.TGChannel}}"></label>
+    </div>
+    <button>保存</button>
+  </form>
+  <form method="post" action="{{$p}}/settings/telegram/webhook" style="margin-top:12px">
+    <button class="secondary">设置 Webhook</button>
+    <span class="muted">保存 Token 并填写 HTTPS 站点地址后点击；会自动读取机器人用户名并注册命令。</span>
+  </form>
+</div>
+
+<div class="card" id="polaris">
+  <h2 style="margin-top:0">Polaris 授权服务</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="polaris">
+    <div class="two">
+      <label>polaris-license 地址 <input name="polaris_url" value="{{$s.PolarisURL}}" placeholder="https://license.example.com"></label>
+      <label>API 密钥（与 KAKU_API_SECRET 相同，≥ 32 位） {{if index .Secrets "PolarisSecret"}}<span class="muted">（已设置）</span>{{end}} <input type="password" name="polaris_secret" autocomplete="off"></label>
+    </div>
+    <button>保存</button>
+  </form>
+  <p class="muted">在 polaris-license 的环境变量中配置：</p>
+<pre>KAKU_API_SECRET=（与上面相同的密钥）
+KAKU_API_ALLOW_IPS=（本服务器出口 IP，可选）
+KAKU_HOOK_URL={{.HookURL}}
+KAKU_RENEW_URL={{.RenewURL}}{{if .RenewBot}}
+KAKU_RENEW_BOT={{.RenewBot}}{{end}}</pre>
+</div>
+{{end}}

@@ -1,0 +1,45 @@
+{{define "title"}}授权{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>Polaris 授权</h1>
+{{if not .PolarisReady}}<div class="flash err">尚未配置授权服务，续期 / 吊销 / 同步不可用。请到 <a href="{{$p}}/settings#polaris">设置</a> 填写。</div>{{end}}
+<form method="get" class="filters">
+  <input name="q" value="{{.Q}}" placeholder="license_id / 邮箱 / 实例 ID">
+  <select name="status">
+    <option value="">全部</option>
+    <option value="issued" {{if eq .Status "issued"}}selected{{end}}>未激活</option>
+    <option value="activated" {{if eq .Status "activated"}}selected{{end}}>已激活</option>
+    <option value="revoked" {{if eq .Status "revoked"}}selected{{end}}>已吊销</option>
+  </select>
+  <button class="secondary">筛选</button>
+</form>
+<div class="card table-wrap"><table>
+  <tr><th>license_id</th><th>订单</th><th>买家</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th><th>操作</th></tr>
+  {{range .Bindings}}
+  <tr>
+    <td><code>{{.LicenseID}}</code></td>
+    <td><a href="{{$p}}/orders/{{index $.OrderNos .ID}}">{{index $.OrderNos .ID}}</a></td>
+    <td>{{.Email}}{{if .TGUserID}}<br><span class="muted">TG {{.TGUserID}}</span>{{end}}</td>
+    <td>{{.Plan}}{{if .Offline}} · 离线{{end}}</td>
+    <td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td>
+    <td>{{.Instance}}</td>
+    <td><span class="badge {{.Status}}">{{status .Status}}</span></td>
+    <td>
+      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/refresh" class="inline"><button class="link">同步</button></form>
+      {{if ne .Status "revoked"}}
+      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/extend" class="inline" style="white-space:nowrap">
+        <input name="days" type="number" min="1" max="3650" value="30" style="width:70px"><button class="link">续期天数</button>
+      </form>
+      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/revoke" class="inline" data-confirm="吊销后面板下次校验会回落社区版，确认？"><button class="link">吊销</button></form>
+      {{end}}
+    </td>
+  </tr>
+  {{else}}<tr><td colspan="8" class="muted">没有授权记录</td></tr>{{end}}
+</table>
+<div class="pager">
+  {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}
+  <span>共 {{.Total}} 条</span>
+  {{if .HasNext}}<a href="?q={{query .Q}}&status={{.Status}}&page={{add .Page 1}}">下一页</a>{{end}}
+</div>
+</div>
+{{end}}

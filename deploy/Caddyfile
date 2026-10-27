@@ -1,0 +1,5 @@
+# 把 shop.example.com 换成你的域名（先解析到本机）。Caddy 会自动申请 HTTPS 证书。
+shop.example.com {
+	encode gzip
+	reverse_proxy kaku:8080
+}

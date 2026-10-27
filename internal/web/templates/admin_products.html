@@ -1,0 +1,28 @@
+{{define "title"}}商品{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<div class="row">
+  <h1>商品</h1>
+  <div><a href="{{$p}}/categories">管理分类</a> · <a class="btn" href="{{$p}}/products/new">新增商品</a></div>
+</div>
+{{if not .Categories}}<div class="flash err">请先 <a href="{{$p}}/categories">新增分类</a>。</div>{{end}}
+<div class="card table-wrap"><table>
+  <tr><th>商品</th><th>分类</th><th>规格</th><th>状态</th></tr>
+  {{range .Products}}
+  <tr>
+    <td><a href="{{$p}}/products/{{.ID}}">{{.Title}}</a></td>
+    <td>{{index $.CategoryNames .CategoryID}}</td>
+    <td>
+      {{range .SKUs}}
+      <div>{{.Name}} · {{index $.Kinds .DelivererKind}} ·
+        {{if .PriceCNY}}{{money .PriceCNY "CNY"}} {{end}}{{if .PriceUSDT}}{{money .PriceUSDT "USDT"}} {{end}}{{if .PriceStars}}{{money .PriceStars "XTR"}}{{end}}
+        {{if eq .DelivererKind "stock"}} · 库存 <a href="{{$p}}/cards?sku={{.ID}}">{{.StockCache}}</a>{{end}}
+        {{if not .Active}} · <span class="badge">停用</span>{{end}}
+      </div>
+      {{else}}<span class="muted">未添加规格</span>{{end}}
+    </td>
+    <td>{{if eq .Status "on"}}<span class="badge delivered">在售</span>{{else}}<span class="badge">下架</span>{{end}}</td>
+  </tr>
+  {{else}}<tr><td colspan="4" class="muted">还没有商品</td></tr>{{end}}
+</table></div>
+{{end}}

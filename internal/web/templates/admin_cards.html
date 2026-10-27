@@ -1,0 +1,73 @@
+{{define "title"}}卡密{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>卡密库存</h1>
+{{if not .SKUs}}
+  <div class="card"><p>还没有「卡密库存」类型的规格。请先在商品里新增规格并选择发货方式「卡密库存」。</p></div>
+{{else}}
+<form method="get" class="filters">
+  <label>规格
+    <select name="sku" onchange="this.form.submit()">
+      {{range .SKUs}}<option value="{{.ID}}" {{if eq .ID $.SKUID}}selected{{end}}>{{index $.Titles .ProductID}} · {{.Name}}（可售 {{.StockCache}}）</option>{{end}}
+    </select>
+  </label>
+  <label>状态
+    <select name="status" onchange="this.form.submit()">
+      <option value="">全部</option>
+      <option value="available" {{if eq $.Status "available"}}selected{{end}}>可售</option>
+      <option value="reserved" {{if eq $.Status "reserved"}}selected{{end}}>已预占</option>
+      <option value="sold" {{if eq $.Status "sold"}}selected{{end}}>已售</option>
+      <option value="void" {{if eq $.Status "void"}}selected{{end}}>已作废</option>
+    </select>
+  </label>
+</form>
+
+<div class="stats">
+  <div class="stat"><span class="muted">可售</span><b>{{index .Counts "available"}}</b></div>
+  <div class="stat"><span class="muted">已预占</span><b>{{index .Counts "reserved"}}</b></div>
+  <div class="stat"><span class="muted">已售</span><b>{{index .Counts "sold"}}</b></div>
+  <div class="stat"><span class="muted">已作废</span><b>{{index .Counts "void"}}</b></div>
+</div>
+
+<div class="two" style="margin-top:16px">
+  <div class="card">
+    <h2 style="margin-top:0">导入卡密</h2>
+    <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack">
+      <input type="hidden" name="sku_id" value="{{.SKUID}}">
+      <label>每行一条（自动去重，跨规格也不会重复） <textarea name="cards" placeholder="CARD-0001&#10;CARD-0002"></textarea></label>
+      <label>或上传 TXT / CSV（取第一列） <input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label>
+      <button>导入</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">导出卡密</h2>
+    <form method="post" action="{{$p}}/cards/export" class="stack">
+      <input type="hidden" name="sku_id" value="{{.SKUID}}">
+      <label>状态 <select name="status"><option value="available">可售</option><option value="sold">已售</option><option value="void">已作废</option></select></label>
+      <label>确认密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+      <label>两步验证码（如已开启） <input name="confirm_code" inputmode="numeric" maxlength="6"></label>
+      <button class="secondary">导出 TXT</button>
+      <p class="muted">导出操作会记录到审计日志。</p>
+    </form>
+  </div>
+</div>
+
+<div class="card table-wrap">
+  <table>
+    <tr><th>ID</th><th>卡密</th><th>状态</th><th>订单</th><th>导入时间</th><th></th></tr>
+    {{range .Cards}}
+    <tr>
+      <td>{{.ID}}</td><td><code>{{.Preview}}</code></td><td><span class="badge {{.Status}}">{{status .Status}}</span></td>
+      <td>{{if .OrderID}}#{{.OrderID}}{{end}}</td><td>{{date .CreatedAt}}</td>
+      <td>{{if eq .Status "available"}}<form method="post" action="{{$p}}/cards/{{.ID}}/void" class="inline" data-confirm="作废这条卡密？"><button class="link">作废</button></form>{{end}}</td>
+    </tr>
+    {{else}}<tr><td colspan="6" class="muted">没有卡密</td></tr>{{end}}
+  </table>
+  <div class="pager">
+    {{if gt .Page 1}}<a href="?sku={{.SKUID}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}
+    <span>共 {{.Total}} 条</span>
+    {{if .HasNext}}<a href="?sku={{.SKUID}}&status={{.Status}}&page={{add .Page 1}}">下一页</a>{{end}}
+  </div>
+</div>
+{{end}}
+{{end}}

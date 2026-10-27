@@ -1,0 +1,6 @@
+/data/
+/pgdata/
+/kaku
+*.db
+*.db-*
+.env
