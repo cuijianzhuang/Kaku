@@ -1,0 +1,72 @@
+{{define "public"}}<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{block "title" .}}{{.Site}}{{end}}</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="wrap row">
+    <a class="brand" href="/">{{.Site}}</a>
+    <nav>
+      <a href="/">商品</a>
+      <a href="/query">查单</a>
+      <a href="/ticket">售后</a>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+  {{if .Settings.Notice}}<div class="notice">{{.Settings.Notice}}</div>{{end}}
+  {{if .Flash}}<div class="flash ok">{{.Flash}}</div>{{end}}
+  {{if .Error}}<div class="flash err">{{.Error}}</div>{{end}}
+  {{template "content" .}}
+</main>
+<footer class="wrap foot">
+  <span>© {{.Site}}</span>
+  {{if .Settings.SupportURL}}<a href="{{.Settings.SupportURL}}" rel="noopener" target="_blank">联系客服</a>{{end}}
+</footer>
+</body>
+</html>{{end}}
+
+{{define "admin"}}<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{template "title" .}} · 后台</title>
+<link rel="stylesheet" href="/static/style.css">
+<script src="/static/app.js" defer></script>
+</head>
+<body class="admin">
+{{$p := .AdminPath}}
+<header class="top">
+  <div class="wrap row">
+    <a class="brand" href="{{$p}}">{{.Site}} · 后台</a>
+    {{if ne .Path (printf "%s/login" $p)}}
+    <nav class="admin-nav">
+      <a href="{{$p}}">仪表盘</a>
+      <a href="{{$p}}/orders">订单</a>
+      <a href="{{$p}}/products">商品</a>
+      <a href="{{$p}}/cards">卡密</a>
+      <a href="{{$p}}/licenses">授权</a>
+      <a href="{{$p}}/coupons">优惠码</a>
+      <a href="{{$p}}/tickets">工单</a>
+      <a href="{{$p}}/settings">设置</a>
+      <a href="{{$p}}/security">安全</a>
+      <a href="{{$p}}/audit">日志</a>
+      <form method="post" action="{{$p}}/logout" class="inline"><button class="link">退出</button></form>
+    </nav>
+    {{end}}
+  </div>
+</header>
+<main class="wrap">
+  {{if .Flash}}<div class="flash ok">{{.Flash}}</div>{{end}}
+  {{if .Error}}<div class="flash err">{{.Error}}</div>{{end}}
+  {{template "content" .}}
+</main>
+</body>
+</html>{{end}}

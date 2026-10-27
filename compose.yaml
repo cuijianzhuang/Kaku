@@ -1,0 +1,46 @@
+# 1. cp deploy/kaku.env.example .env 并填写（KAKU_MASTER_KEY 用 `docker compose run --rm kaku keygen` 生成）
+# 2. 修改 deploy/Caddyfile 里的域名
+# 3. docker compose up -d
+services:
+  kaku:
+    build: .
+    image: kaku:local
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TRUST_PROXY: "1"
+      SECURE_COOKIE: "1"
+    volumes:
+      - ./data:/data
+    expose:
+      - "8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - kaku
+
+  # 需要 PostgreSQL 时取消注释，并在 .env 设置
+  #   DB_DRIVER=postgres
+  #   DB_DSN=postgres://kaku:密码@postgres:5432/kaku?sslmode=disable
+  # postgres:
+  #   image: postgres:16-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: kaku
+  #     POSTGRES_PASSWORD: change-me
+  #     POSTGRES_DB: kaku
+  #   volumes:
+  #     - ./pgdata:/var/lib/postgresql/data
+
+volumes:
+  caddy_data:
+  caddy_config:

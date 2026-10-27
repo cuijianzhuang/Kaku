@@ -1,0 +1,82 @@
+{{define "title"}}订单 {{.Order.OrderNo}}{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+{{$o := .Order}}
+<div class="row"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a href="{{$p}}/orders">← 订单列表</a></div>
+<div class="two">
+  <div class="card">
+    <table>
+      <tr><th>商品</th><td>{{$o.ProductTitle}} {{$o.SKUName}} ×{{$o.Qty}}（SKU #{{$o.SKUID}} · {{.SKU.DelivererKind}}）</td></tr>
+      <tr><th>金额</th><td>{{money $o.Amount $o.Currency}}{{if ne $o.PayAmount $o.Amount}}（应付 {{money $o.PayAmount $o.Currency}}）{{end}}{{if $o.Discount}} · 优惠 {{money $o.Discount $o.Currency}}{{if .Coupon.Code}}（{{.Coupon.Code}}）{{end}}{{end}}</td></tr>
+      <tr><th>支付方式</th><td>{{method $o.PayMethod}} · {{$o.Channel}}</td></tr>
+      <tr><th>邮箱</th><td>{{$o.Email}}</td></tr>
+      {{if $o.TGUserID}}<tr><th>Telegram</th><td>{{$o.TGUserID}}</td></tr>{{end}}
+      <tr><th>IP</th><td>{{$o.ClientIP}}</td></tr>
+      {{if $o.RenewOf}}<tr><th>续费许可证</th><td><a href="{{$p}}/licenses?q={{$o.RenewOf}}">{{$o.RenewOf}}</a></td></tr>{{end}}
+      {{if $o.Remark}}<tr><th>备注</th><td>{{$o.Remark}}</td></tr>{{end}}
+      <tr><th>下单</th><td>{{date $o.CreatedAt}}（{{date $o.ExpiresAt}} 超时）</td></tr>
+      <tr><th>支付</th><td>{{date $o.PaidAt}}</td></tr>
+      <tr><th>发货</th><td>{{date $o.DeliveredAt}}{{if $o.DeliverAttempts}} · 尝试 {{$o.DeliverAttempts}} 次{{end}}</td></tr>
+      {{if $o.RefundedAt}}<tr><th>退款</th><td>{{date $o.RefundedAt}}</td></tr>{{end}}
+      {{if $o.LastError}}<tr><th>最近错误</th><td class="muted">{{$o.LastError}}</td></tr>{{end}}
+      {{if .Job.ID}}<tr><th>发货任务</th><td>{{.Job.Status}} · 第 {{.Job.Attempts}} 次{{if eq .Job.Status "pending"}} · 下次 {{date .Job.RunAt}}{{end}}</td></tr>{{end}}
+    </table>
+  </div>
+  <div class="card stack">
+    <h2 style="margin-top:0">操作</h2>
+    {{if or (eq $o.Status "pending") (eq $o.Status "expired")}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/paid" class="stack" data-confirm="确认已收到款项并补单发货？">
+      <label>补单依据（支付流水号 / 备注） <input name="note" required maxlength="200"></label>
+      <button>补单（标记已支付）</button>
+    </form>
+    {{end}}
+    {{if or (eq $o.Status "paid") (eq $o.Status "failed")}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/redeliver"><button>重新发货</button></form>
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/manual" class="stack">
+      <label>手动发货内容 <textarea name="content" required></textarea></label>
+      <label class="check"><input type="checkbox" name="per_line"> 每行作为一条</label>
+      <button class="secondary">手动发货</button>
+    </form>
+    {{end}}
+    {{if eq $o.Status "delivered"}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/resend"><button class="secondary">重发邮件 / 消息</button></form>
+    {{end}}
+    {{if or (eq $o.Status "paid") (eq $o.Status "delivered") (eq $o.Status "failed")}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/refund" class="stack" data-confirm="确认退款？Polaris 授权会被吊销，Stars 会原路退回；易支付 / USDT 需在渠道手动退款。">
+      <label>退款原因 <input name="reason" maxlength="200"></label>
+      <button class="danger">退款{{if eq .SKU.DelivererKind "polaris"}}并吊销授权{{end}}</button>
+    </form>
+    {{end}}
+  </div>
+</div>
+
+{{if .Items}}
+<div class="card">
+  <h2 style="margin-top:0">发货内容</h2>
+  {{range $i, $it := .Items}}
+  <div class="secret-row"><span>{{add $i 1}}.</span>
+    {{if $it.FileName}}<span>文件 {{$it.FileName}}</span><details><summary>查看</summary><pre>{{$it.Content}}</pre></details>
+    {{else}}<span class="secret">{{$it.Content}}</span><button class="secondary" data-copy="{{$it.Content}}">复制</button>{{end}}
+    <span class="muted">{{$it.Source}}{{if $it.RefID}} · {{$it.RefID}}{{end}}</span>
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{if .Bindings}}
+<div class="card table-wrap">
+  <h2 style="margin-top:0">授权</h2>
+  <table><tr><th>license_id</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th></tr>
+  {{range .Bindings}}<tr><td><a href="{{$p}}/licenses?q={{.LicenseID}}">{{.LicenseID}}</a></td><td>{{.Plan}}{{if .Offline}} · 离线{{end}}</td><td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td><td>{{.Instance}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td></tr>{{end}}
+  </table>
+</div>
+{{end}}
+
+<div class="card table-wrap">
+  <h2 style="margin-top:0">支付流水</h2>
+  <table><tr><th>渠道</th><th>流水号</th><th>金额</th><th>状态</th><th>时间</th></tr>
+  {{range .Payments}}<tr><td>{{method .Channel}}</td><td><code>{{.TradeNo}}</code></td><td>{{money .Amount .Currency}}</td><td>{{.Status}}</td><td>{{date .CreatedAt}}</td></tr>
+  {{else}}<tr><td colspan="5" class="muted">暂无</td></tr>{{end}}
+  </table>
+</div>
+{{end}}

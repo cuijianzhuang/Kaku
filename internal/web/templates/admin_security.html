@@ -1,0 +1,37 @@
+{{define "title"}}安全{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>账号安全</h1>
+<div class="two">
+  <div class="card">
+    <h2 style="margin-top:0">修改密码</h2>
+    <form method="post" action="{{$p}}/security/password" class="stack">
+      <label>原密码 <input type="password" name="old" required autocomplete="current-password"></label>
+      <label>新密码（至少 12 位） <input type="password" name="new" required minlength="12" autocomplete="new-password"></label>
+      <button>修改</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2 style="margin-top:0">两步验证（TOTP）</h2>
+    {{if .Admin.TOTPEnabled}}
+      <p>已开启。</p>
+      <form method="post" action="{{$p}}/security/totp/disable" class="stack">
+        <label>确认密码 <input type="password" name="confirm_password" required></label>
+        <label>验证码 <input name="confirm_code" inputmode="numeric" maxlength="6" required></label>
+        <button class="danger">关闭两步验证</button>
+      </form>
+    {{else if .PendingSecret}}
+      <p>在验证器 App 中添加以下密钥（或打开链接）：</p>
+      <p><code>{{.PendingSecret}}</code></p>
+      <p class="muted" style="word-break:break-all">{{.OTPURL}}</p>
+      <form method="post" action="{{$p}}/security/totp/enable" class="stack">
+        <label>输入 6 位验证码 <input name="code" inputmode="numeric" maxlength="6" required></label>
+        <button>启用</button>
+      </form>
+    {{else}}
+      <p>未开启。建议开启以保护后台。</p>
+      <form method="post" action="{{$p}}/security/totp/setup"><button>开始设置</button></form>
+    {{end}}
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,46 @@
+{{define "title"}}订单 {{.Order.OrderNo}}{{end}}
+{{define "content"}}
+{{$o := .Order}}
+<div class="card" {{if or (eq $o.Status "pending") (eq $o.Status "paid")}}data-poll="/order/{{$o.OrderNo}}/status" data-status="{{$o.Status}}"{{end}}>
+  <h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1>
+  <p>{{$o.ProductTitle}} {{$o.SKUName}} ×{{$o.Qty}} · {{money $o.Amount $o.Currency}} · {{date $o.CreatedAt}}</p>
+  {{if eq $o.Status "pending"}}
+    <p><a class="btn" href="/pay/{{$o.OrderNo}}">继续支付</a></p>
+  {{else if eq $o.Status "paid"}}
+    <p>已收到付款，正在发货，请稍候…{{if $o.LastError}}<br><span class="muted">{{if eq $o.LastError "等待人工发货"}}该商品为人工发货，我们会尽快处理。{{else}}发货遇到问题，系统会自动重试。{{end}}</span>{{end}}</p>
+  {{else if eq $o.Status "failed"}}
+    <p>发货遇到问题，管理员已收到通知，会尽快处理。也可以 <a href="/ticket?no={{$o.OrderNo}}">提交工单</a>。</p>
+  {{else if eq $o.Status "expired"}}
+    <p>订单已超时关闭。如已付款，请 <a href="/ticket?no={{$o.OrderNo}}">提交工单</a> 并附上付款凭证。</p>
+  {{else if eq $o.Status "refunded"}}
+    <p>订单已退款。</p>
+  {{end}}
+</div>
+
+{{if eq $o.Status "delivered"}}
+  {{if .Access}}
+  <div class="card">
+    <h2>发货内容</h2>
+    {{range $i, $it := .Items}}
+      {{if $it.FileName}}
+        <div class="secret-row"><span>{{add $i 1}}. 文件 {{$it.FileName}}</span><a class="btn secondary" href="/order/{{$o.OrderNo}}/item/{{$it.ID}}">下载</a></div>
+      {{else}}
+        <div class="secret-row"><span class="secret">{{$it.Content}}</span><button class="secondary" data-copy="{{$it.Content}}">复制</button></div>
+      {{end}}
+    {{end}}
+    {{if .PolarisHelp}}
+      <p class="muted">激活方法：打开 Polaris 面板「许可证」页，粘贴激活码并点击激活。到期前面板会提醒续费，续费后无需重新激活。</p>
+    {{end}}
+    <p class="muted">请妥善保管。遇到问题可 <a href="/ticket?no={{$o.OrderNo}}">提交工单</a>。</p>
+  </div>
+  {{else}}
+  <div class="card">
+    <h2>查看发货内容</h2>
+    <form method="post" action="/order/{{$o.OrderNo}}" class="stack">
+      <label>查询密码 <input type="password" name="password" required autocomplete="current-password"></label>
+      <button>查看</button>
+    </form>
+  </div>
+  {{end}}
+{{end}}
+{{end}}

@@ -1,0 +1,43 @@
+{{define "title"}}订单{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>订单</h1>
+<form method="get" class="filters">
+  <input name="q" value="{{.Q}}" placeholder="订单号 / 邮箱 / license_id / IP">
+  <select name="status">
+    <option value="">全部状态</option>
+    <option value="pending" {{if eq .Status "pending"}}selected{{end}}>待支付</option>
+    <option value="paid" {{if eq .Status "paid"}}selected{{end}}>已支付（待发货）</option>
+    <option value="delivered" {{if eq .Status "delivered"}}selected{{end}}>已发货</option>
+    <option value="failed" {{if eq .Status "failed"}}selected{{end}}>发货失败</option>
+    <option value="expired" {{if eq .Status "expired"}}selected{{end}}>已超时</option>
+    <option value="refunded" {{if eq .Status "refunded"}}selected{{end}}>已退款</option>
+  </select>
+  <select name="channel">
+    <option value="">全部渠道</option>
+    <option value="web" {{if eq .Channel "web"}}selected{{end}}>网页</option>
+    <option value="tg" {{if eq .Channel "tg"}}selected{{end}}>Telegram</option>
+  </select>
+  <button class="secondary">筛选</button>
+</form>
+<div class="card table-wrap"><table>
+  <tr><th>订单号</th><th>商品</th><th>金额</th><th>买家</th><th>支付</th><th>状态</th><th>下单时间</th></tr>
+  {{range .Orders}}
+  <tr>
+    <td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{if .RenewOf}}<br><span class="badge">续费</span>{{end}}</td>
+    <td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
+    <td>{{money .Amount .Currency}}</td>
+    <td>{{.Email}}{{if .TGUserID}}<br><span class="muted">TG {{.TGUserID}}</span>{{end}}</td>
+    <td>{{.Channel}} · {{method .PayMethod}}</td>
+    <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .LastError}}<br><span class="muted">{{.LastError}}</span>{{end}}</td>
+    <td>{{date .CreatedAt}}</td>
+  </tr>
+  {{else}}<tr><td colspan="7" class="muted">没有订单</td></tr>{{end}}
+</table>
+<div class="pager">
+  {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}&page={{add .Page -1}}">上一页</a>{{end}}
+  <span>共 {{.Total}} 单</span>
+  {{if .HasNext}}<a href="?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}&page={{add .Page 1}}">下一页</a>{{end}}
+</div>
+</div>
+{{end}}

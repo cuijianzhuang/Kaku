@@ -1,0 +1,41 @@
+{{define "title"}}仪表盘{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<h1>仪表盘</h1>
+<div class="stats">
+  {{range .Today}}<div class="stat"><span class="muted">今日 {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{else}}<div class="stat"><span class="muted">今日销售</span><b>0</b></div>{{end}}
+  {{range .Month}}<div class="stat"><span class="muted">近 30 天 {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{end}}
+  <div class="stat"><span class="muted">待支付</span><b>{{index .Counts "pending"}}</b></div>
+  <div class="stat"><span class="muted">待发货</span><b>{{index .Counts "paid"}}</b></div>
+  <div class="stat"><span class="muted">发货失败</span><b>{{index .Counts "failed"}}</b></div>
+  <div class="stat"><span class="muted">待回复工单</span><b><a href="{{$p}}/tickets">{{.OpenTickets}}</a></b></div>
+</div>
+
+{{if .Attention}}
+<h2>需要处理</h2>
+<div class="card table-wrap"><table>
+  <tr><th>订单号</th><th>商品</th><th>状态</th><th>原因</th><th>时间</th></tr>
+  {{range .Attention}}
+  <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
+    <td><span class="badge {{.Status}}">{{status .Status}}</span></td><td class="muted">{{.LastError}}</td><td>{{date .PaidAt}}</td></tr>
+  {{end}}
+</table></div>
+{{end}}
+
+{{if .Low}}
+<h2>库存预警</h2>
+<div class="card table-wrap"><table>
+  <tr><th>规格</th><th>剩余</th><th>预警线</th><th></th></tr>
+  {{range .Low}}<tr><td>{{.Name}} (#{{.ID}})</td><td>{{.StockCache}}</td><td>{{.LowStock}}</td><td><a href="{{$p}}/cards?sku={{.ID}}">补货</a></td></tr>{{end}}
+</table></div>
+{{end}}
+
+<h2>最近订单</h2>
+<div class="card table-wrap"><table>
+  <tr><th>订单号</th><th>商品</th><th>金额</th><th>渠道</th><th>状态</th><th>时间</th></tr>
+  {{range .Recent}}
+  <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
+    <td>{{money .Amount .Currency}}</td><td>{{.Channel}} · {{method .PayMethod}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td><td>{{date .CreatedAt}}</td></tr>
+  {{else}}<tr><td colspan="6" class="muted">还没有订单</td></tr>{{end}}
+</table></div>
+{{end}}
