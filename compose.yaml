@@ -1,10 +1,10 @@
-# 1. cp deploy/kaku.env.example .env 并填写（KAKU_MASTER_KEY 用 `docker compose run --rm kaku keygen` 生成）
+# 1. cp deploy/kaku.env.example .env 并填写（KAKU_MASTER_KEY 用 `docker run --rm ghcr.io/cuijianzhuang/kaku keygen` 生成）
 # 2. 修改 deploy/Caddyfile 里的域名
 # 3. docker compose up -d
 services:
   kaku:
-    build: .
-    image: kaku:local
+    image: ghcr.io/cuijianzhuang/kaku:latest
+    # 从源码构建时改用：build: .
     restart: unless-stopped
     env_file: .env
     environment:
