@@ -303,7 +303,7 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 14px; font-w
   box-shadow: var(--shadow-sm); transition: transform .18s, box-shadow .18s, border-color .18s;
 }
 .product-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--line-2); text-decoration: none; }
-.cover { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; display: block; background: var(--bg-soft); }
+.cover { aspect-ratio: 16 / 9; width: 100%; object-fit: contain; display: block; background: var(--bg-soft); }
 .cover.ph {
   display: grid; place-items: center; font-size: 30px; font-weight: 700; letter-spacing: -.02em;
   color: hsl(var(--ph-h, var(--h, 240)) var(--ph-sat) var(--ph-fg));
@@ -652,7 +652,8 @@ h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
 .cover-edit { display: flex; gap: 18px; align-items: flex-start; }
 .cover-preview { width: 160px; aspect-ratio: 4 / 3; flex: none; border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center;
   background: linear-gradient(135deg, hsl(var(--h) 70% 92%), hsl(calc(var(--h) + 40) 70% 85%)); }
-.cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-preview img { width: 100%; height: 100%; object-fit: contain; }
+.cover-preview:has(img:not([hidden])) { background: var(--bg-soft); }
 .logo-preview { width: 96px; aspect-ratio: 1; background: var(--bg-soft); }
 .logo-ph { width: 60px; height: 60px; border-radius: 14px; overflow: hidden; display: block; background: var(--logo-bg); --k-fg: var(--logo-fg); --k-leg: var(--logo-leg); }
 .logo-ph[hidden] { display: none; }
