@@ -2,8 +2,11 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$s := .S}}
-<div class="page-head"><h1>设置</h1><div class="seg"><a href="#site">站点</a><a href="#appearance">外观</a><a href="#payment">支付</a><a href="#mail">邮件</a><a href="#telegram">Telegram</a><a href="#login">登录</a><a href="#panel">面板</a><a href="#polaris">授权</a></div></div>
+{{$tab := .Tab}}
+<div class="page-head"><h1>设置</h1></div>
+<nav class="tabs settings-tabs" aria-label="设置分类">{{range settingsTabs}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}</nav>
 
+{{if eq $tab "site"}}
 <div class="card" id="site">
   <h2 style="margin-top:0">站点</h2>
   <form method="post" action="{{$p}}/settings" class="stack">
@@ -27,6 +30,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "appearance"}}
 <div class="card" id="appearance">
   <h2 style="margin-top:0">外观</h2>
   <form method="post" action="{{$p}}/settings" class="stack" enctype="multipart/form-data">
@@ -82,6 +87,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "payment"}}
 <div class="card" id="payment">
   <h2 style="margin-top:0">支付</h2>
   <form method="post" action="{{$p}}/settings" class="stack">
@@ -119,6 +126,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "mail"}}
 <div class="card" id="mail">
   <h2 style="margin-top:0">邮件（SMTP）</h2>
   <form method="post" action="{{$p}}/settings" class="stack">
@@ -138,6 +147,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "telegram"}}
 <div class="card" id="telegram">
   <h2 style="margin-top:0">Telegram Bot</h2>
   <form method="post" action="{{$p}}/settings" class="stack">
@@ -155,6 +166,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "login"}}
 <div class="card" id="login">
   <h2 style="margin-top:0">登录方式</h2>
   <form method="post" action="{{$p}}/settings" class="stack">
@@ -186,6 +199,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "panel"}}
 <div class="card" id="panel">
   <h2 style="margin-top:0">Polaris 面板（套餐兑换码）</h2>
   <p class="muted" style="margin-top:-4px;font-size:13px">在 Kaku 出售面板里的用户套餐和流量包：买家付款后自动在面板生成兑换码发给买家，买家在面板商店或机器人里兑换；退款时作废未兑换的码。</p>
@@ -204,6 +219,8 @@
   </form>
 </div>
 
+{{end}}
+{{if eq $tab "polaris"}}
 <div class="card" id="polaris">
   <h2 style="margin-top:0">Polaris 授权服务</h2>
   <p class="muted" style="margin-top:-4px;font-size:13px">对接后，Polaris 商品付款即自动向 polaris-license 签发激活码，续费、退款吊销全自动。按下面三步完成：</p>
@@ -231,4 +248,5 @@ KAKU_RENEW_BOT={{.RenewBot}}{{end}}</pre>
     <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
   </form>
 </div>
+{{end}}
 {{end}}

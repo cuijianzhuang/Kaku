@@ -142,12 +142,13 @@
     <div class="nav-group">商品</div>
     {{template "navlink" (nav "商品" "box" (printf "%s/products" $p) .Path false)}}
     {{template "navlink" (nav "卡密" "key" (printf "%s/cards" $p) .Path false)}}
-    {{template "navlink" (nav "授权" "shield" (printf "%s/licenses" $p) .Path false)}}
+    {{template "navlink" (nav "许可证" "shield" (printf "%s/licenses" $p) .Path false)}}
     {{template "navlink" (nav "优惠码" "tag" (printf "%s/coupons" $p) .Path false)}}
     <div class="nav-group">服务</div>
     {{template "navlink" (nav "工单" "message" (printf "%s/tickets" $p) .Path false)}}
     <div class="nav-group">系统</div>
     {{template "navlink" (nav "设置" "settings" (printf "%s/settings" $p) .Path false)}}
+    {{if hasPrefix .Path (printf "%s/settings" $p)}}<div class="nav-sub">{{$path := .Path}}{{range settingsTabs}}{{$href := printf "%s/settings/%s" $p .ID}}<a class="nav-sublink {{if or (eq $path $href) (and (eq .ID "site") (eq $path (printf "%s/settings" $p)))}}on{{end}}" href="{{$href}}">{{.Name}}</a>{{end}}</div>{{end}}
     {{template "navlink" (nav "备份" "database" (printf "%s/backups" $p) .Path false)}}
     {{template "navlink" (nav "管理员" "users" (printf "%s/admins" $p) .Path false)}}
     {{template "navlink" (nav "安全" "lock" (printf "%s/security" $p) .Path false)}}

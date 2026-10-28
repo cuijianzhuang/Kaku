@@ -159,6 +159,20 @@ document.addEventListener('submit', (e) => {
   });
 })();
 
+// Settings used to be one long page with #anchors; send old links to the tab.
+(function () {
+  const m = location.pathname.match(/\/settings\/?$/);
+  const tab = location.hash.slice(1);
+  if (m && /^(site|appearance|payment|mail|telegram|login|panel|polaris)$/.test(tab)) {
+    location.replace(location.pathname.replace(/\/?$/, '/') + tab + location.search);
+  }
+  // phones: bring the current tab into view in the scrolling tab bar
+  const on = document.querySelector('.tabs a.on');
+  if (on && on.parentElement.scrollWidth > on.parentElement.clientWidth) {
+    on.parentElement.scrollLeft = on.offsetLeft - (on.parentElement.clientWidth - on.offsetWidth) / 2;
+  }
+})();
+
 // Close the admin menu after picking a page (back/forward cache keeps it open otherwise).
 window.addEventListener('pageshow', () => { const t = document.getElementById('nav-toggle'); if (t) t.checked = false; });
 
