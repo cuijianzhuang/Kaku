@@ -24,9 +24,9 @@ bash <(curl -fsSL https://github.com/cuijianzhuang/Kaku/releases/latest/download
 | --- | --- |
 | 配置（含主密钥） | `/etc/kaku/kaku.env`，请离线备份 |
 | 数据 | `/var/lib/kaku` |
-| 管理命令 | `kaku-ctl status \| log \| update \| backup \| info \| reset-password \| uninstall` |
+| 管理命令 | `kaku-ctl status \| log \| update \| port \| backup \| info \| reset-password \| uninstall` |
 
-常用选项：`--port N`（默认 8080）、`--version vX.Y.Z`、`--no-caddy`（自备反向代理）。不带 `--domain` 时以 HTTP 监听公网端口，仅适合测试。服务器访问 GitHub 慢时可设置下载代理前缀：`GH_PROXY=https://你的代理/ bash <(curl …) install …`。
+常用选项：`--port N`（默认 8090，被占用时自动顺延到下一个空闲端口；与 polaris-license 的 8080 错开，可装在同一台服务器）、`--version vX.Y.Z`、`--no-caddy`（自备反向代理）。装好后要换端口执行 `kaku-ctl port 新端口`，会同时更新 Caddy 和防火墙。不带 `--domain` 时以 HTTP 监听公网端口，仅适合测试。服务器访问 GitHub 慢时可设置下载代理前缀：`GH_PROXY=https://你的代理/ bash <(curl …) install …`。
 
 `kaku-ctl update` 升级到最新版本，新版本启动失败会自动回滚；`kaku-ctl backup` 把数据库和配置打包到 `/root`。
 
