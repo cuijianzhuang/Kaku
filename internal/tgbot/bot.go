@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/payment"
 	"github.com/cuijianzhuang/kaku/internal/shop"
@@ -31,11 +32,17 @@ type Bot struct {
 	sessions map[int64]*session
 }
 
-// session is a short conversation state (renewal email check).
+// session is a short conversation state: the renewal email check, or the
+// answer a manual SKU asks for before ordering.
 type session struct {
 	Step      string
 	LicenseID string
-	Expires   time.Time
+	// Step "ask": the order waiting for the buyer's answer
+	SKUID   uint
+	Qty     int
+	Method  string
+	Ask     string
+	Expires time.Time
 }
 
 const sessionTTL = 30 * time.Minute
@@ -355,7 +362,14 @@ func (b *Bot) callback(ctx context.Context, q *tgapi.CallbackQuery) {
 			}
 			renewOf = s.LicenseID
 		}
-		answer = b.order(ctx, chat, msg, q.From, uint(num(1)), num(2), parts[3], renewOf)
+		if renewOf == "" {
+			if ask := b.askFor(uint(num(1))); ask != "" {
+				b.setSession(uid, &session{Step: "ask", SKUID: uint(num(1)), Qty: num(2), Method: parts[3], Ask: ask})
+				b.show(ctx, chat, msg, fmt.Sprintf("请发送<b>%s</b>（发送 /start 取消）：", html.EscapeString(ask)), nil)
+				return
+			}
+		}
+		answer = b.order(ctx, chat, msg, q.From, uint(num(1)), num(2), parts[3], renewOf, "")
 	case "o":
 		if len(parts) == 2 {
 			b.orderDetail(ctx, chat, uid, parts[1])
@@ -374,7 +388,14 @@ func (b *Bot) callback(ctx context.Context, q *tgapi.CallbackQuery) {
 
 // order creates an order and shows how to pay. It returns a toast for
 // errors.
-func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, skuID uint, qty int, method, renewOf string) string {
+func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, skuID uint, qty int, method, renewOf, ask string) string {
+	// called from a text message (msgID 0) there is no toast: say it in the chat
+	fail := func(t string) string {
+		if msgID == 0 {
+			b.send(ctx, chat, "⚠️ "+html.EscapeString(t), nil)
+		}
+		return t
+	}
 	var email string
 	if renewOf != "" {
 		if bd, err := b.shop.Binding(renewOf); err == nil {
@@ -382,7 +403,7 @@ func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, sku
 		}
 	}
 	o, err := b.shop.CreateOrder(ctx, shop.CreateInput{SKUID: skuID, Qty: qty, PayMethod: method, Channel: model.ChannelTG,
-		TGUserID: from.ID, Email: email, RenewOf: renewOf, IP: fmt.Sprintf("tg:%d", from.ID)})
+		TGUserID: from.ID, Email: email, RenewOf: renewOf, Ask: ask, IP: fmt.Sprintf("tg:%d", from.ID)})
 	if err != nil {
 		var ue *shop.UserError
 		if errors.As(err, &ue) {
@@ -390,7 +411,7 @@ func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, sku
 			return ue.Msg
 		}
 		b.log.Error("telegram order failed", "err", err)
-		return "下单失败，请稍后再试"
+		return fail("下单失败，请稍后再试")
 	}
 	if renewOf != "" {
 		b.setSession(from.ID, nil)
@@ -415,7 +436,7 @@ func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, sku
 			"prices": []map[string]any{{"label": desc, "amount": o.PayAmount}},
 		}, nil); err != nil {
 			b.log.Warn("send invoice failed", "err", err)
-			return "无法创建 Stars 账单"
+			return fail("无法创建 Stars 账单")
 		}
 	case model.PayUSDT:
 		addr := b.shop.Store.Settings().USDTAddress
@@ -427,7 +448,7 @@ func (b *Bot) order(ctx context.Context, chat, msgID int64, from tgapi.User, sku
 	default:
 		base := strings.TrimRight(b.shop.Store.Settings().PublicURL, "/")
 		if !strings.HasPrefix(base, "https://") {
-			return "站点地址未配置，无法使用该支付方式"
+			return fail("站点地址未配置，无法使用该支付方式")
 		}
 		b.show(ctx, chat, msgID, head, &tgapi.Keyboard{InlineKeyboard: [][]tgapi.InlineButton{
 			{{Text: "前往付款", URL: base + "/pay/" + o.OrderNo}},
@@ -602,8 +623,31 @@ type emailTries struct {
 
 var attempts sync.Map // uid → emailTries
 
+// askFor returns what a manual SKU asks the buyer, if anything.
+func (b *Bot) askFor(skuID uint) string {
+	k, err := b.loadSKU(skuID)
+	if err != nil || k.DelivererKind != "manual" {
+		return ""
+	}
+	cfg, err := deliver.ParseManualCfg(k.DelivererCfg)
+	if err != nil {
+		return ""
+	}
+	return cfg.Ask
+}
+
 func (b *Bot) continueSession(ctx context.Context, m *tgapi.Message, s *session) {
 	uid := m.From.ID
+	if s.Step == "ask" {
+		ans := strings.TrimSpace(m.Text)
+		if ans == "" || len([]rune(ans)) > 100 {
+			b.send(ctx, m.Chat.ID, fmt.Sprintf("请发送%s（1–100 字，发送 /start 取消）。", html.EscapeString(s.Ask)), nil)
+			return
+		}
+		b.setSession(uid, nil)
+		b.order(ctx, m.Chat.ID, 0, *m.From, s.SKUID, s.Qty, s.Method, "", ans)
+		return
+	}
 	if s.Step != "renew_email" {
 		b.home(ctx, m.Chat.ID, 0)
 		return

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -28,7 +29,12 @@ func TestGenericSKUForms(t *testing.T) {
 		for k, v := range extra {
 			f[k] = v
 		}
-		l := location(e.post(c, "/manage/skus", f))
+		resp := e.post(c, "/manage/skus", f)
+		l := location(resp)
+		if resp.StatusCode == http.StatusUnprocessableEntity {
+			b, _ := io.ReadAll(resp.Body)
+			l = string(b)
+		}
 		var k model.SKU
 		e.st.DB.Where("name = ?", f.Get("name")).Take(&k)
 		return l, k
@@ -55,6 +61,16 @@ func TestGenericSKUForms(t *testing.T) {
 		t.Fatalf("bad tier: %s", l)
 	}
 
+	// a failed save shows the error with what was typed
+	f := url.Values{"product_id": {itoa(int64(p.ID))}, "name": {"保留测试"}, "deliverer_kind": {"text"}, "tx_text": {"保留的发货内容"},
+		"ws_qty": {"3"}, "ws_pct": {"95"}}
+	resp := e.post(c, "/manage/skus", f)
+	page, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(string(page), "至少填写一种币种的价格") ||
+		!strings.Contains(string(page), "保留的发货内容") || !strings.Contains(string(page), `value="保留测试"`) || !strings.Contains(string(page), `value="95"`) {
+		t.Fatalf("failed save lost the input: %d", resp.StatusCode)
+	}
+
 	// webhook
 	if l, _ := save(url.Values{"name": {"接口"}, "deliverer_kind": {"webhook"}, "wh_url": {"https://api.example.com/d"}, "wh_secret": {"short"}}); !strings.Contains(l, "签名密钥至少 16 位") {
 		t.Fatalf("short secret: %s", l)
@@ -71,7 +87,7 @@ func TestGenericSKUForms(t *testing.T) {
 	if mc == nil || mc.Ask != "充值账号" || mc.Note != "30 分钟内处理" {
 		t.Fatalf("manual cfg %q", k.DelivererCfg)
 	}
-	resp, _ := e.client().Get(e.ts.URL + "/p/" + itoa(int64(p.ID)))
+	resp, _ = e.client().Get(e.ts.URL + "/p/" + itoa(int64(p.ID)))
 	body, _ := io.ReadAll(resp.Body)
 	if !strings.Contains(string(body), `data-ask="充值账号"`) || !strings.Contains(string(body), `name="ask"`) {
 		t.Fatal("product page does not ask for the account")

@@ -302,8 +302,9 @@ type CreateInput struct {
 }
 
 // applyAsk puts the buyer's answer to a manual SKU's question in front of
-// the order remark, where the admin sees it. Web orders must answer;
-// Telegram orders cannot, so the admin asks the buyer there.
+// the order remark, where the admin sees it. Web orders must answer; the
+// Telegram bot asks before ordering, so an empty answer there only comes
+// from an older conversation.
 func applyAsk(in *CreateInput, sku *model.SKU) error {
 	if sku.DelivererKind != "manual" {
 		return nil

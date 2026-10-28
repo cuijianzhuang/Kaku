@@ -165,7 +165,7 @@
     </div>
     <div class="fields">
       <label>每单上限 <input type="number" name="limit_per_order" value="{{$k.LimitPerOrder}}" min="1"></label>
-      <label>库存预警线 <input type="number" name="low_stock" value="{{$k.LowStock}}" min="0"></label>
+      <label data-stock-only>库存预警线 <input type="number" name="low_stock" value="{{$k.LowStock}}" min="0"></label>
       <label>排序 <input type="number" name="sort" value="{{$k.Sort}}"></label>
       <label class="check"><input type="checkbox" name="active" {{if $k.Active}}checked{{end}}> 启用</label>
     </div>

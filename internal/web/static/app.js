@@ -190,6 +190,7 @@ document.addEventListener('change', (e) => {
       el.hidden = !on;
       el.querySelectorAll('input,select,textarea').forEach((f) => { f.disabled = !on; });
     }
+    document.querySelectorAll('[data-stock-only]').forEach((el) => { el.hidden = kind.value !== 'stock'; });
     const isPolaris = kind.value === 'polaris';
     generic.hidden = isPolaris ? mode() !== 'json' : !!sections[kind.value];
     // panel SKUs keep their saved JSON when the panel cannot list its plans
