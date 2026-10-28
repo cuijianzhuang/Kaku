@@ -78,6 +78,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.polarisRoutes(a)
 	s.panelRoutes(a)
 	s.quickRoutes(a)
+	s.templateRoutes(a)
 	a.POST("/uploads/image", s.uploadImage)
 	a.POST("/markdown/preview", s.previewMarkdown)
 }
@@ -165,7 +166,11 @@ func (s *Server) categories(c *gin.Context) {
 		s.st.DB.Model(&model.Product{}).Where("category_id = ?", cat.ID).Count(&n)
 		counts[cat.ID] = n
 	}
-	s.render(c, 200, "admin_categories", gin.H{"Categories": cats, "Counts": counts})
+	have := map[string]bool{}
+	for _, cat := range cats {
+		have[cat.Name] = true
+	}
+	s.render(c, 200, "admin_categories", gin.H{"Presets": categoryPresets, "Have": have, "Categories": cats, "Counts": counts})
 }
 
 func (s *Server) saveCategory(c *gin.Context) {

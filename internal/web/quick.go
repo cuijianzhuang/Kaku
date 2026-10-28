@@ -87,7 +87,7 @@ func (s *Server) quickPage(c *gin.Context) {
 	if quickTemplateByID(pick) == nil {
 		pick = "card"
 	}
-	s.render(c, 200, "admin_quick", gin.H{"Templates": quickTemplates, "Categories": cats, "Pick": pick})
+	s.render(c, 200, "admin_quick", gin.H{"Templates": quickTemplates, "Categories": cats, "Pick": pick, "Tab": "general", "CatHint": "游戏点卡"})
 }
 
 func (s *Server) quickCreate(c *gin.Context) {
@@ -98,16 +98,20 @@ func (s *Server) quickCreate(c *gin.Context) {
 	}
 	title := strings.TrimSpace(c.PostForm("title"))
 	skuName := strings.TrimSpace(c.PostForm("sku_name"))
-	catID := atoiU(c.PostForm("category_id"))
 	price, err := payment.ParseDecimal(strings.TrimSpace(c.DefaultPostForm("price_cny", "0")), 2)
 	switch {
 	case t == nil:
 		err = errors.New("请选择一个模板")
-	case title == "" || catID == 0:
-		err = errors.New("请填写商品名称并选择分类")
+	case title == "":
+		err = errors.New("请填写商品名称")
 	case err != nil || price <= 0:
 		err = errors.New("请填写价格（元），例如 9.9")
 	}
+	if err != nil {
+		redirectErr(c, back, err)
+		return
+	}
+	catID, err := s.categoryFromForm(c)
 	if err != nil {
 		redirectErr(c, back, err)
 		return

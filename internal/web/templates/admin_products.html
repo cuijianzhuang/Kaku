@@ -3,9 +3,8 @@
 {{$p := .AdminPath}}
 <div class="page-head">
   <h1>商品</h1>
-  <div class="actions">{{if .Settings.PolarisURL}}<a class="btn secondary" href="{{$p}}/products/polaris-import"><svg class="ic"><use href="#i-shield"/></svg>从授权模板创建</a>{{end}}<a class="btn secondary" href="{{$p}}/products/quick"><svg class="ic"><use href="#i-box"/></svg>从模板创建</a><a class="btn secondary" href="{{$p}}/categories"><svg class="ic"><use href="#i-tag"/></svg>管理分类</a><a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-plus"/></svg>新增商品</a></div>
+  <div class="actions"><a class="btn secondary" href="{{$p}}/products/quick"><svg class="ic"><use href="#i-box"/></svg>从模板创建</a><a class="btn secondary" href="{{$p}}/categories"><svg class="ic"><use href="#i-tag"/></svg>管理分类</a><a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-plus"/></svg>新增商品</a></div>
 </div>
-{{if not .Categories}}<div class="flash err">请先 <a href="{{$p}}/categories">新增分类</a>。</div>{{end}}
 <div class="card table-wrap"><table>
   <tr><th>商品</th><th>分类</th><th>规格</th><th>状态</th></tr>
   {{range .Products}}
@@ -23,6 +22,6 @@
     </td>
     <td>{{if eq .Status "on"}}<span class="badge delivered">在售</span>{{else}}<span class="badge">下架</span>{{end}}</td>
   </tr>
-  {{else}}<tr><td colspan="4" class="muted" style="text-align:center;padding:28px">还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充等常见商品一键建好。</td></tr>{{end}}
+  {{else}}<tr><td colspan="4" class="muted" style="text-align:center;padding:28px">还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充、Polaris 授权、面板套餐都能一键建好。</td></tr>{{end}}
 </table></div>
 {{end}}

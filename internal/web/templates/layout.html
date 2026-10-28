@@ -37,6 +37,22 @@
 {{end}}
 
 {{/* steps: 2 = paying, 3 = delivering, 4 = done */}}
+{{define "tpl-tabs"}}<nav class="tabs" aria-label="模板类别">
+  <a href="{{.AdminPath}}/products/quick" {{if eq .Tab "general"}}class="on"{{end}}>通用商品</a>
+  <a href="{{.AdminPath}}/products/polaris-import" {{if eq .Tab "polaris"}}class="on"{{end}}>Polaris 授权</a>
+  <a href="{{.AdminPath}}/products/panel-import" {{if eq .Tab "panel"}}class="on"{{end}}>面板套餐</a>
+</nav>{{end}}
+
+{{define "cat-picker"}}<div class="cat-picker" data-cat-picker>
+  <label>分类
+    <select name="category_id" data-cat-select>
+      {{range .Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}
+      <option value="new" {{if not .Categories}}selected{{end}}>＋ 新建分类…</option>
+    </select>
+  </label>
+  <label data-cat-new {{if .Categories}}hidden{{end}}>新分类名称 <input name="new_category" maxlength="100" placeholder="例如：{{.CatHint}}"></label>
+</div>{{end}}
+
 {{define "steps"}}
 <div class="steps">
   <div class="step done"><span class="dot"><svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg></span><span class="label">下单</span></div>

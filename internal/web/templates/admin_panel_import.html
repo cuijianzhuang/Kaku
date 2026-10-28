@@ -1,0 +1,43 @@
+{{define "title"}}从模板创建商品{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<div class="page-head"><h1>从模板创建商品</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
+{{template "tpl-tabs" .}}
+<div class="card">
+  {{if .NotReady}}
+  <div class="empty-guide"><svg class="ic"><use href="#i-box"/></svg><div><b>还没有连接 Polaris 面板</b><p class="muted">连接面板后，这里会列出面板里的用户套餐和流量包，勾选即可创建商品，买家付款后自动发放面板兑换码。</p><a class="btn secondary" href="{{$p}}/settings/panel">去设置面板对接</a></div></div>
+  {{else if .Err}}
+  <div class="flash err" style="margin:0">读取面板套餐失败：{{.Err}} <a href="{{$p}}/settings/panel">检查设置</a></div>
+  {{else}}
+  <p class="muted" style="margin-top:0">勾选面板里的套餐和流量包，每项成为商品的一个规格，付款后自动在面板生成兑换码发给买家。有面板标价的会自动填为人民币价格。创建后商品暂不上架。</p>
+  <form method="post" action="{{$p}}/products/panel-import" class="stack">
+    <div class="fields">
+      <label class="wide">商品名称 <input name="title" value="机场套餐" required maxlength="200"></label>
+      {{template "cat-picker" .}}
+    </div>
+    <div>
+      <div class="field-label">套餐和流量包</div>
+      {{if not (or .Offer.Plans .Offer.Packs)}}<p class="muted">面板里还没有套餐：在面板「用户 → 套餐」添加后刷新本页。</p>{{end}}
+      <div class="pc-templates">
+        {{range .Offer.Plans}}
+        <label class="option pc-tpl">
+          <input type="checkbox" name="target" value="plan:{{.ID}}" checked>
+          <span class="pc-tpl-body"><b>{{.Name}}</b><span class="muted">套餐 · {{if .Days}}{{.Days}} 天{{else}}不限期{{end}}{{if .Price}} · 面板标价 {{.Price}}{{end}}</span>{{with .Remark}}<span class="muted">{{.}}</span>{{end}}</span>
+        </label>
+        {{end}}
+        {{range .Offer.Packs}}
+        <label class="option pc-tpl">
+          <input type="checkbox" name="target" value="pack:{{.ID}}">
+          <span class="pc-tpl-body"><b>{{.Name}}</b><span class="muted">流量包</span></span>
+        </label>
+        {{end}}
+      </div>
+    </div>
+    <div class="fields">
+      <label><span>兑换码有效期（天） <span class="hint">· 0 = 不过期</span></span><input type="number" name="expire_days" value="0" min="0" max="3650"></label>
+    </div>
+    <div><button {{if not (or .Offer.Plans .Offer.Packs)}}disabled{{end}}><svg class="ic"><use href="#i-plus"/></svg>创建商品</button></div>
+  </form>
+  {{end}}
+</div>
+{{end}}

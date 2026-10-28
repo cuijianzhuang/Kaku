@@ -451,6 +451,18 @@ document.querySelectorAll('form[data-action-form]').forEach((form) => {
   });
 });
 
+// Category picker: 「新建分类」 shows a name field.
+document.querySelectorAll('[data-cat-picker]').forEach((box) => {
+  const sel = box.querySelector('[data-cat-select]');
+  const field = box.querySelector('[data-cat-new]');
+  const sync = () => {
+    field.hidden = sel.value !== 'new';
+    field.querySelector('input').required = sel.value === 'new';
+  };
+  sel.addEventListener('change', () => { sync(); if (sel.value === 'new') field.querySelector('input').focus(); });
+  sync();
+});
+
 // Styled file buttons: show the picked file's name.
 document.addEventListener('change', (e) => {
   const inp = e.target;

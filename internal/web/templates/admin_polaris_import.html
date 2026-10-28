@@ -1,14 +1,19 @@
 {{define "title"}}从模板创建商品{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<div class="page-head"><h1>从许可证模板创建商品</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
+<div class="page-head"><h1>从模板创建商品</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
+{{template "tpl-tabs" .}}
 <div class="card">
+  {{if .NotReady}}
+  <div class="empty-guide"><svg class="ic"><use href="#i-shield"/></svg><div><b>还没有连接 Polaris 授权服务</b><p class="muted">连接 polaris-license 后，这里会列出它的许可证模板，勾选即可创建专业版 / 企业版等商品，付款后自动签发激活码。</p><a class="btn secondary" href="{{$p}}/settings/polaris">去设置授权服务</a></div></div>
+  {{else if .Err}}
+  <div class="flash err" style="margin:0">读取许可证模板失败：{{.Err}} <a href="{{$p}}/settings/polaris">检查设置</a></div>
+  {{else}}
   <p class="muted" style="margin-top:0">勾选 polaris-license 中的许可证模板，每个模板成为商品的一个规格（套餐、限额、功能、有效期以模板为准）。创建后商品暂不上架，填好价格再上架。</p>
-  {{if not .Categories}}<div class="flash err">请先 <a href="{{$p}}/categories">新增分类</a>。</div>{{end}}
   <form method="post" action="{{$p}}/products/polaris-import" class="stack">
     <div class="fields">
       <label class="wide">商品名称 <input name="title" value="Polaris 专业版" required maxlength="200"></label>
-      <label>分类 <select name="category_id" required>{{range .Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+      {{template "cat-picker" .}}
     </div>
     <div>
       <div class="field-label">模板</div>
@@ -26,7 +31,8 @@
         {{end}}
       </div>
     </div>
-    <button {{if or (not .Catalog.Templates) (not .Categories)}}disabled{{end}}><svg class="ic"><use href="#i-plus"/></svg>创建商品</button>
+    <div><button {{if not .Catalog.Templates}}disabled{{end}}><svg class="ic"><use href="#i-plus"/></svg>创建商品</button></div>
   </form>
+  {{end}}
 </div>
 {{end}}
