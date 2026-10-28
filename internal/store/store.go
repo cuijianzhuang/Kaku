@@ -153,7 +153,10 @@ type Settings struct {
 	AutoUpdateHour int  `json:"auto_update_hour"` // local hour of the daily check
 	UpdateNotify   bool `json:"update_notify"`    // tell the admin chat about new releases
 
-	Accent string `json:"accent"` // theme colour preset: "" (ink), indigo, emerald, amber, rose, blue
+	Theme   string `json:"theme"`    // colour scheme: "" (简约), paper, ocean, forest, sakura, midnight
+	Mode    string `json:"mode"`     // appearance: "" (follow the system), light, dark
+	Accent  string `json:"accent"`   // accent override: "" (theme's own), ink, indigo, emerald, amber, rose, blue
+	LogoURL string `json:"logo_url"` // shop logo image; empty = the Kaku mark
 }
 
 func defaults() *Settings {

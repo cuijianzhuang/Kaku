@@ -1,7 +1,6 @@
 /* Kaku — storefront and admin styles. No external assets; system fonts. */
 
-/* Neutral base (zinc). The accent is ink by default; [data-accent] on
-   <html> picks one of a few restrained presets (admin → 设置 → 站点). */
+/* Default palette (简约, light). */
 :root {
   --bg: #fafafa;
   --bg-soft: #f4f4f5;
@@ -33,50 +32,15 @@
   --radius: 12px;
   --radius-sm: 8px;
   --sidebar: 232px;
+  --font-head: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --blue: #1d4ed8;
+  --blue-soft: #eff6ff;
+  --ph-fg: 42%; --ph-bg: 93%; --ph-hi: 98%; --ph-sat: 8%;
+  --logo-bg: #18181b; --logo-fg: #ffffff; --logo-leg: #a3e635;
   --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Menlo, Consolas, monospace;
 }
-[data-accent="indigo"]  { --accent: #4f46e5; --accent-hover: #4338ca; --accent-soft: #eef2ff; --accent-ink: #4338ca; --link: #4338ca; }
-[data-accent="emerald"] { --accent: #059669; --accent-hover: #047857; --accent-soft: #ecfdf5; --accent-ink: #047857; --link: #047857; }
-[data-accent="amber"]   { --accent: #d97706; --accent-hover: #b45309; --accent-soft: #fffbeb; --accent-ink: #b45309; --link: #b45309; }
-[data-accent="rose"]    { --accent: #e11d48; --accent-hover: #be123c; --accent-soft: #fff1f2; --accent-ink: #be123c; --link: #be123c; }
-[data-accent="blue"]    { --accent: #2563eb; --accent-hover: #1d4ed8; --accent-soft: #eff6ff; --accent-ink: #1d4ed8; --link: #1d4ed8; }
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #09090b;
-    --bg-soft: #18181b;
-    --card: #111113;
-    --text: #fafafa;
-    --text-2: #d4d4d8;
-    --muted: #a1a1aa;
-    --line: #27272a;
-    --line-2: #3f3f46;
-    --accent: #fafafa;
-    --accent-hover: #e4e4e7;
-    --accent-soft: #27272a;
-    --accent-ink: #fafafa;
-    --accent-text: #09090b;
-    --link: #fafafa;
-    --ok: #4ade80;
-    --ok-soft: #0f2417;
-    --warn: #fbbf24;
-    --warn-soft: #291f0b;
-    --err: #f87171;
-    --err-soft: #2a1213;
-    --info: #d4d4d8;
-    --info-soft: #18181b;
-    --code: #18181b;
-    --price: #fafafa;
-    --shadow-sm: none;
-    --shadow: none;
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, .5);
-  }
-  [data-accent="indigo"]  { --accent: #818cf8; --accent-hover: #a5b4fc; --accent-soft: #1e1b4b; --accent-ink: #a5b4fc; --link: #a5b4fc; --accent-text: #09090b; }
-  [data-accent="emerald"] { --accent: #34d399; --accent-hover: #6ee7b7; --accent-soft: #052e22; --accent-ink: #6ee7b7; --link: #6ee7b7; --accent-text: #09090b; }
-  [data-accent="amber"]   { --accent: #fbbf24; --accent-hover: #fcd34d; --accent-soft: #2b1d05; --accent-ink: #fcd34d; --link: #fcd34d; --accent-text: #09090b; }
-  [data-accent="rose"]    { --accent: #fb7185; --accent-hover: #fda4af; --accent-soft: #3b0a17; --accent-ink: #fda4af; --link: #fda4af; --accent-text: #09090b; }
-  [data-accent="blue"]    { --accent: #60a5fa; --accent-hover: #93c5fd; --accent-soft: #0b1d3a; --accent-ink: #93c5fd; --link: #93c5fd; --accent-text: #09090b; }
-}
+/* Theme tokens (palette, dark mode, accent) are written into each page by
+   the server (internal/web/theme.go); the values above are the fallback. */
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -114,9 +78,12 @@ p { margin: 0 0 10px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; font-size: 17px; color: var(--text); white-space: nowrap; }
 .brand:hover { text-decoration: none; }
 .logo {
-  width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center;
-  background: var(--accent); color: var(--accent-text); font-size: 15px; font-weight: 700;
+  width: 32px; height: 32px; border-radius: 9px; display: grid; place-items: center; flex: none; overflow: hidden;
+  background: var(--logo-bg); --k-fg: var(--logo-fg); --k-leg: var(--logo-leg);
 }
+.logo svg { width: 100%; height: 100%; display: block; }
+.logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.logo:has(img) { background: none; }
 nav.main { display: flex; gap: 4px; }
 nav.main a {
   display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 9px;
@@ -223,8 +190,7 @@ tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--bg-s
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .8; }
 .badge.plain::before { display: none; }
 .badge.pending { background: var(--warn-soft); color: var(--warn); }
-.badge.paid, .badge.reserved, .badge.issued, .badge.replied { background: #eff6ff; color: #1d4ed8; }
-@media (prefers-color-scheme: dark) { .badge.paid, .badge.reserved, .badge.issued, .badge.replied { background: #0f1d36; color: #93c5fd; } }
+.badge.paid, .badge.reserved, .badge.issued, .badge.replied { background: var(--blue-soft); color: var(--blue); }
 .badge.delivered, .badge.available, .badge.activated, .badge.on { background: var(--ok-soft); color: var(--ok); }
 .badge.failed, .badge.refunded, .badge.revoked, .badge.void { background: var(--err-soft); color: var(--err); }
 .badge.expired, .badge.sold, .badge.closed { background: var(--bg-soft); color: var(--muted); }
@@ -329,13 +295,10 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 14px; font-w
 .cover { aspect-ratio: 16 / 9; width: 100%; object-fit: cover; display: block; background: var(--bg-soft); }
 .cover.ph {
   display: grid; place-items: center; font-size: 30px; font-weight: 700; letter-spacing: -.02em;
-  color: hsl(var(--h, 240) 8% 42%);
+  color: hsl(var(--ph-h, var(--h, 240)) var(--ph-sat) var(--ph-fg));
   background:
-    radial-gradient(circle at 30% 20%, hsl(var(--h, 240) 10% 98%), transparent 60%),
-    hsl(var(--h, 240) 8% 93%);
-}
-@media (prefers-color-scheme: dark) {
-  .cover.ph { color: hsl(var(--h, 240) 8% 66%); background: radial-gradient(circle at 30% 20%, hsl(var(--h, 240) 6% 19%), transparent 60%), hsl(var(--h, 240) 5% 14%); }
+    radial-gradient(circle at 30% 20%, hsl(var(--ph-h, var(--h, 240)) var(--ph-sat) var(--ph-hi)), transparent 60%),
+    hsl(var(--ph-h, var(--h, 240)) var(--ph-sat) var(--ph-bg));
 }
 .product-card .body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .product-card .title { font-weight: 600; font-size: 15px; line-height: 1.4; }
@@ -460,3 +423,31 @@ body.admin { background: var(--bg); }
 .btn.sso { gap: 10px; }
 .ic.sso-ic { width: 18px; height: 18px; }
 .sso-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* headings follow the theme's heading font */
+h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
+
+/* theme picker (settings) */
+.theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 12px; }
+.theme-card { display: flex; flex-direction: column; gap: 8px; cursor: pointer; font-weight: 400; color: var(--text); position: relative; }
+.theme-card input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-mock {
+  display: flex; flex-direction: column; gap: 7px; padding: 10px; height: 112px; border-radius: 12px;
+  background: var(--m-bg); border: 1px solid var(--line-2); transition: box-shadow .15s, border-color .15s;
+}
+.theme-card:hover .theme-mock { border-color: var(--text-2); }
+.theme-card input:checked + .theme-mock { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.theme-card input:focus-visible + .theme-mock { outline: 2px solid var(--accent); outline-offset: 3px; }
+.m-top { display: flex; align-items: center; gap: 6px; }
+.m-logo { width: 16px; height: 16px; border-radius: 5px; background: var(--m-logo); --k-fg: var(--m-logo-fg); --k-leg: var(--m-leg); display: block; }
+.m-logo svg { width: 100%; height: 100%; display: block; }
+.m-title { font: 700 11px/1 var(--m-head); color: var(--m-text); }
+.m-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; flex: 1; }
+.m-card { background: var(--m-card); border: 1px solid var(--m-line); border-radius: calc(var(--m-r) * .5); padding: 5px; display: flex; flex-direction: column; gap: 4px; }
+.m-card i { flex: 1; border-radius: calc(var(--m-r) * .3); background: var(--m-line); }
+.m-card b { height: 4px; width: 60%; border-radius: 2px; background: var(--m-muted); opacity: .6; }
+.m-btn { align-self: flex-start; font-size: 10px; font-weight: 600; line-height: 1; padding: 5px 9px; border-radius: calc(var(--m-r) * .5); background: var(--m-accent); color: var(--m-at); }
+.theme-name { display: flex; flex-direction: column; line-height: 1.35; }
+.theme-name b { font-size: 14px; }
+.theme-name .muted { font-size: 12px; }
+.swatch.auto { background: conic-gradient(#18181b 0 25%, #4f46e5 0 50%, #059669 0 75%, #e11d48 0); }

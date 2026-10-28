@@ -1,7 +1,7 @@
 {{define "title"}}登录{{end}}
 {{define "content"}}
 <div class="card auth-card">
-  <div class="brand"><span class="logo">{{initial .Site}}</span><span>{{.Site}}</span></div>
+  <div class="brand">{{template "logo" .}}<span>{{.Site}}</span></div>
   {{if .TOTPStep}}
   <h1 style="text-align:center;font-size:19px">两步验证</h1>
   <p class="muted" style="text-align:center;margin-top:-4px">已通过 {{.TOTPStep}} 验证{{with .Name}}（{{.}}）{{end}}，请输入验证器中的 6 位数字。</p>

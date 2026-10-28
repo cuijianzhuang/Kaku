@@ -865,10 +865,6 @@ func (s *Server) saveSettings(c *gin.Context) {
 		st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
 		st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
 		st.RemindEnabled = on("remind_enabled")
-		switch a := str("accent"); a {
-		case "", "indigo", "emerald", "amber", "rose", "blue":
-			st.Accent = a
-		}
 		st.TurnstileSite = str("turnstile_site")
 		secret("turnstile_secret", &st.TurnstileSecret)
 		if st.SiteName == "" {
@@ -904,6 +900,15 @@ func (s *Server) saveSettings(c *gin.Context) {
 		secret("polaris_secret", &st.PolarisSecret)
 		if st.PolarisSecret != "" && len(st.PolarisSecret) < 32 {
 			redirectErr(c, back, errors.New("授权服务密钥至少 32 位（与 polaris-license 的 KAKU_API_SECRET 一致）"))
+			return
+		}
+	case "appearance":
+		if t, a, m := str("theme"), str("accent"), str("mode"); validTheme(t) && validAccent(a) && validMode(m) {
+			st.Theme, st.Accent, st.Mode = t, a, m
+		}
+		st.LogoURL = str("logo_url")
+		if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
+			redirectErr(c, back, errors.New("Logo 地址需以 https:// 或 / 开头"))
 			return
 		}
 	case "login":

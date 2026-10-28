@@ -1,4 +1,6 @@
-# Kaku
+<p align="center"><img src="docs/logo.svg" width="96" height="96" alt="Kaku"></p>
+
+<h1 align="center">Kaku</h1>
 
 自托管的通用发卡系统：卖卡密、账号、兑换码等虚拟商品，支付成功后自动发货。同时是 [Polaris](https://github.com/cuijianzhuang/Polaris) 专业版激活码的售卖渠道——付款后实时向 polaris-license 签发激活码，续费、退款吊销全自动。
 
@@ -29,6 +31,10 @@ bash <(curl -fsSL https://github.com/cuijianzhuang/Kaku/releases/latest/download
 常用选项：`--port N`（默认 8090，被占用时自动顺延到下一个空闲端口；与 polaris-license 的 8080 错开，可装在同一台服务器）、`--version vX.Y.Z`、`--no-caddy`（自备反向代理）。装好后要换端口执行 `kaku-ctl port 新端口`，会同时更新 Caddy 和防火墙。不带 `--domain` 时以 HTTP 监听公网端口，仅适合测试。服务器访问 GitHub 慢时可设置下载代理前缀：`GH_PROXY=https://你的代理/ bash <(curl …) install …`。
 
 `kaku-ctl update` 升级到最新版本，新版本启动失败会自动回滚；`kaku-ctl backup` 把数据库和配置打包到 `/root`。
+
+#### 主题与外观
+
+**设置 → 外观** 有 6 套主题：简约、纸张（暖白纸色、衬线标题）、海洋、森林、樱花（大圆角）、午夜（始终深色）。每套都有浅色和深色两版，可选「跟随系统 / 浅色 / 深色」，强调色可单独覆盖。商店和后台同时生效。默认使用 Kaku 图标，也可以填写自己的 Logo 图片地址。
 
 #### GitHub / Google 登录后台
 

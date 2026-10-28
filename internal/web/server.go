@@ -82,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	r.MaxMultipartMemory = 8 << 20
 	static, _ := fs.Sub(assets, "static")
 	r.StaticFS("/static", http.FS(static))
+	r.GET("/favicon.ico", func(c *gin.Context) { c.FileFromFS("favicon-32.png", http.FS(static)) })
 	r.GET("/healthz", func(c *gin.Context) { c.String(200, "ok") })
 	s.publicRoutes(r)
 	s.adminRoutes(r.Group(s.cfg.AdminPath))
@@ -116,23 +117,32 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":    statusLabel,
-	"method":    methodLabel,
-	"markdown":  renderMarkdown,
-	"add":       func(a, b int) int { return a + b },
-	"price":     priceInput,
-	"contains":  strings.Contains,
-	"join":      strings.Join,
-	"query":     url.QueryEscape,
-	"kb":        func(n int64) float64 { return float64(n) / 1024 },
-	"hasPrefix": strings.HasPrefix,
-	"initial":   initial,
-	"nav":       navItem,
-	"hue":       func(id uint) int { return int(id*67+220) % 360 },
-	"fromPrice": fromPrice,
-	"accents": func() [][3]string {
-		return [][3]string{{"", "墨黑（默认）", "#18181b"}, {"indigo", "靛蓝", "#4f46e5"}, {"emerald", "翠绿", "#059669"},
-			{"amber", "琥珀", "#d97706"}, {"rose", "玫红", "#e11d48"}, {"blue", "海蓝", "#2563eb"}}
+	"status":          statusLabel,
+	"method":          methodLabel,
+	"markdown":        renderMarkdown,
+	"add":             func(a, b int) int { return a + b },
+	"price":           priceInput,
+	"contains":        strings.Contains,
+	"join":            strings.Join,
+	"query":           url.QueryEscape,
+	"kb":              func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix":       strings.HasPrefix,
+	"initial":         initial,
+	"nav":             navItem,
+	"hue":             func(id uint) int { return int(id*67+220) % 360 },
+	"fromPrice":       fromPrice,
+	"themeCSS":        themeCSS,
+	"themePreviews":   themePreviews,
+	"accentOptions":   func() []Accent { return accents },
+	"appearanceModes": func() [][2]string { return modes },
+	"colorScheme": func(theme, mode string) string {
+		switch {
+		case findTheme(theme).DarkOnly || mode == "dark":
+			return "dark"
+		case mode == "light":
+			return "light"
+		}
+		return "light dark"
 	},
 }
 
