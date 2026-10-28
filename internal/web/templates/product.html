@@ -1,4 +1,12 @@
 {{define "title"}}{{.Product.Title}} · {{.Site}}{{end}}
+{{define "meta"}}{{$desc := or (plain .Product.DescriptionMD 120) (printf "%s · 自动发货" (fromPrice .Product))}}
+<meta name="description" content="{{$desc}}">
+<meta property="og:type" content="product">
+<meta property="og:title" content="{{.Product.Title}} · {{fromPrice .Product}}">
+<meta property="og:description" content="{{$desc}}">
+<meta property="og:url" content="{{.BaseURL}}/p/{{.Product.ID}}">
+{{if .Product.Cover}}<meta property="og:image" content="{{abs .BaseURL .Product.Cover}}"><meta name="twitter:card" content="summary_large_image">{{else}}<meta property="og:image" content="{{.BaseURL}}/static/apple-touch-icon.png">{{end}}
+{{end}}
 {{define "content"}}
 <div class="crumbs"><a href="/">商品</a><span>/</span><span>{{.Product.Title}}</span></div>
 <div class="product-layout">

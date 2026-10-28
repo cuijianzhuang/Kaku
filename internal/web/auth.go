@@ -136,7 +136,7 @@ func (s *Server) login(c *gin.Context) {
 		}
 	}
 	s.setSession(c, &a)
-	s.st.Audit(a.Username, "login", "", "", ip)
+	s.recordLogin(&a, "", "", ip)
 	c.Redirect(http.StatusSeeOther, next)
 }
 

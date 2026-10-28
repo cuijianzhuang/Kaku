@@ -57,6 +57,13 @@
 <link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>{{block "title" .}}{{.Site}}{{end}}</title>
+{{block "meta" .}}{{$desc := or .Settings.Notice "自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单"}}
+<meta name="description" content="{{$desc}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{.Site}}">
+<meta property="og:description" content="{{$desc}}">
+<meta property="og:image" content="{{if .Settings.LogoURL}}{{abs .BaseURL .Settings.LogoURL}}{{else}}{{.BaseURL}}/static/apple-touch-icon.png{{end}}">
+{{end}}<meta property="og:site_name" content="{{.Site}}">
 <link rel="stylesheet" href="/static/style.css">
 <style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
 <script src="/static/app.js" defer></script>
@@ -142,6 +149,7 @@
     <div class="nav-group">系统</div>
     {{template "navlink" (nav "设置" "settings" (printf "%s/settings" $p) .Path false)}}
     {{template "navlink" (nav "备份" "database" (printf "%s/backups" $p) .Path false)}}
+    {{template "navlink" (nav "管理员" "users" (printf "%s/admins" $p) .Path false)}}
     {{template "navlink" (nav "安全" "lock" (printf "%s/security" $p) .Path false)}}
     {{template "navlink" (nav "日志" "list" (printf "%s/audit" $p) .Path false)}}
     {{template "navlink" (nav "升级" "upgrade" (printf "%s/update" $p) .Path false)}}

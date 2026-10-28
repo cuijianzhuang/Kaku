@@ -247,7 +247,7 @@ func (s *Server) oauthCallback(c *gin.Context) {
 		return
 	}
 	s.setSession(c, &a)
-	s.st.Audit(a.Username, "login", p.Name, name, ip)
+	s.recordLogin(&a, p.Name, name, ip)
 	s.bounce(c, st.Next)
 }
 
@@ -306,7 +306,7 @@ func (s *Server) oauthTOTP(c *gin.Context) {
 	}
 	c.SetCookie(oauth2FACookie, "", -1, s.cfg.AdminPath, "", s.cfg.SecureCookie, true)
 	s.setSession(c, &a)
-	s.st.Audit(a.Username, "login", parts[3], "", ip)
+	s.recordLogin(&a, parts[3], "", ip)
 	c.Redirect(http.StatusSeeOther, next)
 }
 

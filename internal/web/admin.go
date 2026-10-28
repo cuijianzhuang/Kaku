@@ -71,6 +71,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.GET("/audit", s.auditPage)
 	s.extraRoutes(a)
 	s.updateRoutes(a)
+	s.adminUserRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -214,8 +215,15 @@ func (s *Server) saveProduct(c *gin.Context) {
 	if c.PostForm("status") == model.ProductOn {
 		status = model.ProductOn
 	}
+	cover := strings.TrimSpace(c.PostForm("cover"))
+	if up, err := s.saveUpload(c, "cover_file"); err != nil {
+		redirectErr(c, back, err)
+		return
+	} else if up != "" {
+		cover = up
+	}
 	p := model.Product{ID: id, CategoryID: catID, Title: title, DescriptionMD: c.PostForm("description"),
-		Cover: strings.TrimSpace(c.PostForm("cover")), Status: status, Sort: sort}
+		Cover: cover, Status: status, Sort: sort}
 	var err error
 	if id == 0 {
 		err = s.st.DB.Create(&p).Error
@@ -907,6 +915,12 @@ func (s *Server) saveSettings(c *gin.Context) {
 			st.Theme, st.Accent, st.Mode = t, a, m
 		}
 		st.LogoURL = str("logo_url")
+		if up, err := s.saveUpload(c, "logo_file"); err != nil {
+			redirectErr(c, back, err)
+			return
+		} else if up != "" {
+			st.LogoURL = up
+		}
 		if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
 			redirectErr(c, back, errors.New("Logo 地址需以 https:// 或 / 开头"))
 			return

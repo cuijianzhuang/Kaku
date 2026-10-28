@@ -138,6 +138,7 @@ func serve() error {
 	srv := web.New(web.Config{
 		AdminPath: env("ADMIN_PATH", "/admin"), TrustProxy: os.Getenv("TRUST_PROXY") == "1",
 		SecureCookie: os.Getenv("SECURE_COOKIE") == "1", Version: Version,
+		UploadDir: filepath.Join(env("DATA_DIR", "data"), "uploads"),
 	}, svc, bot, log)
 	hs := &http.Server{Addr: env("LISTEN", ":8080"), Handler: srv.Handler(),
 		ReadHeaderTimeout: 10 * time.Second, ReadTimeout: 30 * time.Second, WriteTimeout: 60 * time.Second, IdleTimeout: 120 * time.Second}

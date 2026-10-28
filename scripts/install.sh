@@ -12,7 +12,7 @@
 #                         also enables online upgrades from the admin backend
 #   status | log | restart | stop | start
 #   info                  show the shop and admin URLs and where the configuration is
-#   backup                database + configuration (includes the master key) -> /root
+#   backup                database + configuration (includes the master key) + uploaded images -> /root
 #   reset-password        new random admin password (two-step verification is turned off)
 #   run ARGS…             run kaku as the service, e.g. run version
 #   uninstall [--purge]   remove; --purge also deletes the configuration, the master key and the data
@@ -456,6 +456,7 @@ do_backup() {
     warn "数据库是 $driver：只备份配置，数据库请用其自带工具（如 pg_dump）"
   fi
   cp -p "$ENV_FILE" "$dir/"
+  [ -d "$DATA/uploads" ] && cp -rp "$DATA/uploads" "$dir/"
   out="/root/kaku-backup-$ts.tar.gz"
   (umask 077; tar -C "$dir" -czf "$out" .)
   rm -rf "$dir"

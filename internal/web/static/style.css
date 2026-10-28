@@ -550,3 +550,14 @@ h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
 @media (max-width: 359px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* inline row actions (admin accounts) */
+.row-actions { display: inline-block; text-align: left; }
+.row-actions > summary { list-style: none; color: var(--link); font-weight: 500; font-size: 14px; }
+.row-actions > summary::-webkit-details-marker { display: none; }
+.row-actions[open] > summary { margin-bottom: 10px; }
+.row-actions-body { display: flex; flex-direction: column; gap: 16px; min-width: 240px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-soft); }
+.row-actions-body form.stack { gap: 10px; }
+.cover-field { display: flex; gap: 16px; align-items: flex-end; }
+.cover-thumb { width: 96px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); flex: none; }
+@media (max-width: 640px) { .cover-field { flex-direction: column; align-items: stretch; } }
