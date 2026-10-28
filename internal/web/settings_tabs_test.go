@@ -1,7 +1,9 @@
 package web
 
 import (
+	"encoding/json"
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -36,5 +38,35 @@ func TestSettingsTabs(t *testing.T) {
 	// saving stays on the tab
 	if l := location(e.post(c, "/manage/settings", url.Values{"section": {"mail"}, "smtp_host": {"smtp.example.com"}, "smtp_port": {"465"}})); !strings.HasPrefix(l, "/manage/settings/mail?") {
 		t.Fatalf("save redirect: %s", l)
+	}
+}
+
+func TestSettingsActionResultInPlace(t *testing.T) {
+	e := setup(t)
+	c := e.login()
+	set := e.st.Settings()
+	set.PolarisURL, set.PolarisSecret = "", ""
+	e.st.SaveSettings(set)
+	req, _ := http.NewRequest(http.MethodPost, e.ts.URL+"/manage/settings/polaris/test", strings.NewReader(""))
+	req.Header.Set("Origin", e.ts.URL)
+	req.Header.Set("Accept", "application/json")
+	resp, err := c.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var j map[string]any
+	json.NewDecoder(resp.Body).Decode(&j)
+	if resp.StatusCode != 200 || j["ok"] != false || !strings.Contains(j["message"].(string), "先填写授权服务地址") {
+		t.Fatalf("json answer %d %v", resp.StatusCode, j)
+	}
+	// the last result is shown under the button when the page opens again
+	page, _ := c.Get(e.ts.URL + "/manage/settings/polaris")
+	b, _ := io.ReadAll(page.Body)
+	if !strings.Contains(string(b), `class="action-result err"`) || !strings.Contains(string(b), "先填写授权服务地址") {
+		t.Fatal("last result not shown on the page")
+	}
+	// without JavaScript it still redirects with a flash
+	if l := location(e.post(c, "/manage/settings/polaris/test", nil)); !strings.Contains(l, "/manage/settings/polaris?err=") {
+		t.Fatalf("plain form: %s", l)
 	}
 }

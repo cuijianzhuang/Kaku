@@ -28,20 +28,21 @@ func (s *Server) polarisRoutes(a *gin.RouterGroup) {
 
 func (s *Server) testPolaris(c *gin.Context) {
 	back := s.settingsURL("polaris")
+	done := func(err error, msg string) { s.actionDone(c, "polaris", back, err, msg) }
 	if !s.shop.Polaris().Ready() {
-		redirectErr(c, back, errors.New("先填写授权服务地址和 API 密钥（至少 32 位）并保存"))
+		done(errors.New("先填写授权服务地址和 API 密钥（至少 32 位）并保存"), "")
 		return
 	}
 	cat, err := s.shop.PolarisCatalog(c.Request.Context(), true)
 	if errors.Is(err, polaris.ErrNoCatalog) {
-		redirectMsg(c, back, "已连接，密钥正确；但 polaris-license 版本较旧，没有商品目录（模板、功能列表）。升级 polaris-license 后可按模板配置商品")
+		done(nil, "已连接，密钥正确；但 polaris-license 版本较旧，没有商品目录（模板、功能列表）。升级 polaris-license 后可按模板配置商品")
 		return
 	}
 	if err != nil {
-		redirectErr(c, back, errors.New(polaris.Explain(err)))
+		done(errors.New(polaris.Explain(err)), "")
 		return
 	}
-	redirectMsg(c, back, fmt.Sprintf("连接正常：%d 种套餐、%d 项功能、%d 个许可证模板", len(cat.Plans), len(cat.Features), len(cat.Templates)))
+	done(nil, fmt.Sprintf("连接正常：%d 种套餐、%d 项功能、%d 个许可证模板", len(cat.Plans), len(cat.Features), len(cat.Templates)))
 }
 
 // polarisForm is what the SKU page needs to draw the Polaris settings.
