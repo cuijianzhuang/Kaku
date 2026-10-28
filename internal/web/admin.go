@@ -75,6 +75,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.adminUserRoutes(a)
 	s.polarisRoutes(a)
 	s.panelRoutes(a)
+	s.quickRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -312,7 +313,7 @@ func (s *Server) skuForm(c *gin.Context) {
 		return
 	}
 	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds(),
-		"PF": s.polarisFormData(c.Request.Context(), &sku), "PK": s.panelFormData(c.Request.Context(), &sku)})
+		"PF": s.polarisFormData(c.Request.Context(), &sku), "PK": s.panelFormData(c.Request.Context(), &sku), "GF": s.genericFormData(&sku)})
 }
 
 func (s *Server) saveSKU(c *gin.Context) {
@@ -353,6 +354,9 @@ func (s *Server) saveSKU(c *gin.Context) {
 		return
 	}
 	cfg := strings.TrimSpace(c.PostForm("deliverer_cfg"))
+	if v, ok := genericCfgFromForm(c, kind); ok {
+		cfg = v
+	}
 	if kind == "panelcode" && c.PostForm("pk_target") != "" {
 		if cfg, err = s.panelCfgFromForm(c); err != nil {
 			fail(err)
@@ -376,6 +380,12 @@ func (s *Server) saveSKU(c *gin.Context) {
 		}
 	}
 	wholesale := strings.TrimSpace(c.PostForm("wholesale"))
+	if v, ok, err := wholesaleFromForm(c); err != nil {
+		fail(err)
+		return
+	} else if ok {
+		wholesale = v
+	}
 	if wholesale != "" {
 		var tiers []model.WholesaleTier
 		if err := json.Unmarshal([]byte(wholesale), &tiers); err != nil {

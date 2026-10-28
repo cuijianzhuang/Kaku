@@ -11,7 +11,7 @@
       <a class="btn lg block" href="/pay/{{$o.OrderNo}}">继续支付</a>
     {{else if eq $o.Status "paid"}}
       <div class="status-hero"><div class="icon"><svg class="ic"><use href="#i-refresh"/></svg></div><h1>正在发货</h1>
-        <p class="muted">{{if eq $o.LastError "等待人工发货"}}该商品为人工发货，我们会尽快处理{{else if $o.LastError}}发货遇到问题，系统会自动重试{{else}}已收到付款，请稍候，本页会自动刷新{{end}}</p></div>
+        <p class="muted">{{if eq $o.LastError "等待人工发货"}}{{or .ManualNote "该商品为人工发货，我们会尽快处理"}}{{else if $o.LastError}}发货遇到问题，系统会自动重试{{else}}已收到付款，请稍候，本页会自动刷新{{end}}</p></div>
     {{else if eq $o.Status "failed"}}
       <div class="status-hero err"><div class="icon"><svg class="ic"><use href="#i-alert"/></svg></div><h1>发货遇到问题</h1><p class="muted">管理员已收到通知，会尽快处理</p></div>
       <a class="btn secondary block" href="/ticket?no={{$o.OrderNo}}">提交工单</a>

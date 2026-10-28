@@ -17,6 +17,7 @@ import (
 	"github.com/gin-gonic/gin"
 	qrcode "github.com/skip2/go-qrcode"
 
+	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/payment"
 	"github.com/cuijianzhuang/kaku/internal/polaris"
@@ -67,6 +68,8 @@ type skuView struct {
 	model.SKU
 	Stock   int
 	Methods []shop.Method
+	Ask     string // manual SKUs: what the buyer must fill in
+	Note    string // manual SKUs: when and how it is delivered
 }
 
 func (s *Server) productPage(c *gin.Context) {
@@ -79,7 +82,13 @@ func (s *Server) productPage(c *gin.Context) {
 	var skus []skuView
 	for i := range p.SKUs {
 		k := &p.SKUs[i]
-		skus = append(skus, skuView{SKU: *k, Stock: s.shop.Stock(k), Methods: s.shop.MethodsFor(model.ChannelWeb, k)})
+		v := skuView{SKU: *k, Stock: s.shop.Stock(k), Methods: s.shop.MethodsFor(model.ChannelWeb, k)}
+		if k.DelivererKind == "manual" {
+			if cfg, err := deliver.ParseManualCfg(k.DelivererCfg); err == nil {
+				v.Ask, v.Note = cfg.Ask, cfg.Note
+			}
+		}
+		skus = append(skus, v)
 	}
 	s.render(c, 200, "product", gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb)})
 }
@@ -160,7 +169,8 @@ func (s *Server) createOrder(c *gin.Context) {
 	o, err := s.shop.CreateOrder(c.Request.Context(), shop.CreateInput{
 		SKUID: uint(skuID), Qty: qty, Email: c.PostForm("email"), QueryPassword: c.PostForm("password"),
 		PayMethod: c.PostForm("method"), Coupon: c.PostForm("coupon"), Remark: c.PostForm("remark"),
-		IP: ip, Channel: model.ChannelWeb,
+		Ask: c.PostForm("ask"),
+		IP:  ip, Channel: model.ChannelWeb,
 	})
 	if err != nil {
 		redirectErr(c, back, errors.New(userMessage(err)))
@@ -230,6 +240,14 @@ func (s *Server) orderPage(c *gin.Context) {
 			}
 			if it.Source == model.SourcePanel {
 				data["PanelHelp"] = s.shop.PanelRedeemHint()
+			}
+		}
+	}
+	if o.Status == model.OrderPaid {
+		var sku model.SKU
+		if s.st.DB.Take(&sku, o.SKUID).Error == nil && sku.DelivererKind == "manual" {
+			if cfg, err := deliver.ParseManualCfg(sku.DelivererCfg); err == nil {
+				data["ManualNote"] = cfg.Note
 			}
 		}
 	}

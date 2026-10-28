@@ -117,11 +117,52 @@
       <p class="muted pc-help">买家付款后，Kaku 在面板生成该套餐的兑换码（批次名为订单号），一件一个。</p>
     </div>
 
+    {{$g := .GF}}
+    <div class="pc" data-cfg-stock>
+      <div class="field-label" style="margin:0">卡密库存</div>
+      <p class="muted pc-help">每件发一张卡密，按导入顺序发出；售出后不会重复发。卡密可以是激活码、兑换码，也可以是一行「账号----密码」。</p>
+      {{if $k.ID}}<p class="pc-help">当前可售 <b>{{$g.Cards}}</b> 张 · <a href="{{$p}}/cards?sku={{$k.ID}}">导入 / 管理卡密</a></p>
+      {{else}}<p class="muted pc-help">保存规格后，到「卡密」页导入库存。</p>{{end}}
+    </div>
+
+    <div class="pc" data-cfg-text>
+      <div class="field-label" style="margin:0">发货内容</div>
+      <textarea name="tx_text" rows="6" placeholder="下载地址：https://…&#10;提取码：…&#10;使用教程：…">{{$g.Text.Text}}</textarea>
+      <p class="muted pc-help">每个买家收到同样的内容，适合下载链接、教程、群邀请等。可以写 <code>{order_no}</code>（订单号）、<code>{email}</code>（买家邮箱）、<code>{qty}</code>（数量），发货时自动替换。</p>
+      <label class="check"><input type="checkbox" name="tx_per_unit" {{if $g.Text.PerUnit}}checked{{end}}> 买几件发几份（默认整单只发一份）</label>
+    </div>
+
+    <div class="pc" data-cfg-webhook>
+      <div class="field-label" style="margin:0">发货接口</div>
+      <label>接口地址 <input name="wh_url" value="{{$g.Webhook.URL}}" placeholder="https://api.example.com/kaku/deliver" inputmode="url"></label>
+      <label>签名密钥 <span class="hint">· 至少 16 位，对方用它校验请求</span>
+        <span class="secret-input"><input name="wh_secret" value="{{$g.Webhook.Secret}}" data-secret autocomplete="off" spellcheck="false"><button type="button" class="secondary" data-gen-secret>生成</button></span>
+      </label>
+      <label>退款通知地址（可选） <input name="wh_revoke_url" value="{{$g.Webhook.RevokeURL}}" placeholder="退款时 Kaku 调用它回收发货内容" inputmode="url"></label>
+      <details class="pc-help">
+        <summary>接口格式</summary>
+        <p class="muted">付款后 Kaku 向接口地址 POST JSON：<code>{"order_no", "sku_id", "qty", "email", "amount", "currency"}</code>，请求头带 <code>X-Kaku-Timestamp</code> 和 <code>X-Kaku-Signature</code>（HMAC-SHA256，与 polaris-license 接口相同）。接口返回 <code>{"items": ["内容1", "内容2"]}</code>。同一订单号可能重试，请返回同样的内容。返回 4xx 视为失败不再重试，5xx 或超时会自动重试。</p>
+      </details>
+    </div>
+
+    <div class="pc" data-cfg-manual>
+      <div class="field-label" style="margin:0">人工发货</div>
+      <p class="muted pc-help">付款后订单进入「待发货」，你会收到通知；在后台订单页填写发货内容后，买家收到邮件 / Telegram 消息。</p>
+      <label>下单时让买家填写（可选） <input name="mn_ask" value="{{$g.Manual.Ask}}" maxlength="20" placeholder="如：充值账号、QQ 号；不需要就留空"></label>
+      <label>发货说明（可选，显示在商品页和等待发货页） <input name="mn_note" value="{{$g.Manual.Note}}" maxlength="300" placeholder="如：付款后 30 分钟内处理（9:00–23:00）"></label>
+    </div>
+
     <div data-cfg-generic>
       <label>发货配置（JSON） <textarea name="deliverer_cfg">{{.SKU.DelivererCfg}}</textarea></label>
-      <p class="muted" data-cfg-example>示例：<span data-cfg-hint></span> <a href="#" data-cfg-fill>填入示例</a></p>
     </div>
-    <label>批发价（JSON，可选） <input name="wholesale" value="{{$k.Wholesale}}" placeholder='[{"min_qty":5,"percent":90},{"min_qty":10,"percent":80}]'></label>
+    <div>
+      <div class="field-label">批发价（可选） <span class="hint">· 买得越多越便宜，例如满 5 件按原价 90%（9 折）</span></div>
+      <div class="ws-rows">
+        {{range $i, $t := $g.Wholesale}}
+        <div class="ws-row"><span>满</span><input type="number" name="ws_qty" value="{{if $t.MinQty}}{{$t.MinQty}}{{end}}" min="2" {{if eq $i 0}}placeholder="5"{{else if eq $i 1}}placeholder="10"{{end}} aria-label="起批件数"><span>件，按原价</span><input type="number" name="ws_pct" value="{{if $t.Percent}}{{$t.Percent}}{{end}}" min="1" max="99" {{if eq $i 0}}placeholder="90"{{else if eq $i 1}}placeholder="80"{{end}} aria-label="原价百分比"><span>%</span></div>
+        {{end}}
+      </div>
+    </div>
     <div class="fields">
       <label>每单上限 <input type="number" name="limit_per_order" value="{{$k.LimitPerOrder}}" min="1"></label>
       <label>库存预警线 <input type="number" name="low_stock" value="{{$k.LowStock}}" min="0"></label>

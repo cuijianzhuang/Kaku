@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"gorm.io/gorm"
@@ -117,39 +119,54 @@ func (r *Registry) Kinds() []Deliverer {
 // ---- fixed text ----
 
 // Text delivers the same text to every buyer (download links, guides).
+// {order_no}, {email} and {qty} in the text are filled in per order.
 type Text struct{}
 
-type textCfg struct {
+// TextCfg is a fixed-text SKU's configuration.
+type TextCfg struct {
 	Text    string `json:"text"`
 	PerUnit bool   `json:"per_unit"` // repeat once per unit bought
+}
+
+// ParseTextCfg reads a fixed-text configuration.
+func ParseTextCfg(raw string) (*TextCfg, error) {
+	var c TextCfg
+	if err := json.Unmarshal(orEmpty(json.RawMessage(raw)), &c); err != nil {
+		return nil, fmt.Errorf("配置不是有效 JSON：%w", err)
+	}
+	return &c, nil
 }
 
 func (Text) Kind() string  { return "text" }
 func (Text) Label() string { return "固定文本" }
 func (Text) Validate(cfg json.RawMessage) error {
-	var c textCfg
-	if err := json.Unmarshal(orEmpty(cfg), &c); err != nil {
-		return fmt.Errorf("配置不是有效 JSON：%w", err)
+	c, err := ParseTextCfg(string(cfg))
+	if err != nil {
+		return err
 	}
-	if c.Text == "" {
-		return errors.New("请填写 text")
+	if strings.TrimSpace(c.Text) == "" {
+		return errors.New("请填写发货内容")
+	}
+	if len(c.Text) > 20000 {
+		return errors.New("发货内容最多 20000 字节")
 	}
 	return nil
 }
 func (Text) Reserve(context.Context, *gorm.DB, *model.Order, *model.SKU) error { return nil }
 func (Text) Release(*gorm.DB, *model.Order) error                              { return nil }
 func (Text) Deliver(_ context.Context, o *model.Order, sku *model.SKU) ([]Item, error) {
-	var c textCfg
-	if err := json.Unmarshal(orEmpty(json.RawMessage(sku.DelivererCfg)), &c); err != nil || c.Text == "" {
+	c, err := ParseTextCfg(sku.DelivererCfg)
+	if err != nil || c.Text == "" {
 		return nil, Permanent(errors.New("固定文本配置无效"))
 	}
+	text := strings.NewReplacer("{order_no}", o.OrderNo, "{email}", o.Email, "{qty}", strconv.Itoa(o.Qty)).Replace(c.Text)
 	n := 1
 	if c.PerUnit {
 		n = o.Qty
 	}
 	out := make([]Item, n)
 	for i := range out {
-		out[i] = Item{Content: c.Text, Source: model.SourceText}
+		out[i] = Item{Content: text, Source: model.SourceText}
 	}
 	return out, nil
 }
@@ -161,9 +178,36 @@ func (Text) Stock(*model.SKU) int                                   { return -1 
 // Manual waits for an admin to type the content in the backend.
 type Manual struct{}
 
-func (Manual) Kind() string                                                      { return "manual" }
-func (Manual) Label() string                                                     { return "人工发货" }
-func (Manual) Validate(json.RawMessage) error                                    { return nil }
+// ManualCfg is a manual SKU's configuration, all optional.
+type ManualCfg struct {
+	Ask  string `json:"ask"`  // what the buyer must fill in when ordering, e.g. 充值账号
+	Note string `json:"note"` // shown to the buyer while the order waits, e.g. 30 分钟内处理
+}
+
+// ParseManualCfg reads a manual configuration.
+func ParseManualCfg(raw string) (*ManualCfg, error) {
+	var c ManualCfg
+	if err := json.Unmarshal(orEmpty(json.RawMessage(raw)), &c); err != nil {
+		return nil, fmt.Errorf("配置不是有效 JSON：%w", err)
+	}
+	c.Ask, c.Note = strings.TrimSpace(c.Ask), strings.TrimSpace(c.Note)
+	return &c, nil
+}
+
+func (Manual) Kind() string  { return "manual" }
+func (Manual) Label() string { return "人工发货" }
+func (Manual) Validate(cfg json.RawMessage) error {
+	c, err := ParseManualCfg(string(cfg))
+	switch {
+	case err != nil:
+		return err
+	case len([]rune(c.Ask)) > 20:
+		return errors.New("买家填写项的名称最多 20 字")
+	case len([]rune(c.Note)) > 300:
+		return errors.New("发货说明最多 300 字")
+	}
+	return nil
+}
 func (Manual) Reserve(context.Context, *gorm.DB, *model.Order, *model.SKU) error { return nil }
 func (Manual) Release(*gorm.DB, *model.Order) error                              { return nil }
 func (Manual) Deliver(context.Context, *model.Order, *model.SKU) ([]Item, error) {

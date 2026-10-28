@@ -1,0 +1,28 @@
+{{define "title"}}从模板创建商品{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<div class="page-head"><h1>从模板创建商品</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
+<div class="card">
+  <p class="muted" style="margin-top:0">选一种商品类型，Kaku 按它建好商品和规格（发货方式已配好）。创建后商品暂不上架，补全内容后再上架。</p>
+  {{if not .Categories}}<div class="flash err">请先 <a href="{{$p}}/categories">新增分类</a>。</div>{{end}}
+  <form method="post" action="{{$p}}/products/quick" class="stack" data-quick>
+    <div class="pc-templates">
+      {{range .Templates}}
+      <label class="option pc-tpl">
+        <input type="radio" name="template" value="{{.ID}}" data-title="{{.Title}}" data-sku="{{.SKU}}" {{if eq .ID $.Pick}}checked{{end}} required>
+        <span class="pc-tpl-body"><b><svg class="ic"><use href="#{{.Icon}}"/></svg> {{.Name}}</b><span class="muted">{{.Summary}}</span></span>
+      </label>
+      {{end}}
+    </div>
+    <div class="fields">
+      <label class="wide">商品名称 <input name="title" required maxlength="200"></label>
+      <label>分类 <select name="category_id" required>{{range .Categories}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></label>
+    </div>
+    <div class="fields">
+      <label>规格名称 <input name="sku_name" maxlength="100"></label>
+      <label>价格（元） <input name="price_cny" required inputmode="decimal" placeholder="9.9"></label>
+    </div>
+    <button {{if not .Categories}}disabled{{end}}><svg class="ic"><use href="#i-plus"/></svg>创建商品</button>
+  </form>
+</div>
+{{end}}

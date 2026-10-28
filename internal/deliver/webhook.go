@@ -23,22 +23,32 @@ import (
 // secret. The order number is the idempotency key.
 type Webhook struct{ env *Env }
 
-type webhookCfg struct {
+// WebhookCfg is a webhook SKU's configuration.
+type WebhookCfg struct {
 	URL       string `json:"url"`
 	Secret    string `json:"secret"`
 	RevokeURL string `json:"revoke_url"`
+}
+
+// ParseWebhookCfg reads a webhook configuration.
+func ParseWebhookCfg(raw string) (*WebhookCfg, error) {
+	var c WebhookCfg
+	if err := json.Unmarshal(orEmpty(json.RawMessage(raw)), &c); err != nil {
+		return nil, fmt.Errorf("配置不是有效 JSON：%w", err)
+	}
+	return &c, nil
 }
 
 func (*Webhook) Kind() string  { return "webhook" }
 func (*Webhook) Label() string { return "Webhook 接口" }
 
 func (*Webhook) Validate(cfg json.RawMessage) error {
-	var c webhookCfg
+	var c WebhookCfg
 	if err := json.Unmarshal(orEmpty(cfg), &c); err != nil {
 		return fmt.Errorf("配置不是有效 JSON：%w", err)
 	}
 	if c.URL == "" {
-		return errors.New("请填写 url")
+		return errors.New("请填写发货接口地址")
 	}
 	for _, raw := range []string{c.URL, c.RevokeURL} {
 		if raw == "" {
@@ -46,11 +56,11 @@ func (*Webhook) Validate(cfg json.RawMessage) error {
 		}
 		u, err := url.Parse(raw)
 		if err != nil || u.Host == "" || (u.Scheme != "https" && u.Scheme != "http") {
-			return errors.New("url 需为 http(s) 地址")
+			return errors.New("接口地址需为 http(s) 地址")
 		}
 	}
 	if len(c.Secret) < 16 {
-		return errors.New("secret 至少 16 位")
+		return errors.New("签名密钥至少 16 位")
 	}
 	return nil
 }
@@ -92,7 +102,7 @@ func (w *Webhook) call(ctx context.Context, target, secret string, o *model.Orde
 }
 
 func (w *Webhook) Deliver(ctx context.Context, o *model.Order, sku *model.SKU) ([]Item, error) {
-	var c webhookCfg
+	var c WebhookCfg
 	if err := json.Unmarshal(orEmpty(json.RawMessage(sku.DelivererCfg)), &c); err != nil || c.URL == "" {
 		return nil, Permanent(errors.New("Webhook 配置无效"))
 	}
@@ -113,7 +123,7 @@ func (w *Webhook) Deliver(ctx context.Context, o *model.Order, sku *model.SKU) (
 }
 
 func (w *Webhook) Revoke(ctx context.Context, o *model.Order, sku *model.SKU) error {
-	var c webhookCfg
+	var c WebhookCfg
 	json.Unmarshal(orEmpty(json.RawMessage(sku.DelivererCfg)), &c)
 	if c.RevokeURL == "" {
 		return ErrRevokeUnsupported

@@ -573,6 +573,11 @@ h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
 .pc-pane { display: flex; flex-direction: column; gap: 14px; }
 .pc-help { margin: 0; font-size: 13px; }
 .pc-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.ws-rows { display: flex; flex-direction: column; gap: 8px; }
+.ws-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; color: var(--text-2); font-size: 14px; }
+.ws-row input { width: 96px; }
+.pc details summary { cursor: pointer; color: var(--text-2); }
+.pc details p { margin: 8px 0 0; }
 .pc-tpl { align-items: flex-start; }
 .pc-tpl input { margin-top: 3px; }
 .pc-tpl-body { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }

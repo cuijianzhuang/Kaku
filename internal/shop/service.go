@@ -294,10 +294,42 @@ type CreateInput struct {
 	PayMethod     string
 	Coupon        string
 	Remark        string
+	Ask           string // the buyer's answer to a manual SKU's question (充值账号 …)
 	IP            string
 	Channel       string
 	TGUserID      int64
 	RenewOf       string // license_id; caller has verified the buyer owns it
+}
+
+// applyAsk puts the buyer's answer to a manual SKU's question in front of
+// the order remark, where the admin sees it. Web orders must answer;
+// Telegram orders cannot, so the admin asks the buyer there.
+func applyAsk(in *CreateInput, sku *model.SKU) error {
+	if sku.DelivererKind != "manual" {
+		return nil
+	}
+	cfg, err := deliver.ParseManualCfg(sku.DelivererCfg)
+	if err != nil || cfg.Ask == "" {
+		return nil
+	}
+	ans := strings.TrimSpace(in.Ask)
+	switch {
+	case ans == "" && in.Channel == model.ChannelWeb:
+		return userErr("请填写%s", cfg.Ask)
+	case len([]rune(ans)) > 100:
+		return userErr("%s最多 100 字", cfg.Ask)
+	case ans == "":
+		return nil
+	}
+	r := cfg.Ask + "：" + ans
+	if in.Remark != "" {
+		r += "；备注：" + in.Remark
+	}
+	if len([]rune(r)) > 200 {
+		return userErr("%s和备注合计最多 200 字", cfg.Ask)
+	}
+	in.Remark = r
+	return nil
 }
 
 // NewOrderNo returns an order number: K + yymmddHHMMSS + 6 random digits.
@@ -344,6 +376,9 @@ func (s *Service) CreateOrder(ctx context.Context, in CreateInput) (*model.Order
 	}
 	if sku.LimitPerOrder > 0 && in.Qty > sku.LimitPerOrder {
 		return nil, userErr("每单最多购买 %d 件", sku.LimitPerOrder)
+	}
+	if err := applyAsk(&in, &sku); err != nil {
+		return nil, err
 	}
 	if in.RenewOf != "" {
 		if err := s.checkRenewable(in.RenewOf, &sku); err != nil {
