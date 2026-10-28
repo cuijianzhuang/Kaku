@@ -151,7 +151,7 @@ type Settings struct {
 	GitHubClientSecret string `json:"github_client_secret" secret:"1"`
 	GoogleClientID     string `json:"google_client_id"` // admin sign-in with Google
 	GoogleClientSecret string `json:"google_client_secret" secret:"1"`
-	AdminEntry         bool   `json:"admin_link_in_footer"` // show a 后台 link in the shop header and footer
+	AdminEntry         bool   `json:"admin_entry"` // show a 后台 link in the shop header and footer (on by default; the old key admin_link_in_footer, off by default, is ignored)
 
 	AutoUpdate     bool `json:"auto_update"`      // install new releases automatically
 	AutoUpdateHour int  `json:"auto_update_hour"` // local hour of the daily check
@@ -165,7 +165,7 @@ type Settings struct {
 
 func defaults() *Settings {
 	return &Settings{SiteName: "Kaku 发卡", OrderTTL: 15, MaxUnpaid: 3, SMTPPort: 465, EPayAlipay: true, EPayWxpay: true,
-		BackupHour: 4, BackupKeep: 7, RemindEnabled: true, AutoUpdateHour: 5, UpdateNotify: true}
+		BackupHour: 4, BackupKeep: 7, RemindEnabled: true, AutoUpdateHour: 5, UpdateNotify: true, AdminEntry: true}
 }
 
 const settingsKey = "settings"

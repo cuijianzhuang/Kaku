@@ -52,11 +52,16 @@ func TestAdminEntryLink(t *testing.T) {
 		b, _ := io.ReadAll(resp.Body)
 		return string(b)
 	}
+	// on by default: in the header and the footer
+	if n := strings.Count(home(), `href="/manage/login"`); n != 2 {
+		t.Fatalf("expected the entry in the header and the footer, found %d", n)
+	}
+	e.post(e.login(), "/manage/settings", url.Values{"section": {"login"}})
 	if strings.Contains(home(), "/manage/login") {
 		t.Fatal("the admin path is shown although the entry is off")
 	}
 	e.post(e.login(), "/manage/settings", url.Values{"section": {"login"}, "admin_link_in_footer": {"on"}})
 	if n := strings.Count(home(), `href="/manage/login"`); n != 2 {
-		t.Fatalf("expected the entry in the header and the footer, found %d", n)
+		t.Fatalf("entry not back after turning it on, found %d", n)
 	}
 }
