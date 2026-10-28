@@ -228,6 +228,9 @@ func (s *Server) orderPage(c *gin.Context) {
 			if it.Source == model.SourcePolaris && it.FileName == "" && o.RenewOf == "" {
 				data["PolarisHelp"] = true
 			}
+			if it.Source == model.SourcePanel {
+				data["PanelHelp"] = s.shop.PanelRedeemHint()
+			}
 		}
 	}
 	s.render(c, 200, "order", data)

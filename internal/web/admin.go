@@ -16,6 +16,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/payment"
+	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/secure"
 	"github.com/cuijianzhuang/kaku/internal/shop"
 	"github.com/cuijianzhuang/kaku/internal/tgapi"
@@ -72,6 +73,8 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.extraRoutes(a)
 	s.updateRoutes(a)
 	s.adminUserRoutes(a)
+	s.polarisRoutes(a)
+	s.panelRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -308,7 +311,8 @@ func (s *Server) skuForm(c *gin.Context) {
 		redirectErr(c, s.cfg.AdminPath+"/products", errors.New("商品不存在"))
 		return
 	}
-	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds()})
+	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds(),
+		"PF": s.polarisFormData(c.Request.Context(), &sku), "PK": s.panelFormData(c.Request.Context(), &sku)})
 }
 
 func (s *Server) saveSKU(c *gin.Context) {
@@ -349,9 +353,27 @@ func (s *Server) saveSKU(c *gin.Context) {
 		return
 	}
 	cfg := strings.TrimSpace(c.PostForm("deliverer_cfg"))
+	if kind == "panelcode" && c.PostForm("pk_target") != "" {
+		if cfg, err = s.panelCfgFromForm(c); err != nil {
+			fail(err)
+			return
+		}
+	}
+	if kind == "polaris" && c.PostForm("pc_mode") != "" {
+		if cfg, err = s.polarisCfgFromForm(c); err != nil {
+			fail(err)
+			return
+		}
+	}
 	if err := d.Validate(json.RawMessage(cfg)); err != nil {
 		fail(fmt.Errorf("发货配置：%w", err))
 		return
+	}
+	if kind == "polaris" {
+		if err := s.checkPolarisCfg(c.Request.Context(), cfg); err != nil {
+			fail(fmt.Errorf("发货配置：%w", err))
+			return
+		}
 	}
 	wholesale := strings.TrimSpace(c.PostForm("wholesale"))
 	if wholesale != "" {
@@ -693,7 +715,11 @@ func (s *Server) licenseAction(c *gin.Context) {
 			redirectErr(c, back, errors.New("天数需在 1–3650 之间"))
 			return
 		}
-		l, err := pc.Extend(ctx, b.LicenseID, ref, days, 0)
+		term := polaris.Term{Days: days}
+		if c.PostForm("updates") == "on" {
+			term.UpdatesDays = days // the update period grows with it
+		}
+		l, err := pc.Extend(ctx, b.LicenseID, ref, term)
 		if err != nil {
 			redirectErr(c, back, err)
 			return
@@ -839,7 +865,7 @@ func (s *Server) settingsPage(c *gin.Context) {
 	secrets := map[string]bool{"EPayKey": st.EPayKey != "", "TronGridKey": st.TronGridKey != "", "SMTPPass": st.SMTPPass != "",
 		"TGToken": st.TGToken != "", "TGWebhookSecret": st.TGWebhookSecret != "", "PolarisSecret": st.PolarisSecret != "",
 		"TurnstileSecret":    st.TurnstileSecret != "",
-		"GitHubClientSecret": st.GitHubClientSecret != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
+		"GitHubClientSecret": st.GitHubClientSecret != "", "PanelToken": st.PanelToken != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
 	s.render(c, 200, "admin_settings", gin.H{"S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
@@ -923,6 +949,14 @@ func (s *Server) saveSettings(c *gin.Context) {
 		}
 		if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
 			redirectErr(c, back, errors.New("Logo 地址需以 https:// 或 / 开头"))
+			return
+		}
+	case "panel":
+		st.PanelURL = strings.TrimRight(str("panel_url"), "/")
+		secret("panel_token", &st.PanelToken)
+		st.PanelRedeemHint = strings.TrimSpace(c.PostForm("panel_redeem_hint"))
+		if st.PanelToken != "" && !strings.HasPrefix(st.PanelToken, "plt_") {
+			redirectErr(c, back, errors.New("API 令牌应以 plt_ 开头（在面板「扩展 → API 令牌」创建）"))
 			return
 		}
 	case "login":

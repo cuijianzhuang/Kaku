@@ -177,3 +177,62 @@ window.addEventListener('pageshow', () => { const t = document.getElementById('n
 document.addEventListener('change', (e) => {
   if (e.target.matches('select[data-autosubmit]') && e.target.form) e.target.form.submit();
 });
+
+// SKU form: the Polaris section replaces the JSON box for Polaris SKUs.
+(function () {
+  const kind = document.querySelector('select[name=deliverer_kind]');
+  const pc = document.querySelector('[data-cfg-polaris]');
+  const pk = document.querySelector('[data-cfg-panel]');
+  const generic = document.querySelector('[data-cfg-generic]');
+  if (!kind || !pc || !generic) return;
+  const mode = () => (pc.querySelector('input[name=pc_mode]:checked') || {}).value || 'custom';
+  const sync = () => {
+    const isPolaris = kind.value === 'polaris';
+    pc.hidden = !isPolaris;
+    pc.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPolaris; });
+    const isPanel = kind.value === 'panelcode';
+    if (pk) {
+      pk.hidden = !isPanel;
+      pk.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPanel; });
+    }
+    generic.hidden = isPanel || (isPolaris && mode() !== 'json');
+    const ex = generic.querySelector('[data-cfg-example]');
+    if (ex) ex.hidden = isPolaris || isPanel;
+    pc.querySelectorAll('[data-pc-pane]').forEach((p) => {
+      p.hidden = !p.getAttribute('data-pc-pane').split(' ').includes(mode());
+    });
+    const all = pc.querySelector('[data-pc-all]');
+    pc.querySelectorAll('[data-pc-features] input').forEach((f) => { f.disabled = !isPolaris || (all && all.checked); });
+  };
+  kind.addEventListener('change', sync);
+  pc.addEventListener('change', sync);
+  pc.querySelectorAll('[data-set-days]').forEach((b) => b.addEventListener('click', () => {
+    const v = b.getAttribute('data-set-days');
+    pc.querySelector('[data-term=days]').value = v;
+    pc.querySelector('[data-term=updates]').value = v;
+  }));
+  sync();
+})();
+
+// Settings: generate a random API secret and show it (it is needed on the
+// license server too); copy a block of text.
+document.addEventListener('click', (e) => {
+  const gen = e.target.closest('[data-gen-secret]');
+  if (gen) {
+    const input = gen.parentElement.querySelector('[data-secret]');
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    const v = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+    input.type = 'text';
+    input.value = v;
+    document.querySelectorAll('[data-secret-echo]').forEach((el) => { el.textContent = v; });
+    return;
+  }
+  const cp = e.target.closest('[data-copy-from]');
+  if (cp) {
+    const src = document.querySelector(cp.getAttribute('data-copy-from'));
+    if (src && navigator.clipboard) navigator.clipboard.writeText(src.textContent).then(() => {
+      const t = cp.innerHTML; cp.textContent = '已复制'; setTimeout(() => (cp.innerHTML = t), 1200);
+    });
+  }
+});

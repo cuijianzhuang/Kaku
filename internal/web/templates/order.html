@@ -40,6 +40,9 @@
           <div class="secret-row"><span class="secret">{{$it.Content}}</span><button type="button" class="secondary" data-copy="{{$it.Content}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div>
         {{end}}
       {{end}}
+      {{with .PanelHelp}}
+        <div class="notice" style="margin-top:14px"><svg class="ic"><use href="#i-info"/></svg><span>兑换方法：{{.}}</span></div>
+      {{end}}
       {{if .PolarisHelp}}
         <div class="notice" style="margin-top:14px"><svg class="ic"><use href="#i-info"/></svg><span>激活方法：打开 Polaris 面板「许可证」页，粘贴激活码并点击激活。到期前面板会提醒续费，续费后无需重新激活。</span></div>
       {{end}}

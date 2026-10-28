@@ -19,6 +19,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/notify"
+	"github.com/cuijianzhuang/kaku/internal/panelapi"
 	"github.com/cuijianzhuang/kaku/internal/payment"
 	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/secure"
@@ -41,8 +42,21 @@ type Service struct {
 
 	backupMu sync.Mutex
 
+	catMu  sync.Mutex
+	cat    *polaris.Catalog
+	catErr error
+	catAt  time.Time
+	catKey string
+
+	panelMu    sync.Mutex
+	panelOffer *PanelOffer
+	panelErr   error
+	panelAt    time.Time
+	panelKey   string
+
 	// Overridable in tests.
 	PolarisClient *polaris.Client
+	PanelClient   *panelapi.Client
 	EPayClient    *payment.EPay
 	TRON          func() *payment.TRON
 	Bot           func() *tgapi.Client
@@ -51,7 +65,7 @@ type Service struct {
 // New wires a service.
 func New(st *store.Store, n *notify.Notifier, log *slog.Logger) *Service {
 	s := &Service{Store: st, Notify: n, Log: log, Now: time.Now}
-	s.Reg = deliver.NewRegistry(&deliver.Env{Store: st, Polaris: s.Polaris, Now: func() time.Time { return s.Now() }})
+	s.Reg = deliver.NewRegistry(&deliver.Env{Store: st, Polaris: s.Polaris, Panel: s.Panel, Now: func() time.Time { return s.Now() }})
 	s.TRON = func() *payment.TRON {
 		return payment.NewTRON(payment.TRONConfig{TRONAPIKey: st.Settings().TronGridKey})
 	}
@@ -66,6 +80,15 @@ func (s *Service) Polaris() *polaris.Client {
 	}
 	st := s.Store.Settings()
 	return &polaris.Client{BaseURL: st.PolarisURL, Secret: st.PolarisSecret}
+}
+
+// Panel returns the Polaris panel client from the current settings.
+func (s *Service) Panel() *panelapi.Client {
+	if s.PanelClient != nil {
+		return s.PanelClient
+	}
+	st := s.Store.Settings()
+	return &panelapi.Client{BaseURL: st.PanelURL, Token: st.PanelToken}
 }
 
 // EPay returns the EPay merchant from the current settings.

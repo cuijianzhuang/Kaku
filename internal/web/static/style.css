@@ -561,3 +561,28 @@ h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
 .cover-field { display: flex; gap: 16px; align-items: flex-end; }
 .cover-thumb { width: 96px; height: 72px; object-fit: cover; border-radius: var(--radius-sm); border: 1px solid var(--line); flex: none; }
 @media (max-width: 640px) { .cover-field { flex-direction: column; align-items: stretch; } }
+
+/* Polaris SKU settings */
+.pc { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-soft); }
+.pc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pc-modes label { display: inline-flex; flex-direction: row; cursor: pointer; font-weight: 500; color: var(--text-2); }
+.pc-modes input { position: absolute; opacity: 0; pointer-events: none; }
+.pc-modes span { padding: 5px 12px; border-radius: 7px; font-size: 13px; }
+.pc-modes input:checked + span { background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
+.pc-modes input:focus-visible + span { outline: 2px solid var(--accent); }
+.pc-pane { display: flex; flex-direction: column; gap: 14px; }
+.pc-help { margin: 0; font-size: 13px; }
+.pc-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.pc-tpl { align-items: flex-start; }
+.pc-tpl input { margin-top: 3px; }
+.pc-tpl-body { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.pc-tpl-body b { font-size: 14px; }
+.pc-chips { margin: -6px 0 0; align-items: center; }
+.pc-chips .chip { font-size: 12px; padding: 4px 10px; }
+.pc-features { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px 16px; margin-top: 10px; }
+.pc-features input:disabled + * , .pc-features label:has(input:disabled) { opacity: .55; }
+button.chip { background: var(--card); color: var(--text-2); border: 1px solid var(--line-2); font-weight: 500; }
+button.chip:hover { background: var(--card); color: var(--text); }
+.secret-input { display: flex; gap: 8px; }
+.secret-input input { flex: 1; min-width: 0; }
+.secret-input button { flex: none; }

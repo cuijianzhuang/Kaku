@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -20,8 +21,16 @@ import (
 // Offline SKUs deliver the signed .lic document.
 type Polaris struct{ env *Env }
 
-// PolarisCfg is a Polaris SKU's deliverer_cfg.
+// PolarisCfg is a Polaris SKU's deliverer_cfg. With Template set the license
+// server issues from that template (its rights and month terms); Plan,
+// Months and UpdateMonths are then a copy taken when the SKU was saved,
+// used for the renewal page and for renewals.
 type PolarisCfg struct {
+	Template     int64  `json:"template,omitempty"`
+	TemplateName string `json:"template_name,omitempty"`
+	Months       int    `json:"months,omitempty"`        // template validity, 0 = perpetual
+	UpdateMonths int    `json:"update_months,omitempty"` // template update period, 0 = every version
+
 	Plan           string         `json:"plan"`
 	Days           int            `json:"days"`         // 0 = perpetual
 	UpdatesDays    int            `json:"updates_days"` // 0 = every version
@@ -42,6 +51,10 @@ func ParsePolarisCfg(raw string) (*PolarisCfg, error) {
 	if err := json.Unmarshal(orEmpty(json.RawMessage(raw)), &c); err != nil {
 		return nil, fmt.Errorf("配置不是有效 JSON：%w", err)
 	}
+	c.Plan = strings.ToLower(strings.TrimSpace(c.Plan))
+	if c.Template < 0 || c.Months < 0 || c.Months > 1200 || c.UpdateMonths < 0 || c.UpdateMonths > 1200 {
+		return nil, errors.New("模板配置不正确")
+	}
 	switch {
 	case c.Plan != "pro" && c.Plan != "enterprise":
 		return nil, errors.New("plan 只能是 pro 或 enterprise")
@@ -49,8 +62,8 @@ func ParsePolarisCfg(raw string) (*PolarisCfg, error) {
 		return nil, errors.New("days / updates_days 需在 0–36500 之间")
 	case c.Limits.Nodes < 0 || c.Limits.Users < 0 || c.Limits.Plugins < 0:
 		return nil, errors.New("limits 不能为负数")
-	case c.Renewable && c.Days == 0:
-		return nil, errors.New("永久授权不能作为续费商品（renewable 需 days > 0）")
+	case c.Renewable && !c.Timed():
+		return nil, errors.New("永久授权不能作为续费商品")
 	case c.Renewable && c.Offline:
 		return nil, errors.New("离线许可证不能在线续费")
 	}
@@ -60,6 +73,40 @@ func ParsePolarisCfg(raw string) (*PolarisCfg, error) {
 		}
 	}
 	return &c, nil
+}
+
+// Timed reports whether the license expires (only those can be renewed).
+func (c *PolarisCfg) Timed() bool {
+	if c.Template > 0 {
+		return c.Months > 0
+	}
+	return c.Days > 0
+}
+
+// RenewTerm is what one unit of this SKU adds to a license.
+func (c *PolarisCfg) RenewTerm(qty int) polaris.Term {
+	if c.Template > 0 {
+		return polaris.Term{Months: c.Months * qty, UpdateMonths: c.UpdateMonths * qty}
+	}
+	return polaris.Term{Days: c.Days * qty, UpdatesDays: c.UpdatesDays * qty}
+}
+
+// CheckAgainst checks plan and feature names against what the license
+// server knows, so a typo is caught when the SKU is saved rather than
+// when a paid order fails to deliver.
+func (c *PolarisCfg) CheckAgainst(cat *polaris.Catalog) error {
+	if c.Template > 0 {
+		return nil
+	}
+	if !cat.HasPlan(c.Plan) {
+		return fmt.Errorf("授权服务没有套餐 %q", c.Plan)
+	}
+	for _, f := range c.Features {
+		if !cat.HasFeature(f) {
+			return fmt.Errorf("授权服务没有功能 %q", f)
+		}
+	}
+	return nil
 }
 
 func (*Polaris) Kind() string  { return "polaris" }
@@ -100,7 +147,7 @@ func (p *Polaris) Deliver(ctx context.Context, o *model.Order, sku *model.SKU) (
 	}
 	db := p.env.Store.DB
 	if o.RenewOf != "" {
-		l, err := c.Extend(ctx, o.RenewOf, o.OrderNo, cfg.Days*o.Qty, cfg.UpdatesDays*o.Qty)
+		l, err := c.Extend(ctx, o.RenewOf, o.OrderNo, cfg.RenewTerm(o.Qty))
 		if err != nil {
 			return nil, apiErr(err)
 		}
@@ -118,10 +165,14 @@ func (p *Polaris) Deliver(ctx context.Context, o *model.Order, sku *model.SKU) (
 		if o.Qty > 1 {
 			no = fmt.Sprintf("%s-%d", o.OrderNo, i+1)
 		}
-		l, err := c.Issue(ctx, polaris.IssueRequest{
+		req := polaris.IssueRequest{
 			OrderNo: no, Customer: o.Email, Email: o.Email, Plan: cfg.Plan, Days: cfg.Days, UpdatesDays: cfg.UpdatesDays,
 			Limits: cfg.Limits, Features: cfg.Features, Offline: cfg.Offline, MaxActivations: cfg.MaxActivations,
-		})
+		}
+		if cfg.Template > 0 {
+			req = polaris.IssueRequest{OrderNo: no, Customer: o.Email, Email: o.Email, Plan: cfg.Plan, Template: cfg.Template}
+		}
+		l, err := c.Issue(ctx, req)
 		if err != nil {
 			return nil, apiErr(err)
 		}
@@ -138,7 +189,7 @@ func (p *Polaris) Deliver(ctx context.Context, o *model.Order, sku *model.SKU) (
 		if err := db.Clauses(clause.OnConflict{Columns: []clause.Column{{Name: "license_id"}}, DoNothing: true}).Create(&b).Error; err != nil {
 			return nil, err
 		}
-		if cfg.Offline && l.License != "" {
+		if l.Offline && l.License != "" {
 			items = append(items, Item{Content: l.License, Source: model.SourcePolaris, RefID: l.LicenseID, FileName: "polaris-" + l.LicenseID + ".lic"})
 		} else {
 			items = append(items, Item{Content: l.Key, Source: model.SourcePolaris, RefID: l.LicenseID})

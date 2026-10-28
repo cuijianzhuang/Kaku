@@ -130,6 +130,10 @@ type Settings struct {
 	TGChannel       string `json:"tg_channel"` // @channel or -100… for announcements
 	TGBotUsername   string `json:"tg_bot_username"`
 
+	PanelURL        string `json:"panel_url"` // Polaris panel including its admin path, for redeem-code SKUs
+	PanelToken      string `json:"panel_token" secret:"1"`
+	PanelRedeemHint string `json:"panel_redeem_hint"` // how buyers redeem a code
+
 	PolarisURL    string `json:"polaris_url"` // https://license.example.com
 	PolarisSecret string `json:"polaris_secret" secret:"1"`
 
@@ -227,7 +231,7 @@ func (s *Store) SaveSettings(st Settings) error {
 	return nil
 }
 
-var secretFields = []string{"epay_key", "trongrid_key", "smtp_pass", "tg_token", "tg_webhook_secret", "polaris_secret", "turnstile_secret", "github_client_secret", "google_client_secret"}
+var secretFields = []string{"epay_key", "trongrid_key", "smtp_pass", "tg_token", "tg_webhook_secret", "polaris_secret", "turnstile_secret", "github_client_secret", "google_client_secret", "panel_token"}
 
 // ---- small internal values (not admin settings) ----
 

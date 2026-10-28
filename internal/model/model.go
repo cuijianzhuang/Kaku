@@ -214,6 +214,7 @@ type Payment struct {
 const (
 	SourceCard    = "card"
 	SourcePolaris = "polaris"
+	SourcePanel   = "panel" // a Polaris panel redeem code
 	SourceText    = "text"
 	SourceWebhook = "webhook"
 	SourceManual  = "manual"

@@ -270,7 +270,7 @@ func (s *Service) Refund(ctx context.Context, orderID uint, reason string) ([]st
 	var sku model.SKU
 	// Polaris orders can hold issued licenses even when delivery failed
 	// part-way (several keys per order), so they are always revoked.
-	if s.Store.DB.Where("id = ?", o.SKUID).Take(&sku).Error == nil && (o.Status == model.OrderDelivered || sku.DelivererKind == "polaris") {
+	if s.Store.DB.Where("id = ?", o.SKUID).Take(&sku).Error == nil && (o.Status == model.OrderDelivered || sku.DelivererKind == "polaris" || sku.DelivererKind == "panelcode") {
 		if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
 			if err := d.Revoke(ctx, &o, &sku); err != nil {
 				if !errors.Is(err, deliver.ErrRevokeUnsupported) {
