@@ -35,7 +35,7 @@
 {{if eq $tab "appearance"}}
 <div class="card" id="appearance">
   <h2 style="margin-top:0">外观</h2>
-  <form method="post" action="{{$p}}/settings" class="stack" enctype="multipart/form-data">
+  <form method="post" action="{{$p}}/settings" class="stack" enctype="multipart/form-data" data-theme-preview="{{$p}}/settings/theme.css">
     <input type="hidden" name="section" value="appearance">
     <div>
       <div class="field-label">主题</div>
@@ -84,7 +84,7 @@
         </div>
       </div>
     </div>
-    <button>保存</button>
+    <div class="form-foot"><button>保存</button><span class="theme-pending" data-theme-pending hidden>正在预览，保存后商店和后台才会正式换成这个外观 · <a href="#" data-theme-revert>还原</a></span></div>
   </form>
 </div>
 

@@ -2,9 +2,12 @@ package web
 
 import (
 	"html/template"
+	"net/http"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Themes set the colour tokens of every page. A theme has a light and a
@@ -228,4 +231,16 @@ func themePreviews() []themePreview {
 			Leg: p["logo-leg"], LogoBg: p["logo-bg"], LogoFg: p["logo-fg"], Head: p["font-head"]})
 	}
 	return out
+}
+
+// themePreviewCSS answers the theme <style> for a combination the owner is
+// trying on the settings page, before saving.
+func (s *Server) themePreviewCSS(c *gin.Context) {
+	theme, accent, mode := c.Query("theme"), c.Query("accent"), c.Query("mode")
+	if !validTheme(theme) || !validAccent(accent) || !validMode(mode) {
+		c.Status(http.StatusBadRequest)
+		return
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Data(http.StatusOK, "text/css; charset=utf-8", []byte(themeCSS(theme, accent, mode)))
 }

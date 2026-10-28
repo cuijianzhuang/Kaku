@@ -79,6 +79,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.panelRoutes(a)
 	s.quickRoutes(a)
 	s.templateRoutes(a)
+	a.GET("/settings/theme.css", s.themePreviewCSS)
 	a.POST("/uploads/image", s.uploadImage)
 	a.POST("/markdown/preview", s.previewMarkdown)
 }

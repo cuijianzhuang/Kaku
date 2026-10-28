@@ -547,6 +547,8 @@ body.admin { background: var(--bg); }
 .btn.sm { padding: 5px 10px; font-size: 13px; min-height: 0; }
 .filter-chip { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 5px 12px; border-radius: 999px; background: var(--bg-soft); border: 1px solid var(--line); font-size: 13px; }
 a.plain { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--line-2); }
+.swatch { box-shadow: 0 0 0 1px var(--line-2); }
+.theme-pending { font-size: 13px; color: var(--text-2); }
 .preset-list { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .cat-picker { display: contents; }
 .empty-guide { display: flex; gap: 14px; align-items: flex-start; }
