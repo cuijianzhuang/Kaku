@@ -130,3 +130,36 @@ func TestCoverUploadAndShareMeta(t *testing.T) {
 }
 
 func itoa(n int64) string { return strconv.FormatInt(n, 10) }
+
+func TestStaticCachingAndCompression(t *testing.T) {
+	e := setup(t)
+	resp, _ := http.Get(e.ts.URL + "/")
+	b, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(resp.Header.Get("Content-Security-Policy"), "script-src 'self'") {
+		t.Fatal("no CSP on pages")
+	}
+	i := strings.Index(string(b), "/static/style.css?v=")
+	if i < 0 {
+		t.Fatal("stylesheet link has no version")
+	}
+	link := string(b)[i : i+len("/static/style.css?v=")+12]
+	req, _ := http.NewRequest(http.MethodGet, e.ts.URL+link, nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	resp, _ = http.DefaultTransport.RoundTrip(req) // no transparent decompression
+	if resp.Header.Get("Content-Encoding") != "gzip" || !strings.Contains(resp.Header.Get("Cache-Control"), "immutable") {
+		t.Fatalf("asset headers: %v", resp.Header)
+	}
+	req, _ = http.NewRequest(http.MethodGet, e.ts.URL+"/static/style.css", nil)
+	req.Header.Set("If-None-Match", resp.Header.Get("ETag"))
+	if resp, _ := http.DefaultClient.Do(req); resp.StatusCode != http.StatusNotModified {
+		t.Fatalf("revalidation: %d", resp.StatusCode)
+	}
+	if resp, _ := http.Get(e.ts.URL + "/static/../web_test.go"); resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("path escape: %d", resp.StatusCode)
+	}
+	req, _ = http.NewRequest(http.MethodGet, e.ts.URL+"/", nil)
+	req.Header.Set("Accept-Encoding", "gzip")
+	if resp, _ := http.DefaultTransport.RoundTrip(req); resp.Header.Get("Content-Encoding") != "gzip" {
+		t.Fatal("pages are not compressed")
+	}
+}

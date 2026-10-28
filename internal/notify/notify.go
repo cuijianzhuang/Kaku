@@ -32,7 +32,7 @@ func (n *Notifier) MailReady() bool {
 	return n.Send != nil || (st.SMTPHost != "" && st.SMTPFrom != "")
 }
 
-// Mail sends a plain-text email.
+// Mail sends an email: the text as given plus an HTML version of it.
 func (n *Notifier) Mail(to, subject, body string) error {
 	if n.Send != nil {
 		return n.Send(to, subject, body)
@@ -53,16 +53,7 @@ func (n *Notifier) Mail(to, subject, body string) error {
 		port = 465
 	}
 	addr := net.JoinHostPort(st.SMTPHost, fmt.Sprint(port))
-	msg := strings.Join([]string{
-		"From: " + from.String(),
-		"To: " + to,
-		"Subject: " + mime.BEncoding.Encode("utf-8", subject),
-		"Date: " + time.Now().Format(time.RFC1123Z),
-		"MIME-Version: 1.0",
-		"Content-Type: text/plain; charset=utf-8",
-		"Content-Transfer-Encoding: 8bit",
-		"", strings.ReplaceAll(body, "\n", "\r\n"),
-	}, "\r\n")
+	msg := buildMessage(from.String(), to, subject, st.SiteName, body, time.Now())
 	var auth smtp.Auth
 	if st.SMTPUser != "" {
 		auth = smtp.PlainAuth("", st.SMTPUser, st.SMTPPass, st.SMTPHost)
@@ -121,4 +112,26 @@ func (n *Notifier) Admin(text string) {
 	if err := n.Bot().SendMessage(ctx, st.TGAdminChat, text, false, nil); err != nil && n.Log != nil {
 		n.Log.Warn("admin alert failed", "err", err)
 	}
+}
+
+func buildMessage(from, to, subject, site, body string, now time.Time) string {
+	boundary := "kaku-" + fmt.Sprintf("%x", now.UnixNano())
+	return strings.Join([]string{
+		"From: " + from,
+		"To: " + to,
+		"Subject: " + mime.BEncoding.Encode("utf-8", subject),
+		"Date: " + now.Format(time.RFC1123Z),
+		"MIME-Version: 1.0",
+		`Content-Type: multipart/alternative; boundary="` + boundary + `"`,
+		"",
+		"--" + boundary,
+		"Content-Type: text/plain; charset=utf-8",
+		"Content-Transfer-Encoding: base64",
+		"", b64(body),
+		"--" + boundary,
+		"Content-Type: text/html; charset=utf-8",
+		"Content-Transfer-Encoding: base64",
+		"", b64(mailHTML(site, subject, body)),
+		"--" + boundary + "--", "",
+	}, "\r\n")
 }
