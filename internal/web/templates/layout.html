@@ -67,9 +67,10 @@
   <div class="wrap row">
     <a class="brand" href="/">{{template "logo" .}}<span>{{.Site}}</span></a>
     <nav class="main">
-      <a href="/" {{if or (eq .Path "/") (hasPrefix .Path "/p/")}}class="on"{{end}}><svg class="ic"><use href="#i-bag"/></svg><span>商品</span></a>
-      <a href="/query" {{if or (eq .Path "/query") (hasPrefix .Path "/order/")}}class="on"{{end}}><svg class="ic"><use href="#i-search"/></svg><span>查单</span></a>
-      <a href="/ticket" {{if eq .Path "/ticket"}}class="on"{{end}}><svg class="ic"><use href="#i-message"/></svg><span>售后</span></a>
+      <a title="商品" aria-label="商品" href="/" {{if or (eq .Path "/") (hasPrefix .Path "/p/")}}class="on"{{end}}><svg class="ic"><use href="#i-bag"/></svg><span>商品</span></a>
+      <a title="查单" aria-label="查单" href="/query" {{if or (eq .Path "/query") (hasPrefix .Path "/order/")}}class="on"{{end}}><svg class="ic"><use href="#i-search"/></svg><span>查单</span></a>
+      <a title="售后" aria-label="售后" href="/ticket" {{if eq .Path "/ticket"}}class="on"{{end}}><svg class="ic"><use href="#i-message"/></svg><span>售后</span></a>
+      {{if .Settings.AdminEntry}}<a href="{{.AdminPath}}/login" class="admin-entry" rel="nofollow" title="后台登录" aria-label="后台登录"><svg class="ic"><use href="#i-lock"/></svg><span>后台</span></a>{{end}}
     </nav>
   </div>
 </header>
@@ -83,7 +84,7 @@
   <a href="/query">订单查询</a>
   <a href="/ticket">售后工单</a>
   {{if .Settings.SupportURL}}<a href="{{.Settings.SupportURL}}" rel="noopener" target="_blank">联系客服</a>{{end}}
-  {{if .Settings.AdminLinkInFooter}}<a href="{{.AdminPath}}/login">后台登录</a>{{end}}
+  {{if .Settings.AdminEntry}}<a href="{{.AdminPath}}/login" rel="nofollow">后台登录</a>{{end}}
 </footer>
 </body>
 </html>{{end}}

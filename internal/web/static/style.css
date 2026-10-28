@@ -482,8 +482,11 @@ body.admin { background: var(--bg); }
   .hero { padding: 24px 18px; border-radius: 16px; }
   .hero h1 { font-size: 23px; }
   nav.main { gap: 2px; }
-  nav.main a { padding: 7px 9px; gap: 4px; font-size: 13px; }
+  nav.main a { padding: 7px 7px; gap: 4px; font-size: 13px; }
   .top .brand span:not(.logo) { max-width: 40vw; overflow: hidden; text-overflow: ellipsis; }
+  .top .brand { min-width: 0; flex-shrink: 1; }
+  nav.main { flex-shrink: 0; }
+  nav.main a.admin-entry span { display: none; }
   .bar-row { grid-template-columns: 44px 1fr; }
   .bar-value { display: none; }
   .card { padding: 16px; }
@@ -540,7 +543,10 @@ h1, h2, h3, .brand, .hero h1, .price.big { font-family: var(--font-head); }
 .theme-name .muted { font-size: 12px; }
 .swatch.auto { background: conic-gradient(#18181b 0 25%, #4f46e5 0 50%, #059669 0 75%, #e11d48 0); }
 
-@media (max-width: 359px) {
+@media (max-width: 379px) {
   nav.main a span { display: none; }
+  nav.main a { padding: 8px 9px; }
+}
+@media (max-width: 359px) {
   .grid { grid-template-columns: minmax(0, 1fr); }
 }

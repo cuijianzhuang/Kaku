@@ -915,7 +915,7 @@ func (s *Server) saveSettings(c *gin.Context) {
 		st.GitHubClientID, st.GoogleClientID = str("github_client_id"), str("google_client_id")
 		secret("github_client_secret", &st.GitHubClientSecret)
 		secret("google_client_secret", &st.GoogleClientSecret)
-		st.AdminLinkInFooter = on("admin_link_in_footer")
+		st.AdminEntry = on("admin_link_in_footer")
 	default:
 		redirectErr(c, back, errors.New("未知设置分组"))
 		return
