@@ -4,7 +4,7 @@
 {{$prod := .Product}}
 <div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>
 <div class="card">
-  <form method="post" action="{{$p}}/products" class="stack">
+  <form method="post" action="{{$p}}/products" class="stack" enctype="multipart/form-data">
     <input type="hidden" name="id" value="{{$prod.ID}}">
     <div class="two">
       <label>名称 <input name="title" value="{{$prod.Title}}" required maxlength="200"></label>
@@ -14,7 +14,13 @@
         </select>
       </label>
     </div>
-    <label><span>封面图片地址 <span class="hint">· 可选，留空显示首字母</span></span><input name="cover" value="{{$prod.Cover}}" maxlength="500"></label>
+    <div class="cover-field">
+      {{if $prod.Cover}}<img class="cover-thumb" src="{{$prod.Cover}}" alt="">{{end}}
+      <div class="fields" style="flex:1">
+        <label class="wide"><span>封面图片 <span class="hint">· 上传图片，或填写图片地址；留空显示首字母</span></span><input type="file" name="cover_file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
+        <label class="wide"><span>图片地址</span><input name="cover" value="{{$prod.Cover}}" maxlength="500" placeholder="https://… 或留空"></label>
+      </div>
+    </div>
     <label><span>商品详情 <span class="hint">· 支持 Markdown：# 标题、- 列表、**加粗**、[链接](https://…)</span></span><textarea name="description" style="min-height:200px">{{$prod.DescriptionMD}}</textarea></label>
     <div class="fields">
       <label>状态 <select name="status"><option value="on" {{if eq $prod.Status "on"}}selected{{end}}>上架</option><option value="off" {{if eq $prod.Status "off"}}selected{{end}}>下架</option></select></label>

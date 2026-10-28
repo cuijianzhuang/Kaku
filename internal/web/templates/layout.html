@@ -57,6 +57,13 @@
 <link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
 <title>{{block "title" .}}{{.Site}}{{end}}</title>
+{{block "meta" .}}{{$desc := or .Settings.Notice "自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单"}}
+<meta name="description" content="{{$desc}}">
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{.Site}}">
+<meta property="og:description" content="{{$desc}}">
+<meta property="og:image" content="{{if .Settings.LogoURL}}{{abs .BaseURL .Settings.LogoURL}}{{else}}{{.BaseURL}}/static/apple-touch-icon.png{{end}}">
+{{end}}<meta property="og:site_name" content="{{.Site}}">
 <link rel="stylesheet" href="/static/style.css">
 <style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
 <script src="/static/app.js" defer></script>
@@ -67,9 +74,10 @@
   <div class="wrap row">
     <a class="brand" href="/">{{template "logo" .}}<span>{{.Site}}</span></a>
     <nav class="main">
-      <a href="/" {{if or (eq .Path "/") (hasPrefix .Path "/p/")}}class="on"{{end}}><svg class="ic"><use href="#i-bag"/></svg><span>商品</span></a>
-      <a href="/query" {{if or (eq .Path "/query") (hasPrefix .Path "/order/")}}class="on"{{end}}><svg class="ic"><use href="#i-search"/></svg><span>查单</span></a>
-      <a href="/ticket" {{if eq .Path "/ticket"}}class="on"{{end}}><svg class="ic"><use href="#i-message"/></svg><span>售后</span></a>
+      <a title="商品" aria-label="商品" href="/" {{if or (eq .Path "/") (hasPrefix .Path "/p/")}}class="on"{{end}}><svg class="ic"><use href="#i-bag"/></svg><span>商品</span></a>
+      <a title="查单" aria-label="查单" href="/query" {{if or (eq .Path "/query") (hasPrefix .Path "/order/")}}class="on"{{end}}><svg class="ic"><use href="#i-search"/></svg><span>查单</span></a>
+      <a title="售后" aria-label="售后" href="/ticket" {{if eq .Path "/ticket"}}class="on"{{end}}><svg class="ic"><use href="#i-message"/></svg><span>售后</span></a>
+      {{if .Settings.AdminEntry}}<a href="{{.AdminPath}}/login" class="admin-entry" rel="nofollow" title="后台登录" aria-label="后台登录"><svg class="ic"><use href="#i-lock"/></svg><span>后台</span></a>{{end}}
     </nav>
   </div>
 </header>
@@ -83,7 +91,7 @@
   <a href="/query">订单查询</a>
   <a href="/ticket">售后工单</a>
   {{if .Settings.SupportURL}}<a href="{{.Settings.SupportURL}}" rel="noopener" target="_blank">联系客服</a>{{end}}
-  {{if .Settings.AdminLinkInFooter}}<a href="{{.AdminPath}}/login">后台登录</a>{{end}}
+  {{if .Settings.AdminEntry}}<a href="{{.AdminPath}}/login" rel="nofollow">后台登录</a>{{end}}
 </footer>
 </body>
 </html>{{end}}
@@ -141,6 +149,7 @@
     <div class="nav-group">系统</div>
     {{template "navlink" (nav "设置" "settings" (printf "%s/settings" $p) .Path false)}}
     {{template "navlink" (nav "备份" "database" (printf "%s/backups" $p) .Path false)}}
+    {{template "navlink" (nav "管理员" "users" (printf "%s/admins" $p) .Path false)}}
     {{template "navlink" (nav "安全" "lock" (printf "%s/security" $p) .Path false)}}
     {{template "navlink" (nav "日志" "list" (printf "%s/audit" $p) .Path false)}}
     {{template "navlink" (nav "升级" "upgrade" (printf "%s/update" $p) .Path false)}}

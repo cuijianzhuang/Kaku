@@ -29,7 +29,7 @@
 
 <div class="card" id="appearance">
   <h2 style="margin-top:0">外观</h2>
-  <form method="post" action="{{$p}}/settings" class="stack">
+  <form method="post" action="{{$p}}/settings" class="stack" enctype="multipart/form-data">
     <input type="hidden" name="section" value="appearance">
     <div>
       <div class="field-label">主题</div>
@@ -61,7 +61,8 @@
       <p class="muted" style="margin:8px 0 0;font-size:13px">「午夜」主题始终为深色。</p>
     </div>
     <div class="fields">
-      <label class="wide"><span>Logo 图片地址 <span class="hint">· 可选，留空使用 Kaku 图标；建议正方形</span></span><input name="logo_url" value="{{$s.LogoURL}}" placeholder="https://…/logo.png"></label>
+      <label><span>Logo <span class="hint">· 上传正方形图片</span></span><input type="file" name="logo_file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
+      <label><span>或图片地址 <span class="hint">· 清空则使用 Kaku 图标</span></span><input name="logo_url" value="{{$s.LogoURL}}" placeholder="https://…/logo.png"></label>
     </div>
     <button>保存</button>
   </form>
@@ -163,7 +164,8 @@
     </div>
     <div class="section">
       <h3>后台入口</h3>
-      <label class="check"><input type="checkbox" name="admin_link_in_footer" {{if $s.AdminLinkInFooter}}checked{{end}}> 在商店页脚显示「后台登录」链接（会公开后台路径，建议保持关闭并收藏后台地址）</label>
+      <label class="check"><input type="checkbox" name="admin_link_in_footer" {{if $s.AdminEntry}}checked{{end}}> 在商店顶部导航和页脚显示「后台」登录入口</label>
+      <p class="muted" style="margin:6px 0 0 24px;font-size:13px">开启后任何访客都能看到后台路径（安装时随机生成，用于防扫描）。开启时建议同时在「安全」页面开启两步验证。</p>
     </div>
     <button>保存</button>
   </form>

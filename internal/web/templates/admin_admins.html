@@ -1,0 +1,55 @@
+{{define "title"}}管理员{{end}}
+{{define "content"}}
+{{$p := .AdminPath}}
+<div class="page-head"><h1>管理员</h1></div>
+<div class="card table-wrap">
+  <table>
+    <tr><th>用户名</th><th>两步验证</th><th>第三方登录</th><th>最后登录</th><th>添加时间</th><th></th></tr>
+    {{range .Admins}}
+    <tr>
+      <td>{{.Username}}{{if .Self}} <span class="badge plain">我</span>{{end}}</td>
+      <td>{{if .TOTPEnabled}}<span class="badge on">已开启</span>{{else}}<span class="badge pending">未开启</span>{{end}}</td>
+      <td>{{range .Identities}}<span class="row" style="justify-content:flex-start;gap:6px;display:inline-flex;margin-right:10px">{{template "brand-icon" .Provider}}{{.Name}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+      <td class="nowrap">{{with .LastLogin}}{{date .}}{{else}}<span class="muted">从未</span>{{end}}{{if .LastIP}} <span class="muted">· {{.LastIP}}</span>{{end}}</td>
+      <td class="nowrap muted">{{date .CreatedAt}}</td>
+      <td style="text-align:right">
+        <details class="row-actions">
+          <summary>管理</summary>
+          <div class="row-actions-body">
+            <form method="post" action="{{$p}}/admins/{{.ID}}/password" class="stack">
+              <label>新密码 <input type="password" name="password" minlength="12" required autocomplete="new-password"></label>
+              <label>你的密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+              {{if $.Me.TOTPEnabled}}<label>你的验证码 <input name="confirm_code" inputmode="numeric" maxlength="6" required></label>{{end}}
+              <button class="secondary">重置密码</button>
+            </form>
+            {{if not .Self}}
+            <form method="post" action="{{$p}}/admins/{{.ID}}/delete" class="stack" data-confirm="删除管理员 {{.Username}}？其第三方登录绑定也会一并删除。">
+              <label>你的密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+              {{if $.Me.TOTPEnabled}}<label>你的验证码 <input name="confirm_code" inputmode="numeric" maxlength="6" required></label>{{end}}
+              <button class="danger">删除管理员</button>
+            </form>
+            {{end}}
+          </div>
+        </details>
+      </td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+
+<div class="card" style="max-width:640px">
+  <h2 style="margin-top:0">添加管理员</h2>
+  <p class="muted" style="margin-top:-4px;font-size:13px">所有管理员都有完整的后台权限。对方用初始密码登录后，可以在「安全」页面修改密码、开启两步验证、绑定 GitHub / Google。</p>
+  <form method="post" action="{{$p}}/admins" class="stack">
+    <div class="fields">
+      <label>用户名 <input name="username" required maxlength="64" pattern="[A-Za-z0-9_.@-]{2,64}" autocomplete="off"></label>
+      <label><span>初始密码 <span class="hint">· 至少 12 位</span></span><input type="password" name="password" minlength="12" required autocomplete="new-password"></label>
+    </div>
+    <div class="fields">
+      <label>你的密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+      {{if .Me.TOTPEnabled}}<label>你的验证码 <input name="confirm_code" inputmode="numeric" maxlength="6" required></label>{{end}}
+    </div>
+    <button><svg class="ic"><use href="#i-plus"/></svg>添加</button>
+  </form>
+</div>
+{{end}}

@@ -44,3 +44,19 @@ func TestAppearanceSettings(t *testing.T) {
 		t.Fatal("storefront does not use the saved appearance")
 	}
 }
+
+func TestAdminEntryLink(t *testing.T) {
+	e := setup(t)
+	home := func() string {
+		resp, _ := http.Get(e.ts.URL + "/")
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+	if strings.Contains(home(), "/manage/login") {
+		t.Fatal("the admin path is shown although the entry is off")
+	}
+	e.post(e.login(), "/manage/settings", url.Values{"section": {"login"}, "admin_link_in_footer": {"on"}})
+	if n := strings.Count(home(), `href="/manage/login"`); n != 2 {
+		t.Fatalf("expected the entry in the header and the footer, found %d", n)
+	}
+}

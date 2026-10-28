@@ -147,7 +147,7 @@ type Settings struct {
 	GitHubClientSecret string `json:"github_client_secret" secret:"1"`
 	GoogleClientID     string `json:"google_client_id"` // admin sign-in with Google
 	GoogleClientSecret string `json:"google_client_secret" secret:"1"`
-	AdminLinkInFooter  bool   `json:"admin_link_in_footer"` // show a backend link in the shop footer
+	AdminEntry         bool   `json:"admin_link_in_footer"` // show a 后台 link in the shop header and footer
 
 	AutoUpdate     bool `json:"auto_update"`      // install new releases automatically
 	AutoUpdateHour int  `json:"auto_update_hour"` // local hour of the daily check

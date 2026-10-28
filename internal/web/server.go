@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -28,6 +29,7 @@ type Config struct {
 	TrustProxy   bool   // take the client address from X-Forwarded-For
 	SecureCookie bool
 	Version      string
+	UploadDir    string // uploaded images ("" = uploads off)
 }
 
 // TGHandler handles Telegram webhook updates.
@@ -82,6 +84,7 @@ func (s *Server) Handler() http.Handler {
 	r.MaxMultipartMemory = 8 << 20
 	static, _ := fs.Sub(assets, "static")
 	r.StaticFS("/static", http.FS(static))
+	r.GET("/uploads/:name", s.serveUpload)
 	r.GET("/favicon.ico", func(c *gin.Context) { c.FileFromFS("favicon-32.png", http.FS(static)) })
 	r.GET("/healthz", func(c *gin.Context) { c.String(200, "ok") })
 	s.publicRoutes(r)
@@ -117,20 +120,27 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":          statusLabel,
-	"method":          methodLabel,
-	"markdown":        renderMarkdown,
-	"add":             func(a, b int) int { return a + b },
-	"price":           priceInput,
-	"contains":        strings.Contains,
-	"join":            strings.Join,
-	"query":           url.QueryEscape,
-	"kb":              func(n int64) float64 { return float64(n) / 1024 },
-	"hasPrefix":       strings.HasPrefix,
-	"initial":         initial,
-	"nav":             navItem,
-	"hue":             func(id uint) int { return int(id*67+220) % 360 },
-	"fromPrice":       fromPrice,
+	"status":    statusLabel,
+	"method":    methodLabel,
+	"markdown":  renderMarkdown,
+	"add":       func(a, b int) int { return a + b },
+	"price":     priceInput,
+	"contains":  strings.Contains,
+	"join":      strings.Join,
+	"query":     url.QueryEscape,
+	"kb":        func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix": strings.HasPrefix,
+	"initial":   initial,
+	"nav":       navItem,
+	"hue":       func(id uint) int { return int(id*67+220) % 360 },
+	"fromPrice": fromPrice,
+	"plain":     plainText,
+	"abs": func(base, u string) string {
+		if strings.HasPrefix(u, "/") {
+			return base + u
+		}
+		return u
+	},
 	"themeCSS":        themeCSS,
 	"themePreviews":   themePreviews,
 	"accentOptions":   func() []Accent { return accents },
@@ -145,6 +155,19 @@ var funcs = template.FuncMap{
 		return "light dark"
 	},
 }
+
+// plainText turns Markdown into a short line of text for previews.
+func plainText(md string, n int) string {
+	md = strings.NewReplacer("#", "", "*", "", "`", "", ">", "", "[", "", "]", "", "_", "").Replace(md)
+	md = linkTarget.ReplaceAllString(md, "")
+	out := strings.Join(strings.Fields(md), " ")
+	if r := []rune(out); len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return out
+}
+
+var linkTarget = regexp.MustCompile(`\(https?://[^)]*\)`)
 
 // initial is the first letter of a name, for logos and cover placeholders.
 func initial(s string) string {
@@ -238,6 +261,7 @@ func (s *Server) render(c *gin.Context, code int, page string, data gin.H) {
 	data["AdminPath"] = s.cfg.AdminPath
 	data["Version"] = s.cfg.Version
 	data["Path"] = c.Request.URL.Path
+	data["BaseURL"] = s.publicURL(c)
 	if _, ok := data["Flash"]; !ok {
 		data["Flash"] = c.Query("msg")
 	}

@@ -279,6 +279,8 @@ type Admin struct {
 	TOTPSecret   string `gorm:"size:200"` // encrypted
 	TOTPEnabled  bool
 	Epoch        int `gorm:"not null;default:1"` // bump to sign out every session
+	LastLogin    *time.Time
+	LastIP       string `gorm:"size:64"`
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }

@@ -25,6 +25,8 @@ import (
 
 func (s *Server) publicRoutes(r *gin.Engine) {
 	r.GET("/", s.home)
+	r.GET("/robots.txt", s.robots)
+	r.GET("/sitemap.xml", s.sitemap)
 	r.GET("/p/:id", s.productPage)
 	r.POST("/order", s.createOrder)
 	r.GET("/pay/:no", s.payPage)

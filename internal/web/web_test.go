@@ -79,7 +79,7 @@ func setup(t *testing.T) *env {
 	set.TGWebhookSecret = "hooksecret123"
 	st.SaveSettings(set)
 	st.DB.Create(&model.Admin{Username: "admin", PasswordHash: secure.HashPassword("correct horse battery"), Epoch: 1})
-	srv := New(Config{AdminPath: "/manage"}, svc, e.bot, log)
+	srv := New(Config{AdminPath: "/manage", UploadDir: filepath.Join(t.TempDir(), "uploads")}, svc, e.bot, log)
 	e.srv = srv
 	e.ts = httptest.NewServer(srv.Handler())
 	t.Cleanup(e.ts.Close)
