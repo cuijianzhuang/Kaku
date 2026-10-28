@@ -122,6 +122,7 @@ Kaku 不持有签名私钥，只用一个共享密钥调用 polaris-license 的�
 
 | 接口 | 用途 |
 | --- | --- |
+| `GET /admin/v1/catalog` | 读取套餐、功能和许可证模板（「测试连接」和商品配置用） |
 | `POST /admin/v1/keys` | 新购：签发激活码（order_no 做幂等键；离线 SKU 返回 .lic 文本） |
 | `POST /admin/v1/licenses/{id}/extend` | 续费：延长同一许可证，面板下次校验即生效，无需重新激活 |
 | `POST /admin/v1/licenses/{id}/revoke` | 退款：吊销，面板下次校验回落社区版 |
@@ -130,25 +131,29 @@ Kaku 不持有签名私钥，只用一个共享密钥调用 polaris-license 的�
 
 请求签名：`X-Kaku-Timestamp`（Unix 秒）+ `X-Kaku-Signature = hex(HMAC-SHA256(secret, ts + "." + METHOD + " " + PATH + "." + body))`，时间窗 5 分钟。签名里包含方法和路径，防止把针对 A 许可证的请求重放到 B。
 
-配置步骤：
+配置步骤（后台 **设置 → Polaris 授权服务** 按同样三步引导）：
 
-1. 生成一个 ≥32 位的随机密钥（如 `openssl rand -hex 32`）。
-2. polaris-license 环境变量：
+1. 填写 polaris-license 地址，点「生成」得到一个随机 API 密钥，保存。
+2. 把页面上的配置复制到 polaris-license 的环境变量并重启：
    ```dotenv
-   KAKU_API_SECRET=上面的密钥
-   KAKU_API_ALLOW_IPS=Kaku 服务器的出口 IP
+   KAKU_API_SECRET=同一个密钥
    KAKU_HOOK_URL=https://shop.example.com/hooks/polaris
    KAKU_RENEW_URL=https://shop.example.com/renew?lid={license_id}
    KAKU_RENEW_BOT=https://t.me/YourShopBot?start=renew_{license_id}
+   KAKU_API_ALLOW_IPS=Kaku 服务器的出口 IP（可选）
    ```
-3. Kaku 后台 **设置 → Polaris 授权服务**：填写 polaris-license 地址和同一个密钥。
-4. 新增规格，发货方式选「Polaris 激活码」，配置示例：
-   ```json
-   {"plan": "pro", "days": 365, "updates_days": 365,
-    "limits": {"nodes": 20, "users": 0, "plugins": 0},
-    "features": ["*"], "offline": false, "max_activations": 1, "renewable": true}
-   ```
-   `renewable: true` 的规格会出现在续费页（同套餐的许可证）。`offline: true` 发货为离线 .lic 文件，无法吊销，只适合企业版。
+3. 点「测试连接」：检查地址、密钥、IP 白名单和两台服务器的时间，失败时直接提示该改哪里；成功时显示授权服务的套餐、功能和模板数量。
+
+配置商品：
+
+- **一键创建**：商品页「从授权模板创建」，勾选 polaris-license 里的许可证模板（如「专业版 · 年付」「企业版 · 年付」），每个模板成为一个规格；填好价格后上架即可。
+- **按模板**：规格的发货方式选「Polaris 激活码」后选「按模板」，套餐、限额、功能和有效期都以 polaris-license 的模板为准；以后在授权服务修改模板，新售出的许可证随之更新，续费按模板的月数延长。
+- **自定义**：选套餐、有效期 / 更新期（可快速选 1 个月 … 永久）、节点 / 用户 / 插件上限，勾选高级功能或「全部高级功能（含以后新增）」。功能名称来自授权服务，保存时校验，不会因为拼写错误导致付款后发货失败。
+- **JSON**：仍可直接编辑原始配置（同样会校验）。
+
+「可用于续费」的规格出现在同套餐许可证的续费页；永久和离线许可证不能续费。离线许可证发货为 .lic 文件，无法吊销。后台「授权」页可以手动续期，默认同时延长更新期。
+
+需要 polaris-license 包含 `/admin/v1/catalog`（2026-10 之后的版本）才能使用模板和功能列表；旧版本仍可用「自定义」，功能列表使用内置值。
 
 polaris-license 还没有部署管理接口时，可以先在授权后台批量生成激活码，当作普通卡密导入「卡密库存」规格（续费 / 退款吊销需人工）。
 

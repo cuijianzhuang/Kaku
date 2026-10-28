@@ -28,7 +28,7 @@
       <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/refresh" class="inline"><button class="link">同步</button></form>
       {{if ne .Status "revoked"}}
       <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/extend" class="inline" style="white-space:nowrap">
-        <input name="days" type="number" min="1" max="3650" value="30" style="width:70px"><button class="link">续期天数</button>
+        <input name="days" type="number" min="1" max="3650" value="30" style="width:70px"> 天 <label class="check" style="display:inline-flex;font-size:12px" title="同时延长更新服务期"><input type="checkbox" name="updates" checked>含更新</label> <button class="link">续期</button>
       </form>
       <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/revoke" class="inline" data-confirm="吊销后面板下次校验会回落社区版，确认？"><button class="link">吊销</button></form>
       {{end}}

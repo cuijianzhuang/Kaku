@@ -18,12 +18,80 @@
         {{range .Deliverers}}<option value="{{.Kind}}" {{if eq .Kind $k.DelivererKind}}selected{{end}}>{{.Label}}</option>{{end}}
       </select>
     </label>
-    <label>发货配置（JSON） <textarea name="deliverer_cfg">{{$k.DelivererCfg}}</textarea></label>
-    <p class="muted">示例：<span data-cfg-hint></span> <a href="#" data-cfg-fill>填入示例</a></p>
-    <details>
-      <summary>Polaris 激活码配置说明</summary>
-      <p class="muted">plan：pro / enterprise；days：授权天数（0 = 永久）；updates_days：更新服务天数（0 = 不限）；limits：节点 / 用户 / 插件上限（0 = 不限）；features：功能列表，["*"] 为全部；offline：true 时发货为离线 .lic 文件（无法吊销）；renewable：出现在续费页（需 days &gt; 0）。需先在「设置 → Polaris 授权服务」填写地址和密钥。</p>
-    </details>
+    {{$f := .PF}}
+    <div class="pc" data-cfg-polaris>
+      <div class="pc-head">
+        <div class="field-label" style="margin:0">Polaris 授权内容</div>
+        <div class="seg pc-modes">
+          {{if $f.Templates}}<label><input type="radio" name="pc_mode" value="template" {{if eq $f.Mode "template"}}checked{{end}}><span>按模板</span></label>{{end}}
+          <label><input type="radio" name="pc_mode" value="custom" {{if eq $f.Mode "custom"}}checked{{end}}><span>自定义</span></label>
+          <label><input type="radio" name="pc_mode" value="json" {{if eq $f.Mode "json"}}checked{{end}}><span>JSON</span></label>
+        </div>
+      </div>
+      {{with $f.CatalogErr}}<div class="notice"><svg class="ic"><use href="#i-info"/></svg><span>{{.}}</span></div>{{end}}
+
+      {{if $f.Templates}}
+      <div class="pc-pane" data-pc-pane="template">
+        <p class="muted pc-help">从 polaris-license 的「许可证模板」中选择：套餐、限额、功能和有效期都以模板为准，在授权服务里修改模板后，之后售出的许可证随之更新。</p>
+        {{if not $f.Catalog.Templates}}<p class="muted">授权服务还没有模板，在 polaris-license 后台「模板」页面添加，或使用「自定义」。</p>{{end}}
+        <div class="pc-templates">
+          {{range $f.Catalog.Templates}}
+          <label class="option pc-tpl">
+            <input type="radio" name="pc_template" value="{{.ID}}" {{if eq .ID $f.Cfg.Template}}checked{{end}}>
+            <span class="pc-tpl-body">
+              <b>{{.Name}}</b>
+              <span class="muted">{{if eq .Plan "enterprise"}}企业版{{else}}专业版{{end}} · 有效期 {{months .Months "永久"}} · 更新 {{months .UpdateMonths "不限"}} · {{.MaxActivations}} 台{{if .Offline}} · 离线{{end}}</span>
+              <span class="muted">{{featSummary $f.Catalog .Features}}{{if or .Limits.Nodes .Limits.Users .Limits.Plugins}} · 节点 {{if .Limits.Nodes}}{{.Limits.Nodes}}{{else}}不限{{end}} / 用户 {{if .Limits.Users}}{{.Limits.Users}}{{else}}不限{{end}} / 插件 {{if .Limits.Plugins}}{{.Limits.Plugins}}{{else}}不限{{end}}{{end}}</span>
+            </span>
+          </label>
+          {{end}}
+        </div>
+      </div>
+      {{end}}
+
+      <div class="pc-pane" data-pc-pane="custom">
+        <div class="fields">
+          <label>套餐
+            <select name="pc_plan">{{range $f.Catalog.Plans}}<option value="{{.ID}}" {{if eq .ID $f.Cfg.Plan}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+          </label>
+          <label>可激活实例数 <input type="number" name="pc_max_activations" value="{{if $f.Cfg.MaxActivations}}{{$f.Cfg.MaxActivations}}{{else}}1{{end}}" min="1" max="1000"></label>
+        </div>
+        <div class="fields">
+          <label><span>有效期（天） <span class="hint">· 0 = 永久</span></span><input type="number" name="pc_days" value="{{$f.Cfg.Days}}" min="0" max="36500" data-term="days"></label>
+          <label><span>更新服务（天） <span class="hint">· 0 = 所有版本</span></span><input type="number" name="pc_updates_days" value="{{$f.Cfg.UpdatesDays}}" min="0" max="36500" data-term="updates"></label>
+        </div>
+        <div class="chips pc-chips">
+          <span class="muted">快速选择：</span>
+          <button type="button" class="chip" data-set-days="30">1 个月</button><button type="button" class="chip" data-set-days="90">3 个月</button>
+          <button type="button" class="chip" data-set-days="180">半年</button><button type="button" class="chip" data-set-days="365">1 年</button>
+          <button type="button" class="chip" data-set-days="730">2 年</button><button type="button" class="chip" data-set-days="0">永久</button>
+        </div>
+        <div class="fields">
+          <label><span>节点上限 <span class="hint">· 0 = 不限</span></span><input type="number" name="pc_nodes" value="{{$f.Cfg.Limits.Nodes}}" min="0"></label>
+          <label><span>用户上限 <span class="hint">· 0 = 不限</span></span><input type="number" name="pc_users" value="{{$f.Cfg.Limits.Users}}" min="0"></label>
+          <label><span>插件上限 <span class="hint">· 0 = 不限</span></span><input type="number" name="pc_plugins" value="{{$f.Cfg.Limits.Plugins}}" min="0"></label>
+        </div>
+        <div>
+          <div class="field-label">高级功能</div>
+          <label class="check pc-all"><input type="checkbox" name="pc_all" {{if $f.All}}checked{{end}} data-pc-all> <b>全部高级功能</b> <span class="muted">（包括以后新增的功能）</span></label>
+          <div class="pc-features" data-pc-features>
+            {{range $f.Catalog.Features}}<label class="check"><input type="checkbox" name="pc_features" value="{{.ID}}" {{if index $f.Checked .ID}}checked{{end}}> {{.Name}}</label>{{end}}
+          </div>
+        </div>
+        <div class="checks">
+          <label class="check"><input type="checkbox" name="pc_offline" {{if $f.Cfg.Offline}}checked{{end}}> 离线许可证（发 .lic 文件，不能吊销和在线续期）</label>
+        </div>
+      </div>
+
+      <div class="checks" data-pc-pane="template custom">
+        <label class="check"><input type="checkbox" name="pc_renewable" {{if $f.Cfg.Renewable}}checked{{end}}> 可用于续费：出现在同套餐许可证的续费页（永久和离线许可证除外）</label>
+      </div>
+    </div>
+
+    <div data-cfg-generic>
+      <label>发货配置（JSON） <textarea name="deliverer_cfg">{{.SKU.DelivererCfg}}</textarea></label>
+      <p class="muted" data-cfg-example>示例：<span data-cfg-hint></span> <a href="#" data-cfg-fill>填入示例</a></p>
+    </div>
     <label>批发价（JSON，可选） <input name="wholesale" value="{{$k.Wholesale}}" placeholder='[{"min_qty":5,"percent":90},{"min_qty":10,"percent":80}]'></label>
     <div class="fields">
       <label>每单上限 <input type="number" name="limit_per_order" value="{{$k.LimitPerOrder}}" min="1"></label>

@@ -217,6 +217,8 @@ type fakeLicense struct {
 	issued  map[string]string // order_no → license id
 	revoked map[string]bool
 	extend  map[string]int
+	months  map[string]int
+	issues  []map[string]any
 	fail    int
 }
 
@@ -237,7 +239,13 @@ func (f *fakeLicense) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var req map[string]any
 	json.Unmarshal(body, &req)
 	switch {
+	case r.URL.Path == "/admin/v1/catalog":
+		json.NewEncoder(w).Encode(map[string]any{"api": 2, "every_feature": "*",
+			"plans":     []map[string]string{{"id": "pro", "name": "专业版"}, {"id": "enterprise", "name": "企业版"}},
+			"features":  []map[string]string{{"id": "speed_limit", "name": "客户独立限速"}, {"id": "ddns", "name": "DDNS"}},
+			"templates": []map[string]any{{"id": 7, "name": "专业版 · 季付", "plan": "pro", "months": 3, "update_months": 3, "max_activations": 1, "features": []string{"*"}}}})
 	case r.URL.Path == "/admin/v1/keys":
+		f.issues = append(f.issues, req)
 		no := req["order_no"].(string)
 		id, ok := f.issued[no]
 		if !ok {
@@ -248,6 +256,12 @@ func (f *fakeLicense) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case strings.HasSuffix(r.URL.Path, "/extend"):
 		id := strings.Split(r.URL.Path, "/")[4]
 		f.extend[id] += int(req["days"].(float64))
+		if m, ok := req["months"].(float64); ok {
+			if f.months == nil {
+				f.months = map[string]int{}
+			}
+			f.months[id] += int(m)
+		}
 		json.NewEncoder(w).Encode(map[string]any{"license_id": id, "expires_at": "2028-01-01"})
 	case strings.HasSuffix(r.URL.Path, "/revoke"):
 		f.revoked[strings.Split(r.URL.Path, "/")[4]] = true
@@ -390,5 +404,38 @@ func TestRefundRevokesPartialPolarisDelivery(t *testing.T) {
 	}
 	if !fake.revoked["lic_partial"] {
 		t.Fatalf("partial license not revoked: %v", fake.revoked)
+	}
+}
+
+func TestPolarisTemplateSKU(t *testing.T) {
+	s, _ := setup(t)
+	fake := &fakeLicense{secret: strings.Repeat("s", 32), issued: map[string]string{}, revoked: map[string]bool{}, extend: map[string]int{}}
+	ts := httptest.NewServer(fake)
+	defer ts.Close()
+	s.PolarisClient = &polaris.Client{BaseURL: ts.URL, Secret: fake.secret}
+	ctx := context.Background()
+
+	cat, err := s.PolarisCatalog(ctx, true)
+	if err != nil || cat.Template(7) == nil || !cat.HasFeature("ddns") || cat.HasFeature("speedlimit") {
+		t.Fatalf("catalog %+v %v", cat, err)
+	}
+	sku := mkSKU(t, s, "polaris", `{"template":7,"template_name":"专业版 · 季付","plan":"pro","months":3,"update_months":3,"renewable":true}`, 9900)
+	o := order(t, s, sku, 1, "")
+	s.MarkPaid(ctx, PaidInput{OrderNo: o.OrderNo, Channel: "alipay", TradeNo: "T1", Amount: o.PayAmount, Currency: model.CNY})
+	runJobs(s)
+	if len(fake.issues) != 1 || fake.issues[0]["template"].(float64) != 7 {
+		t.Fatalf("issue request %v", fake.issues)
+	}
+	// the template SKU renews by its months
+	var b model.LicenseBinding
+	s.Store.DB.First(&b)
+	ro, err := s.CreateOrder(ctx, CreateInput{SKUID: sku.ID, Qty: 2, Email: "buyer@example.com", QueryPassword: "1234", PayMethod: model.PayEPayWxpay, RenewOf: b.LicenseID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	s.MarkPaid(ctx, PaidInput{OrderNo: ro.OrderNo, Channel: "wxpay", TradeNo: "T2", Amount: ro.PayAmount, Currency: model.CNY})
+	runJobs(s)
+	if fake.months[b.LicenseID] != 6 || fake.extend[b.LicenseID] != 0 {
+		t.Fatalf("renewal months %v days %v", fake.months, fake.extend)
 	}
 }

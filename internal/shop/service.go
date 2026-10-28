@@ -41,6 +41,12 @@ type Service struct {
 
 	backupMu sync.Mutex
 
+	catMu  sync.Mutex
+	cat    *polaris.Catalog
+	catErr error
+	catAt  time.Time
+	catKey string
+
 	// Overridable in tests.
 	PolarisClient *polaris.Client
 	EPayClient    *payment.EPay

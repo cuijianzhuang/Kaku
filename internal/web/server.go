@@ -19,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/cuijianzhuang/kaku/internal/model"
+	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/shop"
 	"github.com/cuijianzhuang/kaku/internal/store"
 )
@@ -128,21 +129,24 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":    statusLabel,
-	"method":    methodLabel,
-	"markdown":  renderMarkdown,
-	"add":       func(a, b int) int { return a + b },
-	"price":     priceInput,
-	"contains":  strings.Contains,
-	"join":      strings.Join,
-	"query":     url.QueryEscape,
-	"kb":        func(n int64) float64 { return float64(n) / 1024 },
-	"hasPrefix": strings.HasPrefix,
-	"initial":   initial,
-	"nav":       navItem,
-	"hue":       func(id uint) int { return int(id*67+220) % 360 },
-	"fromPrice": fromPrice,
-	"plain":     plainText,
+	"status":      statusLabel,
+	"method":      methodLabel,
+	"markdown":    renderMarkdown,
+	"add":         func(a, b int) int { return a + b },
+	"price":       priceInput,
+	"contains":    strings.Contains,
+	"join":        strings.Join,
+	"query":       url.QueryEscape,
+	"kb":          func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix":   strings.HasPrefix,
+	"initial":     initial,
+	"nav":         navItem,
+	"hue":         func(id uint) int { return int(id*67+220) % 360 },
+	"fromPrice":   fromPrice,
+	"plain":       plainText,
+	"months":      monthsLabel,
+	"days":        daysLabel,
+	"featSummary": featSummary,
 	"abs": func(base, u string) string {
 		if strings.HasPrefix(u, "/") {
 			return base + u
@@ -162,6 +166,51 @@ var funcs = template.FuncMap{
 		}
 		return "light dark"
 	},
+}
+
+// monthsLabel is a template term: 0 = perpetual (or every version).
+func monthsLabel(m int, zero string) string {
+	switch {
+	case m <= 0:
+		return zero
+	case m%12 == 0:
+		return fmt.Sprintf("%d 年", m/12)
+	}
+	return fmt.Sprintf("%d 个月", m)
+}
+
+// daysLabel is a day count in friendly units.
+func daysLabel(d int, zero string) string {
+	switch {
+	case d <= 0:
+		return zero
+	case d%365 == 0:
+		return fmt.Sprintf("%d 年", d/365)
+	case d%30 == 0:
+		return fmt.Sprintf("%d 个月", d/30)
+	}
+	return fmt.Sprintf("%d 天", d)
+}
+
+// featSummary names a license's features.
+func featSummary(cat *polaris.Catalog, ids []string) string {
+	if len(ids) == 0 {
+		return "无高级功能"
+	}
+	var names []string
+	for _, id := range ids {
+		if id == polaris.Every {
+			return "全部高级功能"
+		}
+		name := id
+		for _, f := range cat.Features {
+			if f.ID == id {
+				name = f.Name
+			}
+		}
+		names = append(names, name)
+	}
+	return strings.Join(names, "、")
 }
 
 // plainText turns Markdown into a short line of text for previews.

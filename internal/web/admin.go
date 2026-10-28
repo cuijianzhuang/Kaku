@@ -16,6 +16,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/payment"
+	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/secure"
 	"github.com/cuijianzhuang/kaku/internal/shop"
 	"github.com/cuijianzhuang/kaku/internal/tgapi"
@@ -72,6 +73,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.extraRoutes(a)
 	s.updateRoutes(a)
 	s.adminUserRoutes(a)
+	s.polarisRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -308,7 +310,8 @@ func (s *Server) skuForm(c *gin.Context) {
 		redirectErr(c, s.cfg.AdminPath+"/products", errors.New("商品不存在"))
 		return
 	}
-	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds()})
+	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds(),
+		"PF": s.polarisFormData(c.Request.Context(), &sku)})
 }
 
 func (s *Server) saveSKU(c *gin.Context) {
@@ -349,9 +352,21 @@ func (s *Server) saveSKU(c *gin.Context) {
 		return
 	}
 	cfg := strings.TrimSpace(c.PostForm("deliverer_cfg"))
+	if kind == "polaris" && c.PostForm("pc_mode") != "" {
+		if cfg, err = s.polarisCfgFromForm(c); err != nil {
+			fail(err)
+			return
+		}
+	}
 	if err := d.Validate(json.RawMessage(cfg)); err != nil {
 		fail(fmt.Errorf("发货配置：%w", err))
 		return
+	}
+	if kind == "polaris" {
+		if err := s.checkPolarisCfg(c.Request.Context(), cfg); err != nil {
+			fail(fmt.Errorf("发货配置：%w", err))
+			return
+		}
 	}
 	wholesale := strings.TrimSpace(c.PostForm("wholesale"))
 	if wholesale != "" {
@@ -693,7 +708,11 @@ func (s *Server) licenseAction(c *gin.Context) {
 			redirectErr(c, back, errors.New("天数需在 1–3650 之间"))
 			return
 		}
-		l, err := pc.Extend(ctx, b.LicenseID, ref, days, 0)
+		term := polaris.Term{Days: days}
+		if c.PostForm("updates") == "on" {
+			term.UpdatesDays = days // the update period grows with it
+		}
+		l, err := pc.Extend(ctx, b.LicenseID, ref, term)
 		if err != nil {
 			redirectErr(c, back, err)
 			return

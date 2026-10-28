@@ -173,19 +173,29 @@
 
 <div class="card" id="polaris">
   <h2 style="margin-top:0">Polaris 授权服务</h2>
-  <form method="post" action="{{$p}}/settings" class="stack">
+  <p class="muted" style="margin-top:-4px;font-size:13px">对接后，Polaris 商品付款即自动向 polaris-license 签发激活码，续费、退款吊销全自动。按下面三步完成：</p>
+  <form method="post" action="{{$p}}/settings" class="stack section">
     <input type="hidden" name="section" value="polaris">
+    <h3>① 填写授权服务地址和 API 密钥</h3>
     <div class="two">
       <label>polaris-license 地址 <input name="polaris_url" value="{{$s.PolarisURL}}" placeholder="https://license.example.com"></label>
-      <label><span>API 密钥 <span class="hint">· 同 KAKU_API_SECRET</span></span><input type="password" name="polaris_secret" autocomplete="off" placeholder="{{if index .Secrets "PolarisSecret"}}已设置，留空不变{{end}}"></label>
+      <label><span>API 密钥 <span class="hint">· 至少 32 位，两边相同</span></span>
+        <span class="secret-input"><input type="password" name="polaris_secret" autocomplete="off" data-secret placeholder="{{if index .Secrets "PolarisSecret"}}已设置，留空不变{{end}}"><button type="button" class="secondary" data-gen-secret>生成</button></span></label>
     </div>
     <button>保存</button>
   </form>
-  <p class="muted">在 polaris-license 的环境变量中配置：</p>
-<pre>KAKU_API_SECRET=（与上面相同的密钥）
-KAKU_API_ALLOW_IPS=（本服务器出口 IP，可选）
+  <div class="section" style="margin-top:18px">
+    <h3>② 在 polaris-license 的环境变量中加入以下配置并重启</h3>
+    <p class="muted">密钥填上一步的同一个（生成后先复制保存）。只允许本服务器调用时，再加 <code>KAKU_API_ALLOW_IPS=本服务器出口 IP</code>。</p>
+<pre data-env>KAKU_API_SECRET=<span data-secret-echo>（与上面相同的密钥）</span>
 KAKU_HOOK_URL={{.HookURL}}
 KAKU_RENEW_URL={{.RenewURL}}{{if .RenewBot}}
 KAKU_RENEW_BOT={{.RenewBot}}{{end}}</pre>
+    <button type="button" class="secondary" data-copy-from="[data-env]"><svg class="ic"><use href="#i-copy"/></svg>复制配置</button>
+  </div>
+  <form method="post" action="{{$p}}/settings/polaris/test" class="section form-foot" style="margin-top:18px">
+    <div style="flex:1;min-width:220px"><h3>③ 测试连接</h3><p class="muted" style="margin:0">检查地址、密钥、IP 白名单和服务器时间，并读取授权服务的套餐、功能和许可证模板。</p></div>
+    <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
+  </form>
 </div>
 {{end}}
