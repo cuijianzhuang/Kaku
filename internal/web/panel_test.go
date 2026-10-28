@@ -2,6 +2,7 @@ package web
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -91,5 +92,52 @@ func TestPanelSettingsAndSKUForm(t *testing.T) {
 	}
 	if !strings.Contains(b.String(), `value="plan:p1" checked`) || !strings.Contains(b.String(), "加油包") {
 		t.Fatal("SKU page does not offer the panel's plans")
+	}
+}
+
+func TestPanelImportAndCategoryPicker(t *testing.T) {
+	e := setup(t)
+	c := e.login()
+	ok := fakePanelAPI(t, []string{"redeem:write"})
+	e.shop.PanelClient = &panelapi.Client{BaseURL: ok.URL + "/adm", Token: "plt_ok"}
+
+	// the page lists plans and packs under the 面板套餐 tab
+	resp, _ := c.Get(e.ts.URL + "/manage/products/panel-import")
+	b, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(b), `value="plan:p1"`) || !strings.Contains(string(b), `value="pack:k1"`) || !strings.Contains(string(b), "面板套餐") {
+		t.Fatal("panel import page")
+	}
+	// create with a new category typed on the spot
+	l := location(e.post(c, "/manage/products/panel-import", url.Values{"title": {"机场套餐"}, "category_id": {"new"}, "new_category": {"机场"},
+		"target": {"plan:p1", "pack:k1"}, "expire_days": {"30"}}))
+	if !strings.Contains(l, "/manage/products/") {
+		t.Fatalf("redirect %s", l)
+	}
+	var cat model.Category
+	if e.st.DB.Where("name = ?", "机场").Take(&cat).Error != nil {
+		t.Fatal("category not created")
+	}
+	var p model.Product
+	e.st.DB.Preload("SKUs").Where("title = ?", "机场套餐").Take(&p)
+	if p.CategoryID != cat.ID || p.Status != model.ProductOff || len(p.SKUs) != 2 || p.SKUs[0].DelivererKind != "panelcode" {
+		t.Fatalf("product %+v", p)
+	}
+	cfg, _ := deliver.ParsePanelCodeCfg(p.SKUs[0].DelivererCfg)
+	if cfg.PlanID != "p1" || cfg.ExpireDays != 30 {
+		t.Fatalf("cfg %+v", cfg)
+	}
+	// the same name again reuses the category
+	e.post(c, "/manage/products/quick", url.Values{"template": {"card"}, "title": {"x"}, "category_id": {"new"}, "new_category": {"机场"}, "price_cny": {"1"}})
+	var n int64
+	if e.st.DB.Model(&model.Category{}).Where("name = ?", "机场").Count(&n); n != 1 {
+		t.Fatalf("category duplicated: %d", n)
+	}
+	// presets
+	e.post(c, "/manage/categories/presets", url.Values{"preset": {"游戏点卡", "机场"}})
+	if e.st.DB.Model(&model.Category{}).Where("name = ?", "游戏点卡").Count(&n); n != 1 {
+		t.Fatal("preset not created")
+	}
+	if got := panelPrice("¥15.50 / 月"); got != 1550 {
+		t.Fatalf("price %d", got)
 	}
 }

@@ -21,6 +21,14 @@
   {{else}}<tr><td colspan="3" class="muted" style="text-align:center;padding:28px">还没有分类</td></tr>{{end}}
 </table></div>
 <div class="card">
+  <h2 style="margin-top:0">常用分类</h2>
+  <p class="muted" style="margin-top:-4px;font-size:13px">勾选后一键创建，之后可以改名和排序。</p>
+  <form method="post" action="{{$p}}/categories/presets" class="stack">
+    <div class="preset-list">{{range .Presets}}<label class="check {{if index $.Have .}}muted{{end}}"><input type="checkbox" name="preset" value="{{.}}" {{if index $.Have .}}disabled checked{{end}}> {{.}}{{if index $.Have .}}（已有）{{end}}</label>{{end}}</div>
+    <div><button class="secondary"><svg class="ic"><use href="#i-plus"/></svg>创建勾选的分类</button></div>
+  </form>
+</div>
+<div class="card">
   <h2 style="margin-top:0">新增分类</h2>
   <form method="post" action="{{$p}}/categories" class="filters" style="margin:0">
     <input name="name" placeholder="分类名称" required>

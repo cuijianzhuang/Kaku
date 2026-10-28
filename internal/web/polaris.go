@@ -151,15 +151,15 @@ func (s *Server) checkPolarisCfg(ctx context.Context, raw string) error {
 }
 
 func (s *Server) polarisImportPage(c *gin.Context) {
-	back := s.cfg.AdminPath + "/products"
-	cat, err := s.shop.PolarisCatalog(c.Request.Context(), true)
-	if err != nil {
-		redirectErr(c, back, errors.New("读取许可证模板失败："+polaris.Explain(err)))
-		return
+	data := gin.H{"Categories": s.categoryList(), "Tab": "polaris", "CatHint": "软件授权"}
+	if !s.shop.Polaris().Ready() {
+		data["NotReady"] = true
+	} else if cat, err := s.shop.PolarisCatalog(c.Request.Context(), true); err != nil {
+		data["Err"] = polaris.Explain(err)
+	} else {
+		data["Catalog"] = cat
 	}
-	var cats []model.Category
-	s.st.DB.Order("sort, id").Find(&cats)
-	s.render(c, 200, "admin_polaris_import", gin.H{"Catalog": cat, "Categories": cats})
+	s.render(c, 200, "admin_polaris_import", data)
 }
 
 func (s *Server) polarisImport(c *gin.Context) {
@@ -172,7 +172,6 @@ func (s *Server) polarisImport(c *gin.Context) {
 		return
 	}
 	title := strings.TrimSpace(c.PostForm("title"))
-	catID := atoiU(c.PostForm("category_id"))
 	var picked []polaris.Template
 	for _, v := range c.PostFormArray("template") {
 		id, _ := strconv.ParseInt(v, 10, 64)
@@ -181,11 +180,16 @@ func (s *Server) polarisImport(c *gin.Context) {
 		}
 	}
 	switch {
-	case title == "" || catID == 0:
-		redirectErr(c, back, errors.New("请填写商品名称并选择分类"))
+	case title == "":
+		redirectErr(c, back, errors.New("请填写商品名称"))
 		return
 	case len(picked) == 0:
 		redirectErr(c, back, errors.New("至少选择一个模板"))
+		return
+	}
+	catID, err := s.categoryFromForm(c)
+	if err != nil {
+		redirectErr(c, back, err)
 		return
 	}
 	p := model.Product{CategoryID: catID, Title: title, Status: model.ProductOff,

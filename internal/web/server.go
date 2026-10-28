@@ -539,7 +539,7 @@ var auditLabels = map[string]string{
 	"license_extend": "续期许可证", "license_revoke": "吊销许可证", "license_sync": "同步许可证",
 	"order_paid": "补单", "order_redeliver": "重新发货", "order_manual": "手动发货", "order_resend": "重发通知", "order_refund": "退款",
 	"orders_export": "导出订单", "product_announce": "推送商品到频道", "product_delete": "删除商品",
-	"product_import_polaris": "从授权模板创建商品", "product_quick": "从模板创建商品", "product_save": "保存商品",
+	"product_import_polaris": "从授权模板创建商品", "product_import_panel": "从面板套餐创建商品", "product_quick": "从模板创建商品", "product_save": "保存商品",
 	"settings_save": "保存设置", "sku_delete": "删除规格", "sku_save": "保存规格",
 	"telegram_webhook": "设置 Telegram Webhook", "ticket_reply": "回复工单", "ticket_close": "关闭工单", "upgrade": "在线升级",
 }
