@@ -1,15 +1,19 @@
 {{define "title"}}审计日志{{end}}
 {{define "content"}}
-<h1>审计日志</h1>
+{{$p := .AdminPath}}
+<div class="page-head"><h1>审计日志</h1></div>
+{{if .Action}}<div class="filter-chip">只看：<b>{{auditLabel .Action}}</b> <a href="{{$p}}/audit">清除</a></div>{{end}}
 <div class="card table-wrap"><table>
   <tr><th>时间</th><th>管理员</th><th>操作</th><th>对象</th><th>详情</th><th>IP</th></tr>
-  {{range .Logs}}<tr><td>{{date .CreatedAt}}</td><td>{{.Admin}}</td><td><a href="?action={{.Action}}">{{.Action}}</a></td><td>{{.Target}}</td><td class="muted">{{.Detail}}</td><td>{{.IP}}</td></tr>
-  {{else}}<tr><td colspan="6" class="muted">暂无</td></tr>{{end}}
+  {{range .Logs}}<tr><td class="nowrap">{{date .CreatedAt}}</td><td>{{or .Admin "—"}}</td><td><a class="plain" href="?action={{.Action}}" title="只看这类操作">{{auditLabel .Action}}</a></td>
+    <td>{{if and (hasPrefix .Action "order_") .Target}}<a href="{{$p}}/orders/{{.Target}}">{{.Target}}</a>{{else if and (or (eq .Action "product_save") (eq .Action "product_quick") (eq .Action "product_announce") (eq .Action "product_import_polaris")) .Target}}<a href="{{$p}}/products/{{.Target}}">商品 #{{.Target}}</a>{{else if and (eq .Action "sku_save") .Target}}<a href="{{$p}}/skus/{{.Target}}">规格 #{{.Target}}</a>{{else}}{{.Target}}{{end}}</td>
+    <td class="muted">{{.Detail}}</td><td class="muted">{{.IP}}</td></tr>
+  {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">暂无记录</td></tr>{{end}}
 </table>
 <div class="pager">
-  {{if gt .Page 1}}<a href="?page={{add .Page -1}}">上一页</a>{{end}}
+  {{if gt .Page 1}}<a href="?action={{.Action}}&page={{add .Page -1}}">上一页</a>{{end}}
   <span>第 {{.Page}} 页</span>
-  {{if .HasNext}}<a href="?page={{add .Page 1}}">下一页</a>{{end}}
+  {{if .HasNext}}<a href="?action={{.Action}}&page={{add .Page 1}}">下一页</a>{{end}}
 </div>
 </div>
 {{end}}

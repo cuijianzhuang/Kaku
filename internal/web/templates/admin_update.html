@@ -55,8 +55,8 @@
     <form method="post" action="{{$p}}/update/settings" class="stack">
       <label class="check opt-row"><input type="checkbox" name="auto_update" {{if $s.AutoUpdate}}checked{{end}} {{if ne .Mode "systemd"}}disabled{{end}}>
         <span><b>自动安装新版本</b><small class="muted">{{if eq .Mode "systemd"}}有新版本就先备份再升级；某个版本失败后不会反复重试{{else}}需要通过一键安装脚本部署{{end}}</small></span></label>
-      <label class="check opt-row"><input type="checkbox" name="update_notify" {{if $s.UpdateNotify}}checked{{end}}>
-        <span><b>有新版本时通知我</b><small class="muted">发送到「设置 → Telegram」里填写的管理员</small></span></label>
+      <label class="check opt-row"><input type="checkbox" name="update_notify" {{if $s.UpdateNotify}}checked{{end}} {{if not (and $s.TGToken $s.TGAdminChat)}}disabled{{end}}>
+        <span><b>有新版本时通知我</b><small class="muted">{{if and $s.TGToken $s.TGAdminChat}}发送到 Telegram 管理员{{else}}需先在 <a href="{{$p}}/settings/telegram">设置 → Telegram</a> 填写 Bot Token 和管理员 Chat ID{{end}}</small></span></label>
       <label class="hour-row">每天检查时间
         <select name="auto_update_hour">{{range $h := hours}}<option value="{{$h}}" {{if eq $h $s.AutoUpdateHour}}selected{{end}}>{{printf "%02d:00" $h}}</option>{{end}}</select>
         <span class="muted">服务器时间（{{.TZ}}）</span>

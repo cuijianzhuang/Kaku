@@ -534,6 +534,22 @@ body.admin { background: var(--bg); }
 .upd-arrow { transform: rotate(180deg); width: 14px; height: 14px; color: var(--muted); }
 .upd-note { margin: 8px 0 0; font-size: 13px; }
 .err-text { color: #dc2626; }
+.setup-card { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); margin-bottom: 16px; }
+.setup-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.setup-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+.setup-list li:first-child { border-top: 0; padding-top: 0; }
+.setup-list li > div { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.setup-list small { font-size: 12.5px; }
+.setup-list .ic { flex: none; width: 18px; height: 18px; color: #d97706; }
+.setup-list li.done { opacity: .6; }
+.setup-list li.done .ic { color: var(--ok); }
+.setup-list li.done b { text-decoration: line-through; font-weight: 500; }
+.btn.sm { padding: 5px 10px; font-size: 13px; min-height: 0; }
+.filter-chip { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; padding: 5px 12px; border-radius: 999px; background: var(--bg-soft); border: 1px solid var(--line); font-size: 13px; }
+a.plain { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--line-2); }
+.scope-pick summary { cursor: pointer; font-size: 14px; color: var(--text-2); }
+.scope-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 16px; margin-top: 10px; }
+.export-box summary { cursor: pointer; }
 .todo-card { border-color: color-mix(in srgb, #d97706 45%, var(--line)); }
 .todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
 .todo-list li { display: flex; gap: 8px; align-items: flex-start; }

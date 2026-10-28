@@ -162,6 +162,7 @@ var funcs = template.FuncMap{
 		}
 		return n > 0
 	},
+	"auditLabel": auditLabel,
 	"hours": func() []int {
 		h := make([]int, 24)
 		for i := range h {
@@ -348,6 +349,14 @@ func (s *Server) render(c *gin.Context, code int, page string, data gin.H) {
 	data["Version"] = s.cfg.Version
 	data["Path"] = c.Request.URL.Path
 	data["BaseURL"] = s.publicURL(c)
+	if strings.HasPrefix(page, "admin_") {
+		// the license page only matters once Polaris is in use
+		var n int64
+		if st.PolarisURL == "" {
+			s.st.DB.Model(&model.SKU{}).Where("deliverer_kind = ?", "polaris").Count(&n)
+		}
+		data["ShowLicenses"] = st.PolarisURL != "" || n > 0
+	}
 	if _, ok := data["Flash"]; !ok {
 		data["Flash"] = c.Query("msg")
 	}
@@ -517,4 +526,28 @@ func shopDecimal(amount int64, places int) string {
 	}
 	s := fmt.Sprintf("%d.%0*d", amount/scale, places, amount%scale)
 	return strings.TrimRight(strings.TrimRight(s, "0"), ".")
+}
+
+var auditLabels = map[string]string{
+	"login": "登录", "login_failed": "登录失败", "oauth_link": "绑定第三方登录", "oauth_unlink": "解绑第三方登录",
+	"admin_create": "添加管理员", "admin_delete": "删除管理员", "admin_password_reset": "重置管理员密码",
+	"password_change": "修改密码", "totp_enable": "开启两步验证", "totp_disable": "关闭两步验证",
+	"backup_download": "下载备份", "backup_run": "立即备份", "backup_send": "发送备份",
+	"card_void": "作废卡密", "cards_export": "导出卡密", "cards_import": "导入卡密",
+	"category_save": "保存分类", "category_delete": "删除分类",
+	"coupon_create": "创建优惠码", "coupon_disable": "停用优惠码", "coupon_enable": "启用优惠码",
+	"license_extend": "续期许可证", "license_revoke": "吊销许可证", "license_sync": "同步许可证",
+	"order_paid": "补单", "order_redeliver": "重新发货", "order_manual": "手动发货", "order_resend": "重发通知", "order_refund": "退款",
+	"orders_export": "导出订单", "product_announce": "推送商品到频道", "product_delete": "删除商品",
+	"product_import_polaris": "从授权模板创建商品", "product_quick": "从模板创建商品", "product_save": "保存商品",
+	"settings_save": "保存设置", "sku_delete": "删除规格", "sku_save": "保存规格",
+	"telegram_webhook": "设置 Telegram Webhook", "ticket_reply": "回复工单", "ticket_close": "关闭工单", "upgrade": "在线升级",
+}
+
+// auditLabel names an audit action in Chinese (unknown codes as they are).
+func auditLabel(code string) string {
+	if v, ok := auditLabels[code]; ok {
+		return v
+	}
+	return code
 }

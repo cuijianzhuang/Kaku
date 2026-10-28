@@ -91,10 +91,12 @@
     {{else}}<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">还没有规格，添加后商品才会在前台展示</td></tr>{{end}}
   </table></div>
 </div>
+{{if and .Settings.TGToken .Settings.TGChannel}}
 <div class="card row">
   <div><h3 style="margin:0 0 2px;font-size:15px">推送到 Telegram 频道</h3><p class="muted" style="margin:0;font-size:13px">在设置里填写的公告频道发一条商品消息，附购买按钮。</p></div>
   <form method="post" action="{{$p}}/products/{{$prod.ID}}/announce" class="inline" data-confirm="推送到 Telegram 频道？"><button class="secondary">推送</button></form>
 </div>
+{{end}}
 <div class="card danger-zone">
   <div><h3>删除商品</h3><p class="muted">同时删除全部规格和未售出的卡密；已有订单不受影响。</p></div>
   <form method="post" action="{{$p}}/products/{{$prod.ID}}/delete" class="inline" data-confirm="删除商品及其规格和未售卡密？"><button class="danger">删除商品</button></form>

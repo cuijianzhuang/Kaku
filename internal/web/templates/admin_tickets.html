@@ -4,6 +4,7 @@
 <div class="page-head"><h1>售后工单</h1>
   <div class="seg"><a href="?status=open" {{if eq .Status "open"}}class="on"{{end}}>待回复</a><a href="?status=replied" {{if eq .Status "replied"}}class="on"{{end}}>已回复</a><a href="?status=closed" {{if eq .Status "closed"}}class="on"{{end}}>已关闭</a><a href="?status=all" {{if eq .Status "all"}}class="on"{{end}}>全部</a></div>
 </div>
+{{if not .MailReady}}<div class="notice" style="margin-bottom:16px"><svg class="ic"><use href="#i-info"/></svg><span>还没有配置发件邮箱，回复只会保存在这里，买家收不到。<a href="{{$p}}/settings/mail">去设置邮件</a></span></div>{{end}}
 {{range .Tickets}}
 <div class="card">
   <div class="row"><b>#{{.ID}} · {{.Email}}{{if .OrderNo}} · 订单 <a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{end}}</b><span class="badge {{.Status}}">{{status .Status}}</span></div>
@@ -12,10 +13,10 @@
   {{if .Reply}}<p class="muted">已回复：</p><pre>{{.Reply}}</pre>{{end}}
   {{if ne .Status "closed"}}
   <form method="post" action="{{$p}}/tickets/{{.ID}}/reply" class="stack">
-    <textarea name="reply" required placeholder="回复内容（会发送邮件给买家）" style="font-family:inherit;min-height:80px"></textarea>
+    <textarea name="reply" required placeholder="{{if $.MailReady}}回复内容（会发送邮件给买家）{{else}}回复内容（未配置邮件，买家收不到）{{end}}" style="font-family:inherit;min-height:80px"></textarea>
     <div class="row"><button>回复</button></div>
   </form>
-  <form method="post" action="{{$p}}/tickets/{{.ID}}/close" style="margin-top:8px"><button class="secondary">关闭工单</button></form>
+  <form method="post" action="{{$p}}/tickets/{{.ID}}/close" style="margin-top:8px" data-confirm="关闭这个工单？"><button class="secondary">关闭工单</button></form>
   {{end}}
 </div>
 {{else}}<div class="card empty"><svg class="ic"><use href="#i-message"/></svg><p>没有{{if eq .Status "open"}}待回复的{{end}}工单</p></div>{{end}}

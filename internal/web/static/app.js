@@ -451,6 +451,14 @@ document.querySelectorAll('form[data-action-form]').forEach((form) => {
   });
 });
 
+// Styled file buttons: show the picked file's name.
+document.addEventListener('change', (e) => {
+  const inp = e.target;
+  if (!inp.matches || !inp.matches('.file-btn input[type=file]')) return;
+  const name = inp.closest('.file-btn').querySelector('[data-file-name]');
+  if (name) name.textContent = inp.files[0] ? inp.files[0].name : '选择文件';
+});
+
 // Settings: generate a random API secret and show it (it is needed on the
 // license server too); copy a block of text.
 document.addEventListener('click', (e) => {

@@ -15,7 +15,8 @@
         <label>备份时间（时，0–23） <input type="number" name="backup_hour" value="{{$s.BackupHour}}" min="0" max="23" style="width:90px"></label>
         <label>保留份数 <input type="number" name="backup_keep" value="{{$s.BackupKeep}}" min="1" max="90" style="width:90px"></label>
       </div>
-      <label class="check"><input type="checkbox" name="backup_telegram" {{if $s.BackupTelegram}}checked{{end}}> 同时发送到 Telegram 管理员（需在设置中填写 Bot Token 和 Chat ID；超过 50 MB 只保存在服务器）</label>
+      {{if and $s.TGToken $s.TGAdminChat}}<label class="check"><input type="checkbox" name="backup_telegram" {{if $s.BackupTelegram}}checked{{end}}> 同时发送到 Telegram 管理员（超过 50 MB 只保存在服务器）</label>
+      {{else}}<p class="muted" style="margin:0;font-size:13px">想把备份同时发到 Telegram？先在 <a href="{{$p}}/settings/telegram">设置 → Telegram</a> 填写 Bot Token 和管理员 Chat ID。</p>{{end}}
       <button>保存</button>
       {{if .LastDay}}<p class="muted">上次自动备份：{{.LastDay}}</p>{{end}}
     </form>
@@ -23,7 +24,7 @@
   <div class="card">
     <h2 style="margin-top:0">立即备份</h2>
     <form method="post" action="{{$p}}/backups/run" class="stack">
-      <label class="check"><input type="checkbox" name="send"> 备份后发送到 Telegram</label>
+      {{if and $s.TGToken $s.TGAdminChat}}<label class="check"><input type="checkbox" name="send"> 备份后发送到 Telegram</label>{{end}}
       <button>立即备份</button>
     </form>
     <p class="muted">备份是 gzip 压缩的 SQLite 数据库。卡密和支付密钥在其中是加密的，<b>恢复时必须使用同一个 KAKU_MASTER_KEY</b>：停止服务，解压后替换数据目录中的 kaku.db，再启动。</p>

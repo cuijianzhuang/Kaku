@@ -9,6 +9,15 @@
   </div>
 </div>
 {{with .NewRelease}}<a class="flash info update-banner" href="{{$p}}/update"><svg class="ic"><use href="#i-upgrade"/></svg><span>Kaku 有新版本 <b>{{.Tag}}</b>，点击查看并升级</span></a>{{end}}
+{{with .Setup}}
+<div class="card setup-card">
+  <h2 style="margin-top:0">开店检查</h2>
+  <ul class="setup-list">
+    {{range .}}<li class="{{if .Done}}done{{end}}"><svg class="ic"><use href="#i-{{if .Done}}check{{else}}alert{{end}}"/></svg>
+      <div><b>{{.Text}}</b><small class="muted">{{.Hint}}</small></div>{{if not .Done}}<a class="btn secondary sm" href="{{.Link}}">去设置</a>{{end}}</li>{{end}}
+  </ul>
+</div>
+{{end}}
 <div class="stats">
   {{range .Today}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>
   {{else}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入</span><b>0</b><span class="muted">还没有付款订单</span></div>{{end}}
@@ -36,8 +45,8 @@
 <div class="card table-wrap">
   <h2>库存预警</h2>
   <table>
-    <tr><th>规格</th><th>剩余</th><th>预警线</th><th></th></tr>
-    {{range .Low}}<tr><td>{{.Name}} <span class="muted">#{{.ID}}</span></td><td><span class="badge failed">{{.StockCache}}</span></td><td>{{.LowStock}}</td><td><a href="{{$p}}/cards?sku={{.ID}}">补货 →</a></td></tr>{{end}}
+    <tr><th>商品 · 规格</th><th>剩余</th><th>预警线</th><th></th></tr>
+    {{range .Low}}<tr><td>{{index $.LowTitles .ProductID}} · {{.Name}}</td><td><span class="badge failed">{{.StockCache}}</span></td><td>{{.LowStock}}</td><td><a href="{{$p}}/cards?sku={{.ID}}">补货 →</a></td></tr>{{end}}
   </table>
 </div>
 {{end}}
