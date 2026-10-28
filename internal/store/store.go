@@ -143,12 +143,16 @@ type Settings struct {
 
 	RemindEnabled bool `json:"remind_enabled"` // license expiry reminders (7 days and 1 day before)
 
+	AutoUpdate     bool `json:"auto_update"`      // install new releases automatically
+	AutoUpdateHour int  `json:"auto_update_hour"` // local hour of the daily check
+	UpdateNotify   bool `json:"update_notify"`    // tell the admin chat about new releases
+
 	Accent string `json:"accent"` // theme colour preset: "" (ink), indigo, emerald, amber, rose, blue
 }
 
 func defaults() *Settings {
 	return &Settings{SiteName: "Kaku 发卡", OrderTTL: 15, MaxUnpaid: 3, SMTPPort: 465, EPayAlipay: true, EPayWxpay: true,
-		BackupHour: 4, BackupKeep: 7, RemindEnabled: true}
+		BackupHour: 4, BackupKeep: 7, RemindEnabled: true, AutoUpdateHour: 5, UpdateNotify: true}
 }
 
 const settingsKey = "settings"

@@ -30,6 +30,14 @@ bash <(curl -fsSL https://github.com/cuijianzhuang/Kaku/releases/latest/download
 
 `kaku-ctl update` 升级到最新版本，新版本启动失败会自动回滚；`kaku-ctl backup` 把数据库和配置打包到 `/root`。
 
+#### 在线升级与定时升级
+
+后台 **系统 → 升级** 显示当前版本和最新版本，可一键升级；也可以开启「自动安装新版本」，每天在设定的整点检查，有新版本就自动升级，并在有新版本、升级完成或失败时通知 Telegram 管理员。
+
+每次升级前会先备份数据库（SQLite），然后下载新版本、校验 SHA-256、重启服务；新版本无法启动时自动回滚到旧版本。某个版本升级失败后不会自动重试，可以在页面查看升级日志。
+
+商店进程以普通用户运行，不能替换自己的程序：后台只写入一个升级请求（`/var/lib/kaku/update-request`，只含版本号），由 root 运行的 `kaku-update.path` 调用 `kaku-ctl apply-request` 完成升级，结果写到 `/var/lib/kaku-updater`。用旧版脚本安装的服务器执行一次 `kaku-ctl update` 即可启用。Docker 部署请用 `docker compose pull && docker compose up -d`（定时升级可用 Watchtower）。
+
 ### 方式二：Docker Compose
 
 ```bash

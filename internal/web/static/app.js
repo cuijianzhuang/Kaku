@@ -23,7 +23,10 @@ document.addEventListener('submit', (e) => {
   const tick = () => {
     if (++tries > 400) return;
     fetch(url, { cache: 'no-store' }).then((r) => r.json()).then((d) => {
-      if (d.status && d.status !== start) location.reload();
+      if (d.status && d.status !== start) {
+        const to = el.getAttribute('data-reload');
+        if (to) location.href = to; else location.reload();
+      }
       else setTimeout(tick, 3000);
     }).catch(() => setTimeout(tick, 5000));
   };

@@ -24,6 +24,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/secure"
 	"github.com/cuijianzhuang/kaku/internal/store"
 	"github.com/cuijianzhuang/kaku/internal/tgapi"
+	"github.com/cuijianzhuang/kaku/internal/update"
 )
 
 // Service runs the shop.
@@ -35,6 +36,8 @@ type Service struct {
 	Now    func() time.Time
 	// BackupDir holds automatic backups ("" = backups off).
 	BackupDir string
+	// Updater checks for and installs new releases (nil = off).
+	Updater *update.Updater
 
 	backupMu sync.Mutex
 

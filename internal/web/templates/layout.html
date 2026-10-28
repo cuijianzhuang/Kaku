@@ -14,6 +14,7 @@
 <symbol id="i-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></symbol>
 <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-upgrade" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 4-4 4 4M12 16V8"/></symbol>
 <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
 <symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
 <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
@@ -120,6 +121,7 @@
     {{template "navlink" (nav "备份" "database" (printf "%s/backups" $p) .Path false)}}
     {{template "navlink" (nav "安全" "lock" (printf "%s/security" $p) .Path false)}}
     {{template "navlink" (nav "日志" "list" (printf "%s/audit" $p) .Path false)}}
+    {{template "navlink" (nav "升级" "upgrade" (printf "%s/update" $p) .Path false)}}
     <div class="bottom">
       <a class="nav-link" href="/" target="_blank" rel="noopener"><svg class="ic"><use href="#i-bag"/></svg>查看商店</a>
       <form method="post" action="{{$p}}/logout"><button><svg class="ic"><use href="#i-logout"/></svg><span>退出登录</span></button></form>
