@@ -859,6 +859,10 @@ func (s *Server) saveSettings(c *gin.Context) {
 		st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
 		st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
 		st.RemindEnabled = on("remind_enabled")
+		switch a := str("accent"); a {
+		case "", "indigo", "emerald", "amber", "rose", "blue":
+			st.Accent = a
+		}
 		st.TurnstileSite = str("turnstile_site")
 		secret("turnstile_secret", &st.TurnstileSecret)
 		if st.SiteName == "" {

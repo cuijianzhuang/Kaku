@@ -126,6 +126,10 @@ var funcs = template.FuncMap{
 	"nav":       navItem,
 	"hue":       func(id uint) int { return int(id*67+220) % 360 },
 	"fromPrice": fromPrice,
+	"accents": func() [][3]string {
+		return [][3]string{{"", "墨黑（默认）", "#18181b"}, {"indigo", "靛蓝", "#4f46e5"}, {"emerald", "翠绿", "#059669"},
+			{"amber", "琥珀", "#d97706"}, {"rose", "玫红", "#e11d48"}, {"blue", "海蓝", "#2563eb"}}
+	},
 }
 
 // initial is the first letter of a name, for logos and cover placeholders.

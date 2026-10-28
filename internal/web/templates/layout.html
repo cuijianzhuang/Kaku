@@ -43,7 +43,7 @@
 {{end}}
 
 {{define "public"}}<!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN"{{with .Settings.Accent}} data-accent="{{.}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -81,7 +81,7 @@
 {{define "navlink"}}<a class="nav-link {{if .On}}on{{end}}" href="{{.Href}}"><svg class="ic"><use href="#i-{{.Icon}}"/></svg>{{.Label}}</a>{{end}}
 
 {{define "admin"}}<!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN"{{with .Settings.Accent}} data-accent="{{.}}"{{end}}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
