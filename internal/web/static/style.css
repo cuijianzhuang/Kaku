@@ -453,3 +453,10 @@ body.admin { background: var(--bg); }
 .flash.info { background: var(--bg-soft); color: var(--text); border: 1px solid var(--line); }
 .update-banner { text-decoration: none; align-items: center; }
 .update-banner:hover { text-decoration: none; border-color: var(--line-2); }
+
+/* sign-in with external accounts */
+.divider { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 13px; margin: 18px 0 14px; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.btn.sso { gap: 10px; }
+.ic.sso-ic { width: 18px; height: 18px; }
+.sso-list { display: flex; flex-direction: column; gap: 10px; }

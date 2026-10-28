@@ -33,7 +33,10 @@ type env struct {
 	shop *shop.Service
 	st   *store.Store
 	ts   *httptest.Server
-	bot  *fakeBot
+	srv  *Server
+	// approve plays the OAuth provider's consent page (oauth_test.go)
+	approve func(authorizeURL string) string
+	bot     *fakeBot
 	// fake EPay gateway state
 	gwPaid  atomic.Bool
 	gwMoney atomic.Value
@@ -77,6 +80,7 @@ func setup(t *testing.T) *env {
 	st.SaveSettings(set)
 	st.DB.Create(&model.Admin{Username: "admin", PasswordHash: secure.HashPassword("correct horse battery"), Epoch: 1})
 	srv := New(Config{AdminPath: "/manage"}, svc, e.bot, log)
+	e.srv = srv
 	e.ts = httptest.NewServer(srv.Handler())
 	t.Cleanup(e.ts.Close)
 	return e

@@ -45,6 +45,9 @@ type Server struct {
 	pages map[string]*template.Template
 	now   func() time.Time
 
+	oauth     map[string]*oauthProvider // admin sign-in providers
+	oauthHTTP *http.Client
+
 	queryLimit *limiter // failed order lookups per address
 	loginLimit *limiter // failed admin logins per address
 	orderLimit *limiter // orders created per address
@@ -60,6 +63,7 @@ func New(cfg Config, s *shop.Service, bot TGHandler, log *slog.Logger) *Server {
 	}
 	cfg.AdminPath = "/" + strings.Trim(cfg.AdminPath, "/")
 	srv := &Server{cfg: cfg, shop: s, st: s.Store, log: log, bot: bot, now: time.Now,
+		oauth: defaultProviders(), oauthHTTP: &http.Client{Timeout: 20 * time.Second},
 		queryLimit: newLimiter(10, 15*time.Minute), loginLimit: newLimiter(10, 15*time.Minute), orderLimit: newLimiter(20, 10*time.Minute)}
 	srv.pages = srv.parsePages()
 	return srv

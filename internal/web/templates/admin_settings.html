@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$s := .S}}
-<div class="page-head"><h1>设置</h1><div class="seg"><a href="#site">站点</a><a href="#payment">支付</a><a href="#mail">邮件</a><a href="#telegram">Telegram</a><a href="#polaris">Polaris</a></div></div>
+<div class="page-head"><h1>设置</h1><div class="seg"><a href="#site">站点</a><a href="#payment">支付</a><a href="#mail">邮件</a><a href="#telegram">Telegram</a><a href="#login">登录</a><a href="#polaris">Polaris</a></div></div>
 
 <div class="card" id="site">
   <h2 style="margin-top:0">站点</h2>
@@ -103,6 +103,35 @@
   <form method="post" action="{{$p}}/settings/telegram/webhook" class="form-foot section" style="margin-top:18px">
     <button class="secondary">设置 Webhook</button>
     <span class="muted">保存 Token 并填写 HTTPS 站点地址后点击；会自动读取机器人用户名并注册命令。</span>
+  </form>
+</div>
+
+<div class="card" id="login">
+  <h2 style="margin-top:0">登录方式</h2>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="login">
+    <p class="muted" style="margin:-6px 0 0;font-size:13px">在登录页显示「使用 GitHub / Google 登录」。配置后，每个管理员先用密码登录，在「安全」页面绑定自己的账号，之后才能用该账号登录；不会自动创建管理员，开启了两步验证的仍需输入验证码。</p>
+    <div class="section">
+      <h3>GitHub</h3>
+      <p class="muted">在 GitHub → Settings → Developer settings → OAuth Apps 新建应用，回调地址填 <code>{{.OAuthBase}}github/callback</code></p>
+      <div class="fields">
+        <label class="wide">Client ID <input name="github_client_id" value="{{$s.GitHubClientID}}" autocomplete="off"></label>
+        <label>Client Secret <input type="password" name="github_client_secret" autocomplete="off" placeholder="{{if index .Secrets "GitHubClientSecret"}}已设置，留空不变{{end}}"></label>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Google</h3>
+      <p class="muted">在 Google Cloud Console → API 和服务 → 凭据 新建「OAuth 客户端 ID（Web 应用）」，已获授权的重定向 URI 填 <code>{{.OAuthBase}}google/callback</code></p>
+      <div class="fields">
+        <label class="wide">Client ID <input name="google_client_id" value="{{$s.GoogleClientID}}" autocomplete="off"></label>
+        <label>Client Secret <input type="password" name="google_client_secret" autocomplete="off" placeholder="{{if index .Secrets "GoogleClientSecret"}}已设置，留空不变{{end}}"></label>
+      </div>
+    </div>
+    <div class="section">
+      <h3>后台入口</h3>
+      <label class="check"><input type="checkbox" name="admin_link_in_footer" {{if $s.AdminLinkInFooter}}checked{{end}}> 在商店页脚显示「后台登录」链接（会公开后台路径，建议保持关闭并收藏后台地址）</label>
+    </div>
+    <button>保存</button>
   </form>
 </div>
 

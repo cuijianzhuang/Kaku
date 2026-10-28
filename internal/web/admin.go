@@ -24,6 +24,9 @@ import (
 func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	g.GET("/login", s.loginPage)
 	g.POST("/login", s.login)
+	g.GET("/oauth/:provider/start", s.oauthStart)
+	g.GET("/oauth/:provider/callback", s.oauthCallback)
+	g.POST("/oauth/totp", s.oauthTOTP)
 	a := g.Group("", s.requireAdmin)
 	a.POST("/logout", s.logout)
 	a.GET("", s.dashboard)
@@ -64,6 +67,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/security/totp/setup", s.totpSetup)
 	a.POST("/security/totp/enable", s.totpEnable)
 	a.POST("/security/totp/disable", s.totpDisable)
+	a.POST("/security/oauth/unlink", s.oauthUnlink)
 	a.GET("/audit", s.auditPage)
 	s.extraRoutes(a)
 	s.updateRoutes(a)
@@ -826,11 +830,12 @@ func (s *Server) settingsPage(c *gin.Context) {
 	st := s.st.Settings()
 	secrets := map[string]bool{"EPayKey": st.EPayKey != "", "TronGridKey": st.TronGridKey != "", "SMTPPass": st.SMTPPass != "",
 		"TGToken": st.TGToken != "", "TGWebhookSecret": st.TGWebhookSecret != "", "PolarisSecret": st.PolarisSecret != "",
-		"TurnstileSecret": st.TurnstileSecret != ""}
+		"TurnstileSecret":    st.TurnstileSecret != "",
+		"GitHubClientSecret": st.GitHubClientSecret != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
 	s.render(c, 200, "admin_settings", gin.H{"S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
-		"RenewBot": renewBotTemplate(st.TGBotUsername)})
+		"RenewBot": renewBotTemplate(st.TGBotUsername), "OAuthBase": base + s.cfg.AdminPath + "/oauth/"})
 }
 
 func renewBotTemplate(user string) string {
@@ -901,6 +906,11 @@ func (s *Server) saveSettings(c *gin.Context) {
 			redirectErr(c, back, errors.New("授权服务密钥至少 32 位（与 polaris-license 的 KAKU_API_SECRET 一致）"))
 			return
 		}
+	case "login":
+		st.GitHubClientID, st.GoogleClientID = str("github_client_id"), str("google_client_id")
+		secret("github_client_secret", &st.GitHubClientSecret)
+		secret("google_client_secret", &st.GoogleClientSecret)
+		st.AdminLinkInFooter = on("admin_link_in_footer")
 	default:
 		redirectErr(c, back, errors.New("未知设置分组"))
 		return
