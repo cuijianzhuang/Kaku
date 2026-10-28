@@ -129,18 +129,25 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":       statusLabel,
-	"method":       methodLabel,
-	"markdown":     renderMarkdown,
-	"add":          func(a, b int) int { return a + b },
-	"price":        priceInput,
-	"contains":     strings.Contains,
-	"join":         strings.Join,
-	"query":        url.QueryEscape,
-	"kb":           func(n int64) float64 { return float64(n) / 1024 },
-	"hasPrefix":    strings.HasPrefix,
-	"initial":      initial,
-	"nav":          navItem,
+	"status":    statusLabel,
+	"method":    methodLabel,
+	"markdown":  renderMarkdown,
+	"add":       func(a, b int) int { return a + b },
+	"price":     priceInput,
+	"contains":  strings.Contains,
+	"join":      strings.Join,
+	"query":     url.QueryEscape,
+	"kb":        func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix": strings.HasPrefix,
+	"initial":   initial,
+	"nav":       navItem,
+	"hours": func() []int {
+		h := make([]int, 24)
+		for i := range h {
+			h[i] = i
+		}
+		return h
+	},
 	"settingsTabs": func() []settingsTab { return settingsTabs },
 	"hue":          func(id uint) int { return int(id*67+220) % 360 },
 	"fromPrice":    fromPrice,
