@@ -74,7 +74,13 @@ type skuView struct {
 
 func (s *Server) productPage(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	p, err := s.shop.Product(uint(id))
+	s.renderProduct(c, uint(id), nil, nil)
+}
+
+// renderProduct draws a product page; after a failed order it shows the
+// error with what the buyer typed (except the query password).
+func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, orderErr error) {
+	p, err := s.shop.Product(id)
 	if err != nil {
 		s.fail(c, err)
 		return
@@ -90,7 +96,22 @@ func (s *Server) productPage(c *gin.Context) {
 		}
 		skus = append(skus, v)
 	}
-	s.render(c, 200, "product", gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb)})
+	inStock := false
+	for _, k := range skus {
+		if k.Stock != 0 {
+			inStock = true
+		}
+	}
+	if form == nil {
+		form = map[string]string{}
+	}
+	data := gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb), "InStock": inStock, "Form": form}
+	code := http.StatusOK
+	if orderErr != nil {
+		data["Error"] = orderErr.Error()
+		code = http.StatusUnprocessableEntity
+	}
+	s.render(c, code, "product", data)
 }
 
 // fail shows a buyer-safe error page.
@@ -173,7 +194,10 @@ func (s *Server) createOrder(c *gin.Context) {
 		IP:  ip, Channel: model.ChannelWeb,
 	})
 	if err != nil {
-		redirectErr(c, back, errors.New(userMessage(err)))
+		pid, _ := strconv.Atoi(c.PostForm("product_id"))
+		form := map[string]string{"sku_id": c.PostForm("sku_id"), "qty": c.PostForm("qty"), "email": c.PostForm("email"),
+			"coupon": c.PostForm("coupon"), "remark": c.PostForm("remark"), "ask": c.PostForm("ask"), "method": c.PostForm("method")}
+		s.renderProduct(c, uint(pid), form, errors.New(userMessage(err)))
 		return
 	}
 	s.setAccess(c, o.OrderNo)
@@ -246,6 +270,7 @@ func (s *Server) orderPage(c *gin.Context) {
 	if o.Status == model.OrderPaid {
 		var sku model.SKU
 		if s.st.DB.Take(&sku, o.SKUID).Error == nil && sku.DelivererKind == "manual" {
+			data["Manual"] = true
 			if cfg, err := deliver.ParseManualCfg(sku.DelivererCfg); err == nil {
 				data["ManualNote"] = cfg.Note
 			}
@@ -307,18 +332,19 @@ func (s *Server) queryPage(c *gin.Context) { s.render(c, 200, "query", nil) }
 
 func (s *Server) query(c *gin.Context) {
 	ip, now := c.ClientIP(), s.now()
+	keep := func(h gin.H) gin.H { h["No"], h["Email"] = c.PostForm("order_no"), c.PostForm("email"); return h }
 	if s.queryLimit.blocked(ip, now) {
-		s.render(c, http.StatusTooManyRequests, "query", gin.H{"Error": "尝试次数过多，请 15 分钟后再试"})
+		s.render(c, http.StatusTooManyRequests, "query", keep(gin.H{"Error": "尝试次数过多，请 15 分钟后再试"}))
 		return
 	}
 	found, err := s.shop.FindOrders(c.PostForm("order_no"), c.PostForm("email"), c.PostForm("password"))
 	if err != nil {
-		s.render(c, 400, "query", gin.H{"Error": userMessage(err)})
+		s.render(c, 400, "query", keep(gin.H{"Error": userMessage(err)}))
 		return
 	}
 	if len(found) == 0 {
 		s.queryLimit.hit(ip, now)
-		s.render(c, 200, "query", gin.H{"Error": "没有找到订单，请检查订单号 / 邮箱和查询密码"})
+		s.render(c, 200, "query", keep(gin.H{"Error": "没有找到订单，请检查订单号 / 邮箱和查询密码", "Forgot": true}))
 		return
 	}
 	for _, o := range found {

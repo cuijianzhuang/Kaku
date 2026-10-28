@@ -511,7 +511,9 @@ body.admin { background: var(--bg); }
   .bar-value { display: none; }
   .card { padding: 16px; }
   .card.table-wrap { padding: 4px 0; }
-  .steps .step span.label { display: none; }
+  .steps .step { flex-direction: column; gap: 4px; }
+  .steps .step span.label { font-size: 11px; }
+  .steps .step-line { margin-bottom: 18px; }
 }
 
 /* upgrade page */
@@ -532,6 +534,20 @@ body.admin { background: var(--bg); }
 .upd-arrow { transform: rotate(180deg); width: 14px; height: 14px; color: var(--muted); }
 .upd-note { margin: 8px 0 0; font-size: 13px; }
 .err-text { color: #dc2626; }
+.todo-card { border-color: color-mix(in srgb, #d97706 45%, var(--line)); }
+.todo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+.todo-list li { display: flex; gap: 8px; align-items: flex-start; }
+.todo-list .ic { flex: none; width: 16px; height: 16px; margin-top: 2px; }
+.todo-block .ic { color: #dc2626; }
+.todo-warn .ic { color: #d97706; }
+.manual-card { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.ask-box { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.ask-box .secret { font-size: 16px; font-weight: 600; }
+.op-more summary { cursor: pointer; font-size: 14px; color: var(--text-2); }
+.op-more form { margin-top: 10px; }
+.op-danger { margin-top: 8px; padding-top: 14px; border-top: 1px dashed var(--line-2); display: flex; flex-direction: column; gap: 8px; }
+.op-danger h3 { margin: 0; font-size: 14px; color: #dc2626; }
+.op-danger p { margin: 0; font-size: 13px; }
 .upd-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .upd-actions form { margin: 0; }
 .upd-foot { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; }

@@ -57,7 +57,7 @@
 <link rel="icon" href="{{asset "favicon-32.png"}}" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}">
 <title>{{block "title" .}}{{.Site}}{{end}}</title>
-{{block "meta" .}}{{$desc := or .Settings.Notice "自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单"}}
+{{block "meta" .}}{{$desc := or .Settings.Notice "在线支付 · 发货内容在订单页查看 · 凭邮箱和查询密码随时查单"}}
 <meta name="description" content="{{$desc}}">
 <meta property="og:type" content="website">
 <meta property="og:title" content="{{.Site}}">

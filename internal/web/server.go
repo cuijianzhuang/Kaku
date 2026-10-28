@@ -141,6 +141,27 @@ var funcs = template.FuncMap{
 	"hasPrefix": strings.HasPrefix,
 	"initial":   initial,
 	"nav":       navItem,
+	// manualOnly: every active spec of the product is delivered by hand
+	"manualOnly": func(v any) bool {
+		var p model.Product
+		switch x := v.(type) {
+		case model.Product:
+			p = x
+		case *model.Product:
+			p = *x
+		}
+		n := 0
+		for _, k := range p.SKUs {
+			if !k.Active {
+				continue
+			}
+			if k.DelivererKind != "manual" {
+				return false
+			}
+			n++
+		}
+		return n > 0
+	},
 	"hours": func() []int {
 		h := make([]int, 24)
 		for i := range h {
@@ -352,7 +373,7 @@ func statusLabel(st string) string {
 	case model.OrderPending:
 		return "待支付"
 	case model.OrderPaid:
-		return "已支付"
+		return "待发货"
 	case model.OrderDelivered:
 		return "已发货"
 	case model.OrderExpired:

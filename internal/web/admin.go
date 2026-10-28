@@ -211,7 +211,8 @@ func (s *Server) renderProductForm(c *gin.Context, p *model.Product, saveErr err
 	for _, d := range s.shop.Reg.Kinds() {
 		kinds[d.Kind()] = d.Label()
 	}
-	data := gin.H{"Product": *p, "Categories": cats, "Kinds": kinds}
+	blocking, warnings := s.productTodo(p)
+	data := gin.H{"Product": *p, "Categories": cats, "Kinds": kinds, "Todo": blocking, "Warn": warnings}
 	code := http.StatusOK
 	if saveErr != nil {
 		data["Error"] = saveErr.Error()
@@ -240,6 +241,12 @@ func (s *Server) saveProduct(c *gin.Context) {
 		return
 	} else if up != "" {
 		p.Cover = up
+	}
+	if p.Status == model.ProductOn {
+		if blocking, _ := s.productTodo(&p); len(blocking) > 0 {
+			s.renderProductForm(c, &p, errors.New("还不能上架："+strings.Join(blocking, "；")))
+			return
+		}
 	}
 	var err error
 	if id == 0 {
@@ -652,8 +659,46 @@ func (s *Server) adminOrder(c *gin.Context) {
 	}
 	var sku model.SKU
 	s.st.DB.Take(&sku, o.SKUID)
+	kind := sku.DelivererKind
+	if d, err := s.shop.Reg.Get(kind); err == nil {
+		kind = d.Label()
+	}
+	// a manual SKU's question and the buyer's answer lead the remark
+	askLabel, askValue, remark := "", "", o.Remark
+	if sku.DelivererKind == "manual" {
+		if cfg, err := deliver.ParseManualCfg(sku.DelivererCfg); err == nil && cfg.Ask != "" {
+			if v, ok := strings.CutPrefix(o.Remark, cfg.Ask+"："); ok {
+				askLabel = cfg.Ask
+				askValue, remark, _ = strings.Cut(v, "；备注：")
+			}
+		}
+	}
 	s.render(c, 200, "admin_order", gin.H{"Order": o, "Items": items, "Payments": pays, "Bindings": bindings, "Job": job,
-		"Coupon": coupon, "SKU": sku})
+		"Coupon": coupon, "SKU": sku, "KindLabel": kind, "AskLabel": askLabel, "AskValue": askValue, "Remark": remark,
+		"Manual": sku.DelivererKind == "manual", "RefundNote": refundNote(o, &sku)})
+}
+
+// refundNote says what a refund will actually do for this order.
+func refundNote(o *model.Order, sku *model.SKU) string {
+	var parts []string
+	if o.PayMethod == model.PayStars {
+		parts = append(parts, "Stars 会自动原路退回买家")
+	} else {
+		parts = append(parts, "Kaku 只把订单标记为已退款，钱需要你在支付平台（易支付后台 / 原转账方式）手动退给买家")
+	}
+	switch sku.DelivererKind {
+	case "polaris":
+		parts = append(parts, "已签发的 Polaris 授权会被吊销")
+	case "panelcode":
+		parts = append(parts, "未兑换的面板兑换码会作废，已兑换的不受影响")
+	case "webhook":
+		parts = append(parts, "如果配置了退款通知地址，会通知你的系统回收")
+	default:
+		if o.Status == model.OrderDelivered {
+			parts = append(parts, "已发出的内容无法收回")
+		}
+	}
+	return strings.Join(parts, "；") + "。"
 }
 
 func (s *Server) orderAction(c *gin.Context) {

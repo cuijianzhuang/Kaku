@@ -3,6 +3,15 @@
 {{$p := .AdminPath}}
 {{$prod := .Product}}
 <div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>
+{{if or .Todo .Warn}}
+<div class="card todo-card">
+  <h2 style="margin-top:0">{{if .Todo}}上架前还需要完成{{else}}请留意{{end}}</h2>
+  <ul class="todo-list">
+    {{range .Todo}}<li class="todo-block"><svg class="ic"><use href="#i-alert"/></svg><span>{{.}}</span></li>{{end}}
+    {{range .Warn}}<li class="todo-warn"><svg class="ic"><use href="#i-info"/></svg><span>{{.}}</span></li>{{end}}
+  </ul>
+</div>
+{{end}}
 <div class="card">
   <form method="post" action="{{$p}}/products" class="stack" enctype="multipart/form-data">
     <input type="hidden" name="id" value="{{$prod.ID}}">

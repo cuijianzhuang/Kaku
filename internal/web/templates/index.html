@@ -1,7 +1,7 @@
 {{define "content"}}
 <section class="hero">
   <h1>{{.Site}}</h1>
-  <p>{{if .Settings.Notice}}{{.Settings.Notice}}{{else}}自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单{{end}}</p>
+  <p>{{if .Settings.Notice}}{{.Settings.Notice}}{{else}}在线支付 · 发货内容在订单页查看 · 凭邮箱和查询密码随时查单{{end}}</p>
   <label class="search" aria-label="搜索商品">
     <svg class="ic"><use href="#i-search"/></svg>
     <input type="search" placeholder="搜索商品" data-filter=".product-card" autocomplete="off">
@@ -30,7 +30,7 @@
           <div class="meta">
             <span class="price">{{fromPrice .}}</span>
             {{$out := true}}{{range .SKUs}}{{if ne (index $.Stock .ID) 0}}{{$out = false}}{{end}}{{end}}
-            {{if $out}}<span class="badge failed">缺货</span>{{else}}<span class="badge delivered">自动发货</span>{{end}}
+            {{if $out}}<span class="badge failed">缺货</span>{{else if manualOnly .}}<span class="badge pending">人工发货</span>{{else}}<span class="badge delivered">自动发货</span>{{end}}
           </div>
         </div>
       </a>

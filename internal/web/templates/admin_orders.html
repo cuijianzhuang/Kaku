@@ -7,7 +7,7 @@
   <select name="status">
     <option value="">全部状态</option>
     <option value="pending" {{if eq .Status "pending"}}selected{{end}}>待支付</option>
-    <option value="paid" {{if eq .Status "paid"}}selected{{end}}>已支付（待发货）</option>
+    <option value="paid" {{if eq .Status "paid"}}selected{{end}}>待发货</option>
     <option value="delivered" {{if eq .Status "delivered"}}selected{{end}}>已发货</option>
     <option value="failed" {{if eq .Status "failed"}}selected{{end}}>发货失败</option>
     <option value="expired" {{if eq .Status "expired"}}selected{{end}}>已超时</option>
