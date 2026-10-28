@@ -144,3 +144,31 @@ document.addEventListener('submit', (e) => {
     cfg.value = ex.startsWith('{') ? JSON.stringify(JSON.parse(ex), null, 2) : '';
   });
 })();
+
+// Phones show list tables as cards: copy each column's header onto its
+// cells (CSS shows it as a label). Tables whose first row is not a header
+// row, such as key-value tables, are left alone.
+(function () {
+  document.querySelectorAll('.table-wrap table, table.list').forEach((t) => {
+    const head = t.rows[0];
+    if (!head || t.rows.length < 2 || [...head.cells].some((c) => c.tagName !== 'TH')) return;
+    const labels = [...head.cells].map((c) => c.textContent.trim());
+    for (const row of [...t.rows].slice(1)) {
+      if ([...row.cells].some((c) => c.tagName === 'TH')) return;
+      [...row.cells].forEach((c, i) => {
+        if (c.colSpan > 1) return;
+        c.setAttribute('data-label', labels[i] || '');
+        if (i > 0 && !c.textContent.trim() && !c.querySelector('img,input,button,svg')) c.classList.add('blank');
+        // keep the cell's content together as one value next to its label
+        const v = document.createElement('span');
+        v.className = 'cv';
+        while (c.firstChild) v.appendChild(c.firstChild);
+        c.appendChild(v);
+      });
+    }
+    t.classList.add('rt');
+  });
+})();
+
+// Close the admin menu after picking a page (back/forward cache keeps it open otherwise).
+window.addEventListener('pageshow', () => { const t = document.getElementById('nav-toggle'); if (t) t.checked = false; });

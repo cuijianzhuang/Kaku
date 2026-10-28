@@ -173,7 +173,16 @@ func navItem(label, icon, href, path string, exact bool) navLink {
 }
 
 // fromPrice is a product's lowest price, preferring CNY, for cards.
-func fromPrice(p model.Product) string {
+func fromPrice(v any) string {
+	var p model.Product
+	switch x := v.(type) {
+	case model.Product:
+		p = x
+	case *model.Product:
+		p = *x
+	default:
+		return ""
+	}
 	for _, cur := range []string{model.CNY, model.USDT, model.XTR} {
 		var low int64
 		n := 0
