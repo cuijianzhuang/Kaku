@@ -225,6 +225,17 @@ tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--bg-s
 .section > p.muted { margin: 0 0 12px; font-size: 13px; }
 .form-foot { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding-top: 4px; }
 .form-foot .muted { font-size: 13px; }
+.action-result { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg-soft); font-size: 14px; }
+.action-result > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.action-result .ic { flex: none; width: 18px; height: 18px; margin-top: 1px; }
+.action-result small { font-size: 12px; }
+.action-result.ok { border-color: color-mix(in srgb, #16a34a 45%, var(--line)); background: color-mix(in srgb, #16a34a 9%, var(--card)); }
+.action-result.ok .ic, .action-result.ok b { color: #15803d; }
+.action-result.err { border-color: color-mix(in srgb, #dc2626 45%, var(--line)); background: color-mix(in srgb, #dc2626 8%, var(--card)); }
+.action-result.err .ic, .action-result.err b { color: #dc2626; }
+.action-result.busy .ic { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-color-scheme: dark) { .action-result.ok .ic, .action-result.ok b { color: #4ade80; } .action-result.err .ic, .action-result.err b { color: #f87171; } }
 input[type=file] { padding: 6px; color: var(--muted); cursor: pointer; }
 input[type=file]::file-selector-button {
   font: inherit; font-size: 13px; font-weight: 600; margin-right: 12px; padding: 6px 12px; cursor: pointer;

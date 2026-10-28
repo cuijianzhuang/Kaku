@@ -141,9 +141,12 @@
     </div>
     <button>保存</button>
   </form>
-  <form method="post" action="{{$p}}/settings/test-mail" class="form-foot section" style="margin-top:18px">
-    <input type="email" name="to" placeholder="测试收件地址" required style="max-width:280px">
-    <button class="secondary">发送测试邮件</button>
+  <form method="post" action="{{$p}}/settings/test-mail" class="section action-form" style="margin-top:18px" data-action-form>
+    <div class="form-foot">
+      <input type="email" name="to" placeholder="测试收件地址" required style="max-width:280px">
+      <button class="secondary" data-busy="正在发送…">发送测试邮件</button>
+    </div>
+    {{template "action-result" (index .Last "mail")}}
   </form>
 </div>
 
@@ -160,9 +163,12 @@
     </div>
     <button>保存</button>
   </form>
-  <form method="post" action="{{$p}}/settings/telegram/webhook" class="form-foot section" style="margin-top:18px">
-    <button class="secondary">设置 Webhook</button>
-    <span class="muted">保存 Token 并填写 HTTPS 站点地址后点击；会自动读取机器人用户名并注册命令。</span>
+  <form method="post" action="{{$p}}/settings/telegram/webhook" class="section action-form" style="margin-top:18px" data-action-form>
+    <div class="form-foot">
+      <span class="muted" style="flex:1;min-width:220px">保存 Token 并填写 HTTPS 站点地址后点击；会自动读取机器人用户名并注册命令。</span>
+      <button class="secondary" data-busy="正在设置…">设置 Webhook</button>
+    </div>
+    {{template "action-result" (index .Last "telegram")}}
   </form>
 </div>
 
@@ -213,9 +219,12 @@
     <label><span>兑换说明 <span class="hint">· 显示在订单页、邮件和 Telegram 发货消息里，留空用默认说明</span></span><input name="panel_redeem_hint" value="{{$s.PanelRedeemHint}}" placeholder="在面板的用户商店输入兑换码，或在面板 Telegram 机器人中发送 /redeem 兑换码"></label>
     <div class="form-foot"><button>保存</button></div>
   </form>
-  <form method="post" action="{{$p}}/settings/panel/test" class="section form-foot" style="margin-top:18px">
-    <span class="muted" style="flex:1;min-width:220px">保存后测试：检查地址、令牌和权限，并读取面板的套餐和流量包。</span>
-    <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
+  <form method="post" action="{{$p}}/settings/panel/test" class="section action-form" style="margin-top:18px" data-action-form>
+    <div class="form-foot">
+      <span class="muted" style="flex:1;min-width:220px">保存后测试：检查地址、令牌和权限，并读取面板的套餐和流量包。</span>
+      <button class="secondary" data-busy="正在测试…"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
+    </div>
+    {{template "action-result" (index .Last "panel")}}
   </form>
 </div>
 
@@ -243,10 +252,18 @@ KAKU_RENEW_URL={{.RenewURL}}{{if .RenewBot}}
 KAKU_RENEW_BOT={{.RenewBot}}{{end}}</pre>
     <button type="button" class="secondary" data-copy-from="[data-env]"><svg class="ic"><use href="#i-copy"/></svg>复制配置</button>
   </div>
-  <form method="post" action="{{$p}}/settings/polaris/test" class="section form-foot" style="margin-top:18px">
-    <div style="flex:1;min-width:220px"><h3>③ 测试连接</h3><p class="muted" style="margin:0">检查地址、密钥、IP 白名单和服务器时间，并读取授权服务的套餐、功能和许可证模板。</p></div>
-    <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
+  <form method="post" action="{{$p}}/settings/polaris/test" class="section action-form" style="margin-top:18px" data-action-form>
+    <div class="form-foot">
+      <div style="flex:1;min-width:220px"><h3>③ 测试连接</h3><p class="muted" style="margin:0">检查地址、密钥、IP 白名单和服务器时间，并读取授权服务的套餐、功能和许可证模板。</p></div>
+      <button class="secondary" data-busy="正在测试…"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
+    </div>
+    {{template "action-result" (index .Last "polaris")}}
   </form>
 </div>
 {{end}}
 {{end}}
+
+{{define "action-result"}}<div class="action-result {{if .}}{{if .OK}}ok{{else}}err{{end}}{{end}}" data-result role="status" aria-live="polite" {{if not .}}hidden{{end}}>
+  <svg class="ic" data-result-icon><use href="#i-{{if .}}{{if .OK}}check{{else}}alert{{end}}{{else}}info{{end}}"/></svg>
+  <div><b data-result-title>{{if .}}{{if .OK}}成功{{else}}失败{{end}}{{end}}</b><span data-result-msg>{{if .}}{{.Msg}}{{end}}</span><small class="muted" data-result-when>{{if .}}上次：{{.When}}{{end}}</small></div>
+</div>{{end}}

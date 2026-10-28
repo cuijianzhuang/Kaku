@@ -931,7 +931,7 @@ func (s *Server) settingsPage(c *gin.Context) {
 		"TurnstileSecret":    st.TurnstileSecret != "",
 		"GitHubClientSecret": st.GitHubClientSecret != "", "PanelToken": st.PanelToken != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
-	s.render(c, 200, "admin_settings", gin.H{"Tab": tab, "S": st, "Secrets": secrets, "Base": base,
+	s.render(c, 200, "admin_settings", gin.H{"Tab": tab, "Last": s.lastActions(), "S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
 		"RenewBot": renewBotTemplate(st.TGBotUsername), "OAuthBase": base + s.cfg.AdminPath + "/oauth/"})
 }
@@ -1047,10 +1047,11 @@ func (s *Server) saveSettings(c *gin.Context) {
 // username.
 func (s *Server) setWebhook(c *gin.Context) {
 	back := s.settingsURL("telegram")
+	done := func(err error, msg string) { s.actionDone(c, "telegram", back, err, msg) }
 	st := s.st.Settings()
 	base := strings.TrimRight(st.PublicURL, "/")
 	if st.TGToken == "" || !strings.HasPrefix(base, "https://") {
-		redirectErr(c, back, errors.New("需要 Bot Token，且站点地址必须是 HTTPS"))
+		done(errors.New("需要先保存 Bot Token，并在「站点」里填写 HTTPS 站点地址"), "")
 		return
 	}
 	bot := &tgapi.Client{Token: st.TGToken}
@@ -1058,14 +1059,14 @@ func (s *Server) setWebhook(c *gin.Context) {
 	defer cancel()
 	var me tgapi.User
 	if err := bot.Call(ctx, "getMe", map[string]any{}, &me); err != nil {
-		redirectErr(c, back, err)
+		done(fmt.Errorf("Bot Token 无效或连不上 Telegram：%w", err), "")
 		return
 	}
 	if err := bot.Call(ctx, "setWebhook", map[string]any{
 		"url": base + "/tg/webhook/" + st.TGWebhookSecret, "secret_token": st.TGWebhookSecret,
 		"allowed_updates": []string{"message", "callback_query", "pre_checkout_query"}, "drop_pending_updates": true,
 	}, nil); err != nil {
-		redirectErr(c, back, err)
+		done(fmt.Errorf("设置 Webhook 失败：%w", err), "")
 		return
 	}
 	bot.Call(ctx, "setMyCommands", map[string]any{"commands": []map[string]string{
@@ -1075,17 +1076,18 @@ func (s *Server) setWebhook(c *gin.Context) {
 	st.TGBotUsername = me.Username
 	s.st.SaveSettings(st)
 	s.audit(c, "telegram_webhook", me.Username, "")
-	redirectMsg(c, back, "Webhook 已设置：@"+me.Username)
+	done(nil, "Webhook 已设置：@"+me.Username+"，买家现在可以在 Telegram 里下单")
 }
 
 func (s *Server) testMail(c *gin.Context) {
 	back := s.settingsURL("mail")
+	done := func(err error, msg string) { s.actionDone(c, "mail", back, err, msg) }
 	to := strings.TrimSpace(c.PostForm("to"))
 	if err := s.shop.Notify.Mail(to, "Kaku 测试邮件", "如果您收到这封邮件，说明 SMTP 配置正确。"); err != nil {
-		redirectErr(c, back, err)
+		done(fmt.Errorf("发送失败：%w", err), "")
 		return
 	}
-	redirectMsg(c, back, "测试邮件已发送")
+	done(nil, "测试邮件已发送到 "+to+"，请查收（也看看垃圾邮件箱）")
 }
 
 func (s *Server) auditPage(c *gin.Context) {

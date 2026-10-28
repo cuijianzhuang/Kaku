@@ -416,6 +416,41 @@ document.addEventListener('change', (e) => {
   }
 })();
 
+// Settings actions (测试连接, 测试邮件, Webhook): run in place and show the
+// result right under the button instead of a flash at the top of the page.
+document.querySelectorAll('form[data-action-form]').forEach((form) => {
+  const box = form.querySelector('[data-result]');
+  const btn = form.querySelector('button:not([type=button])');
+  if (!box || !btn) return;
+  const icon = box.querySelector('[data-result-icon] use');
+  const set = (state, title, msg, when) => {
+    box.hidden = false;
+    box.className = 'action-result ' + state;
+    icon.setAttribute('href', state === 'ok' ? '#i-check' : state === 'err' ? '#i-alert' : '#i-refresh');
+    box.querySelector('[data-result-title]').textContent = title;
+    box.querySelector('[data-result-msg]').textContent = msg;
+    box.querySelector('[data-result-when]').textContent = when ? '时间：' + when : '';
+  };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const label = btn.innerHTML;
+    btn.disabled = true;
+    btn.textContent = btn.getAttribute('data-busy') || '处理中…';
+    set('busy', '处理中', '请稍候，最长约 20 秒…', '');
+    try {
+      const r = await fetch(form.action, { method: 'POST', body: new URLSearchParams(new FormData(form)), headers: { Accept: 'application/json' }, credentials: 'same-origin' });
+      const j = await r.json();
+      set(j.ok ? 'ok' : 'err', j.ok ? '成功' : '失败', j.message || (j.ok ? '' : '请求失败'), j.when);
+    } catch (err) {
+      set('err', '失败', '请求没有完成：' + err.message + '（检查网络后重试）', '');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = label;
+      box.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  });
+});
+
 // Settings: generate a random API secret and show it (it is needed on the
 // license server too); copy a block of text.
 document.addEventListener('click', (e) => {

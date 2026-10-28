@@ -24,26 +24,27 @@ func (s *Server) panelRoutes(a *gin.RouterGroup) {
 
 func (s *Server) testPanel(c *gin.Context) {
 	back := s.settingsURL("panel")
+	done := func(err error, msg string) { s.actionDone(c, "panel", back, err, msg) }
 	pc := s.shop.Panel()
 	if !pc.Ready() {
-		redirectErr(c, back, errors.New("先填写面板地址（含后台路径）和 API 令牌（plt_ 开头）并保存"))
+		done(errors.New("先填写面板地址（含后台路径）和 API 令牌（plt_ 开头）并保存"), "")
 		return
 	}
 	self, err := pc.Self(c.Request.Context())
 	if err != nil {
-		redirectErr(c, back, errors.New(panelapi.Explain(err)))
+		done(errors.New(panelapi.Explain(err)), "")
 		return
 	}
 	if !self.HasScope() {
-		redirectErr(c, back, fmt.Errorf("令牌「%s」没有兑换码权限：在面板「扩展 → API 令牌」新建令牌并勾选「生成和作废兑换码」；若没有该选项，请先升级面板", self.Name))
+		done(fmt.Errorf("令牌「%s」没有兑换码权限：在面板「扩展 → API 令牌」新建令牌并勾选「生成和作废兑换码」；若没有该选项，请先升级面板", self.Name), "")
 		return
 	}
 	offer, err := s.shop.PanelOffer(c.Request.Context(), true)
 	if err != nil {
-		redirectErr(c, back, errors.New(panelapi.Explain(err)))
+		done(errors.New(panelapi.Explain(err)), "")
 		return
 	}
-	redirectMsg(c, back, fmt.Sprintf("连接正常（令牌「%s」）：面板有 %d 个套餐、%d 个流量包", self.Name, len(offer.Plans), len(offer.Packs)))
+	done(nil, fmt.Sprintf("连接正常（令牌「%s」）：面板有 %d 个套餐、%d 个流量包", self.Name, len(offer.Plans), len(offer.Packs)))
 }
 
 func gb(bytes int64) string {
