@@ -75,3 +75,27 @@ func (s *Server) serveUpload(c *gin.Context) {
 	c.Header("Content-Security-Policy", "default-src 'none'; sandbox")
 	c.File(filepath.Join(s.cfg.UploadDir, name))
 }
+
+// uploadImage takes an image from the product editor (cover preview or a
+// picture in the description) and answers {"url": "/uploads/…"}.
+func (s *Server) uploadImage(c *gin.Context) {
+	u, err := s.saveUpload(c, "file")
+	switch {
+	case err != nil:
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case u == "":
+		c.JSON(http.StatusBadRequest, gin.H{"error": "没有收到图片"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"url": u})
+	}
+}
+
+// previewMarkdown renders a description exactly as the shop will show it.
+func (s *Server) previewMarkdown(c *gin.Context) {
+	src := c.PostForm("text")
+	if len(src) > 200_000 {
+		src = src[:200_000]
+	}
+	c.Header("Cache-Control", "no-store")
+	c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(renderMarkdown(src)))
+}

@@ -14,14 +14,48 @@
         </select>
       </label>
     </div>
-    <div class="cover-field">
-      {{if $prod.Cover}}<img class="cover-thumb" src="{{$prod.Cover}}" alt="">{{end}}
-      <div class="fields" style="flex:1">
-        <label class="wide"><span>封面图片 <span class="hint">· 上传图片，或填写图片地址；留空显示首字母</span></span><input type="file" name="cover_file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
-        <label class="wide"><span>图片地址</span><input name="cover" value="{{$prod.Cover}}" maxlength="500" placeholder="https://… 或留空"></label>
+    <div>
+      <div class="field-label">封面图片</div>
+      <div class="cover-edit" data-cover>
+        <div class="cover-preview" data-cover-preview style="--h: {{hue $prod.ID}}">
+          <img src="{{$prod.Cover}}" alt="" data-cover-img {{if not $prod.Cover}}hidden{{end}}>
+          <span class="cover-ph" data-cover-ph data-initial="{{initial (or $prod.Title "K")}}" {{if $prod.Cover}}hidden{{end}}>{{initial (or $prod.Title "K")}}</span>
+        </div>
+        <div class="cover-side">
+          <div class="cover-actions">
+            <label class="btn secondary file-btn"><svg class="ic"><use href="#i-download"/></svg>上传图片<input type="file" name="cover_file" accept="image/png,image/jpeg,image/gif,image/webp" data-cover-file></label>
+            <button type="button" class="secondary" data-cover-link>使用图片链接</button>
+            <button type="button" class="secondary" data-cover-remove {{if not $prod.Cover}}hidden{{end}}><svg class="ic"><use href="#i-x"/></svg>移除</button>
+          </div>
+          <input name="cover" value="{{$prod.Cover}}" maxlength="500" placeholder="https://example.com/cover.png" inputmode="url" data-cover-url {{if not $prod.Cover}}hidden{{end}}>
+          <p class="muted cover-help">PNG / JPG / GIF / WebP，最大 5 MB，建议 4:3（如 800×600）。不设置时显示商品名首字。</p>
+        </div>
       </div>
     </div>
-    <label><span>商品详情 <span class="hint">· 支持 Markdown：# 标题、- 列表、**加粗**、[链接](https://…)</span></span><textarea name="description" style="min-height:200px">{{$prod.DescriptionMD}}</textarea></label>
+    <div>
+      <div class="field-label">商品详情</div>
+      <div class="md-editor" data-md>
+        <div class="md-bar">
+          <div class="md-tools" role="toolbar" aria-label="格式">
+            <button type="button" data-md-cmd="h" title="标题">标题</button>
+            <button type="button" data-md-cmd="b" title="加粗"><b>B</b></button>
+            <button type="button" data-md-cmd="ul" title="列表">• 列表</button>
+            <button type="button" data-md-cmd="ol" title="编号">1. 编号</button>
+            <button type="button" data-md-cmd="quote" title="引用">“ 引用</button>
+            <button type="button" data-md-cmd="code" title="代码">代码</button>
+            <button type="button" data-md-cmd="link" title="链接">链接</button>
+            <button type="button" data-md-cmd="img" title="插入图片"><svg class="ic"><use href="#i-download"/></svg>图片</button>
+          </div>
+          <div class="seg md-tabs"><a href="#" class="on" data-md-tab="edit">编辑</a><a href="#" data-md-tab="preview">预览</a></div>
+        </div>
+        <div class="md-panes">
+          <textarea name="description" data-md-input placeholder="介绍商品、使用方法和售后说明。可以直接粘贴或拖入图片。">{{$prod.DescriptionMD}}</textarea>
+          <div class="md md-preview" data-md-preview aria-live="polite"></div>
+        </div>
+        <div class="md-foot muted"><span data-md-status>支持粘贴 / 拖入图片 · # 标题、- 列表、**加粗**、[文字](https://…)</span></div>
+        <input type="file" accept="image/png,image/jpeg,image/gif,image/webp" data-md-file hidden>
+      </div>
+    </div>
     <div class="fields">
       <label>状态 <select name="status"><option value="on" {{if eq $prod.Status "on"}}selected{{end}}>上架</option><option value="off" {{if eq $prod.Status "off"}}selected{{end}}>下架</option></select></label>
       <label>排序 <input type="number" name="sort" value="{{$prod.Sort}}"></label>

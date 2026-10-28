@@ -60,9 +60,23 @@
       </div>
       <p class="muted" style="margin:8px 0 0;font-size:13px">「午夜」主题始终为深色。</p>
     </div>
-    <div class="fields">
-      <label><span>Logo <span class="hint">· 上传正方形图片</span></span><input type="file" name="logo_file" accept="image/png,image/jpeg,image/gif,image/webp"></label>
-      <label><span>或图片地址 <span class="hint">· 清空则使用 Kaku 图标</span></span><input name="logo_url" value="{{$s.LogoURL}}" placeholder="https://…/logo.png"></label>
+    <div>
+      <div class="field-label">Logo</div>
+      <div class="cover-edit" data-cover>
+        <div class="cover-preview logo-preview" data-cover-preview>
+          <img src="{{$s.LogoURL}}" alt="" data-cover-img {{if not $s.LogoURL}}hidden{{end}}>
+          <span class="cover-ph logo-ph" data-cover-ph {{if $s.LogoURL}}hidden{{end}}><svg viewBox="0 0 64 64" aria-hidden="true"><use href="#kaku-mark-k"/></svg></span>
+        </div>
+        <div class="cover-side">
+          <div class="cover-actions">
+            <label class="btn secondary file-btn"><svg class="ic"><use href="#i-download"/></svg>上传图片<input type="file" name="logo_file" accept="image/png,image/jpeg,image/gif,image/webp" data-cover-file></label>
+            <button type="button" class="secondary" data-cover-link>使用图片链接</button>
+            <button type="button" class="secondary" data-cover-remove {{if not $s.LogoURL}}hidden{{end}}><svg class="ic"><use href="#i-x"/></svg>恢复默认</button>
+          </div>
+          <input name="logo_url" value="{{$s.LogoURL}}" maxlength="500" placeholder="https://example.com/logo.png" inputmode="url" data-cover-url {{if not $s.LogoURL}}hidden{{end}}>
+          <p class="muted cover-help">正方形图片，PNG / JPG / GIF / WebP，最大 5 MB，建议 256×256 以上。显示在商店和后台左上角、分享卡片里；不设置时使用 Kaku 图标。</p>
+        </div>
+      </div>
     </div>
     <button>保存</button>
   </form>
