@@ -60,6 +60,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/tickets/:id/reply", s.replyTicket)
 	a.POST("/tickets/:id/close", s.closeTicket)
 	a.GET("/settings", s.settingsPage)
+	a.GET("/settings/:tab", s.settingsPage)
 	a.POST("/settings", s.saveSettings)
 	a.POST("/settings/telegram/webhook", s.setWebhook)
 	a.POST("/settings/test-mail", s.testMail)
@@ -895,14 +896,42 @@ func (s *Server) closeTicket(c *gin.Context) {
 
 // ---- settings ----
 
+// settingsTab is one page of the settings (one card each).
+type settingsTab struct{ ID, Name string }
+
+var settingsTabs = []settingsTab{
+	{"site", "站点"}, {"appearance", "外观"}, {"payment", "支付"}, {"mail", "邮件"}, {"telegram", "Telegram"},
+	{"login", "登录方式"}, {"panel", "面板对接"}, {"polaris", "授权服务"},
+}
+
+func validSettingsTab(id string) bool {
+	for _, t := range settingsTabs {
+		if t.ID == id {
+			return true
+		}
+	}
+	return false
+}
+
+// settingsURL is the page of one settings tab.
+func (s *Server) settingsURL(tab string) string { return s.cfg.AdminPath + "/settings/" + tab }
+
 func (s *Server) settingsPage(c *gin.Context) {
+	tab := c.Param("tab")
+	if tab == "" {
+		tab = "site"
+	}
+	if !validSettingsTab(tab) {
+		c.Redirect(http.StatusSeeOther, s.settingsURL("site"))
+		return
+	}
 	st := s.st.Settings()
 	secrets := map[string]bool{"EPayKey": st.EPayKey != "", "TronGridKey": st.TronGridKey != "", "SMTPPass": st.SMTPPass != "",
 		"TGToken": st.TGToken != "", "TGWebhookSecret": st.TGWebhookSecret != "", "PolarisSecret": st.PolarisSecret != "",
 		"TurnstileSecret":    st.TurnstileSecret != "",
 		"GitHubClientSecret": st.GitHubClientSecret != "", "PanelToken": st.PanelToken != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
-	s.render(c, 200, "admin_settings", gin.H{"S": st, "Secrets": secrets, "Base": base,
+	s.render(c, 200, "admin_settings", gin.H{"Tab": tab, "S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
 		"RenewBot": renewBotTemplate(st.TGBotUsername), "OAuthBase": base + s.cfg.AdminPath + "/oauth/"})
 }
@@ -915,7 +944,10 @@ func renewBotTemplate(user string) string {
 }
 
 func (s *Server) saveSettings(c *gin.Context) {
-	back := s.cfg.AdminPath + "/settings"
+	back := s.settingsURL("site")
+	if validSettingsTab(c.PostForm("section")) {
+		back = s.settingsURL(c.PostForm("section"))
+	}
 	st := s.st.Settings()
 	str := func(k string) string { return strings.TrimSpace(c.PostForm(k)) }
 	secret := func(k string, cur *string) {
@@ -1008,13 +1040,13 @@ func (s *Server) saveSettings(c *gin.Context) {
 		return
 	}
 	s.audit(c, "settings_save", c.PostForm("section"), "")
-	redirectMsg(c, back+"#"+c.PostForm("section"), "设置已保存")
+	redirectMsg(c, back, "设置已保存")
 }
 
 // setWebhook registers the bot webhook with Telegram and reads the bot's
 // username.
 func (s *Server) setWebhook(c *gin.Context) {
-	back := s.cfg.AdminPath + "/settings#telegram"
+	back := s.settingsURL("telegram")
 	st := s.st.Settings()
 	base := strings.TrimRight(st.PublicURL, "/")
 	if st.TGToken == "" || !strings.HasPrefix(base, "https://") {
@@ -1047,7 +1079,7 @@ func (s *Server) setWebhook(c *gin.Context) {
 }
 
 func (s *Server) testMail(c *gin.Context) {
-	back := s.cfg.AdminPath + "/settings#mail"
+	back := s.settingsURL("mail")
 	to := strings.TrimSpace(c.PostForm("to"))
 	if err := s.shop.Notify.Mail(to, "Kaku 测试邮件", "如果您收到这封邮件，说明 SMTP 配置正确。"); err != nil {
 		redirectErr(c, back, err)

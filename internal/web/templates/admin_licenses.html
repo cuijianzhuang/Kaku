@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 <h1>Polaris 授权</h1>
-{{if not .PolarisReady}}<div class="flash err">尚未配置授权服务，续期 / 吊销 / 同步不可用。请到 <a href="{{$p}}/settings#polaris">设置</a> 填写。</div>{{end}}
+{{if not .PolarisReady}}<div class="flash err">尚未配置授权服务，续期 / 吊销 / 同步不可用。请到 <a href="{{$p}}/settings/polaris">设置 → 授权服务</a> 填写。</div>{{end}}
 <form method="get" class="filters">
   <input name="q" value="{{.Q}}" placeholder="license_id / 邮箱 / 实例 ID">
   <select name="status">

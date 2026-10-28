@@ -23,7 +23,7 @@ func (s *Server) panelRoutes(a *gin.RouterGroup) {
 }
 
 func (s *Server) testPanel(c *gin.Context) {
-	back := s.cfg.AdminPath + "/settings#panel"
+	back := s.settingsURL("panel")
 	pc := s.shop.Panel()
 	if !pc.Ready() {
 		redirectErr(c, back, errors.New("先填写面板地址（含后台路径）和 API 令牌（plt_ 开头）并保存"))

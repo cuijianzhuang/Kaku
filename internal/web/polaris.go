@@ -27,7 +27,7 @@ func (s *Server) polarisRoutes(a *gin.RouterGroup) {
 }
 
 func (s *Server) testPolaris(c *gin.Context) {
-	back := s.cfg.AdminPath + "/settings#polaris"
+	back := s.settingsURL("polaris")
 	if !s.shop.Polaris().Ready() {
 		redirectErr(c, back, errors.New("先填写授权服务地址和 API 密钥（至少 32 位）并保存"))
 		return
