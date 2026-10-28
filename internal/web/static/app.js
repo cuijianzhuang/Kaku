@@ -485,6 +485,39 @@ document.querySelectorAll('[data-cat-picker]').forEach((box) => {
   sync();
 });
 
+// Appearance settings: try a theme, accent or mode on this page at once.
+(function () {
+  const form = document.querySelector('form[data-theme-preview]');
+  const style = document.getElementById('theme-css');
+  if (!form || !style) return;
+  const url = form.getAttribute('data-theme-preview');
+  const pending = form.querySelector('[data-theme-pending]');
+  const original = style.textContent;
+  const pick = (n) => (form.querySelector('input[name=' + n + ']:checked') || {}).value || '';
+  const start = { theme: pick('theme'), accent: pick('accent'), mode: pick('mode') };
+  let seq = 0;
+  const apply = async () => {
+    const now = { theme: pick('theme'), accent: pick('accent'), mode: pick('mode') };
+    const changed = now.theme !== start.theme || now.accent !== start.accent || now.mode !== start.mode;
+    pending.hidden = !changed;
+    if (!changed) { style.textContent = original; return; }
+    const my = ++seq;
+    try {
+      const r = await fetch(url + '?' + new URLSearchParams(now), { credentials: 'same-origin' });
+      if (r.ok && my === seq) style.textContent = await r.text();
+    } catch (e) { /* keep the current look */ }
+  };
+  form.addEventListener('change', (e) => { if (['theme', 'accent', 'mode'].includes(e.target.name)) apply(); });
+  form.querySelector('[data-theme-revert]').addEventListener('click', (e) => {
+    e.preventDefault();
+    for (const [n, v] of Object.entries(start)) {
+      const el = form.querySelector('input[name=' + n + '][value="' + v + '"]');
+      if (el) el.checked = true;
+    }
+    apply();
+  });
+})();
+
 // Styled file buttons: show the picked file's name.
 document.addEventListener('change', (e) => {
   const inp = e.target;

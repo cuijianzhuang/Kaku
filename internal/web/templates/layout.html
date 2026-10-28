@@ -81,7 +81,7 @@
 <meta property="og:image" content="{{if .Settings.LogoURL}}{{abs .BaseURL .Settings.LogoURL}}{{else}}{{.BaseURL}}/static/apple-touch-icon.png{{end}}">
 {{end}}<meta property="og:site_name" content="{{.Site}}">
 <link rel="stylesheet" href="{{asset "style.css"}}">
-<style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
+<style id="theme-css">{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
 <script src="{{asset "app.js"}}" defer></script>
 </head>
 <body>
@@ -130,7 +130,7 @@
 <link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}">
 <title>{{template "title" .}} · 后台</title>
 <link rel="stylesheet" href="{{asset "style.css"}}">
-<style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
+<style id="theme-css">{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
 <script src="{{asset "app.js"}}" defer></script>
 </head>
 <body class="admin">

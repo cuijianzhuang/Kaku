@@ -70,3 +70,19 @@ func TestSettingsActionResultInPlace(t *testing.T) {
 		t.Fatalf("plain form: %s", l)
 	}
 }
+
+func TestThemePreviewCSS(t *testing.T) {
+	e := setup(t)
+	c := e.login()
+	resp, _ := c.Get(e.ts.URL + "/manage/settings/theme.css?theme=midnight&accent=&mode=")
+	b, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 || !strings.Contains(string(b), "color-scheme:dark") {
+		t.Fatalf("preview css %d %s", resp.StatusCode, b)
+	}
+	if r, _ := c.Get(e.ts.URL + "/manage/settings/theme.css?theme=nope"); r.StatusCode != 400 {
+		t.Fatal("unknown theme accepted")
+	}
+	if r, _ := e.client().Get(e.ts.URL + "/manage/settings/theme.css?theme=midnight"); r.StatusCode == 200 {
+		t.Fatal("preview without login")
+	}
+}
