@@ -53,9 +53,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="{{colorScheme .Settings.Theme .Settings.Mode}}">
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" href="{{asset "favicon.svg"}}" type="image/svg+xml">
+<link rel="icon" href="{{asset "favicon-32.png"}}" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}">
 <title>{{block "title" .}}{{.Site}}{{end}}</title>
 {{block "meta" .}}{{$desc := or .Settings.Notice "自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单"}}
 <meta name="description" content="{{$desc}}">
@@ -64,9 +64,9 @@
 <meta property="og:description" content="{{$desc}}">
 <meta property="og:image" content="{{if .Settings.LogoURL}}{{abs .BaseURL .Settings.LogoURL}}{{else}}{{.BaseURL}}/static/apple-touch-icon.png{{end}}">
 {{end}}<meta property="og:site_name" content="{{.Site}}">
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{asset "style.css"}}">
 <style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
-<script src="/static/app.js" defer></script>
+<script src="{{asset "app.js"}}" defer></script>
 </head>
 <body>
 {{template "icons"}}
@@ -109,13 +109,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="color-scheme" content="{{colorScheme .Settings.Theme .Settings.Mode}}">
-<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<link rel="icon" href="/static/favicon-32.png" sizes="32x32" type="image/png">
-<link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+<link rel="icon" href="{{asset "favicon.svg"}}" type="image/svg+xml">
+<link rel="icon" href="{{asset "favicon-32.png"}}" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="{{asset "apple-touch-icon.png"}}">
 <title>{{template "title" .}} · 后台</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="{{asset "style.css"}}">
 <style>{{themeCSS .Settings.Theme .Settings.Accent .Settings.Mode}}</style>
-<script src="/static/app.js" defer></script>
+<script src="{{asset "app.js"}}" defer></script>
 </head>
 <body class="admin">
 {{template "icons"}}

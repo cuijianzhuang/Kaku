@@ -172,3 +172,8 @@ document.addEventListener('submit', (e) => {
 
 // Close the admin menu after picking a page (back/forward cache keeps it open otherwise).
 window.addEventListener('pageshow', () => { const t = document.getElementById('nav-toggle'); if (t) t.checked = false; });
+
+// Selects that apply a filter as soon as they change.
+document.addEventListener('change', (e) => {
+  if (e.target.matches('select[data-autosubmit]') && e.target.form) e.target.form.submit();
+});

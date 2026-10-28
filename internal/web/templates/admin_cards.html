@@ -7,12 +7,12 @@
 {{else}}
 <form method="get" class="filters">
   <label>规格
-    <select name="sku" onchange="this.form.submit()">
+    <select name="sku" data-autosubmit>
       {{range .SKUs}}<option value="{{.ID}}" {{if eq .ID $.SKUID}}selected{{end}}>{{index $.Titles .ProductID}} · {{.Name}}（可售 {{.StockCache}}）</option>{{end}}
     </select>
   </label>
   <label>状态
-    <select name="status" onchange="this.form.submit()">
+    <select name="status" data-autosubmit>
       <option value="">全部</option>
       <option value="available" {{if eq $.Status "available"}}selected{{end}}>可售</option>
       <option value="reserved" {{if eq $.Status "reserved"}}selected{{end}}>已预占</option>

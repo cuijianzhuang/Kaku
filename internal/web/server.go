@@ -47,6 +47,7 @@ type Server struct {
 	pages map[string]*template.Template
 	now   func() time.Time
 
+	assets    map[string]*asset         // static files, with content hashes
 	oauth     map[string]*oauthProvider // admin sign-in providers
 	oauthHTTP *http.Client
 
@@ -67,6 +68,7 @@ func New(cfg Config, s *shop.Service, bot TGHandler, log *slog.Logger) *Server {
 	srv := &Server{cfg: cfg, shop: s, st: s.Store, log: log, bot: bot, now: time.Now,
 		oauth: defaultProviders(), oauthHTTP: &http.Client{Timeout: 20 * time.Second},
 		queryLimit: newLimiter(10, 15*time.Minute), loginLimit: newLimiter(10, 15*time.Minute), orderLimit: newLimiter(20, 10*time.Minute)}
+	srv.assets = loadAssets()
 	srv.pages = srv.parsePages()
 	return srv
 }
@@ -83,7 +85,8 @@ func (s *Server) Handler() http.Handler {
 	}
 	r.MaxMultipartMemory = 8 << 20
 	static, _ := fs.Sub(assets, "static")
-	r.StaticFS("/static", http.FS(static))
+	r.GET("/static/*filepath", s.serveAsset)
+	r.HEAD("/static/*filepath", s.serveAsset)
 	r.GET("/uploads/:name", s.serveUpload)
 	r.GET("/favicon.ico", func(c *gin.Context) { c.FileFromFS("favicon-32.png", http.FS(static)) })
 	r.GET("/healthz", func(c *gin.Context) { c.String(200, "ok") })
@@ -98,6 +101,11 @@ func securityHeaders(c *gin.Context) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
 	h.Set("Referrer-Policy", "same-origin")
+	// Pages run only our own script (plus Cloudflare Turnstile when enabled);
+	// inline styles are allowed for the theme tokens.
+	h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; "+
+		"frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; "+
+		"connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	c.Next()
 }
 
@@ -234,7 +242,7 @@ func (s *Server) parsePages() map[string]*template.Template {
 	if err != nil {
 		panic(err)
 	}
-	base := template.Must(template.New("").Funcs(funcs).ParseFS(assets, "templates/layout.html"))
+	base := template.Must(template.New("").Funcs(funcs).Funcs(template.FuncMap{"asset": s.assetURL}).ParseFS(assets, "templates/layout.html"))
 	for _, e := range entries {
 		name := strings.TrimSuffix(strings.TrimPrefix(e, "templates/"), ".html")
 		if name == "layout" {
@@ -279,7 +287,7 @@ func (s *Server) render(c *gin.Context, code int, page string, data gin.H) {
 		return
 	}
 	c.Header("Cache-Control", "no-store")
-	c.Data(code, "text/html; charset=utf-8", buf.Bytes())
+	writePage(c, code, "text/html; charset=utf-8", buf.Bytes())
 }
 
 func statusLabel(st string) string {
