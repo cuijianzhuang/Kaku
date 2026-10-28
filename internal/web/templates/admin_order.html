@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$o := .Order}}
-<div class="row"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a href="{{$p}}/orders">← 订单列表</a></div>
+<div class="page-head"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a href="{{$p}}/orders">← 订单列表</a></div>
 <div class="two">
   <div class="card">
     <table>

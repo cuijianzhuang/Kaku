@@ -1,7 +1,7 @@
 {{define "title"}}分类{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<div class="row"><h1>商品分类</h1><a href="{{$p}}/products">← 商品</a></div>
+<div class="page-head"><h1>商品分类</h1><a href="{{$p}}/products">← 商品</a></div>
 <div class="card table-wrap"><table>
   <tr><th>名称</th><th>排序</th><th>显示</th><th>商品数</th><th></th></tr>
   {{range .Categories}}

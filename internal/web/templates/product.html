@@ -1,46 +1,59 @@
 {{define "title"}}{{.Product.Title}} · {{.Site}}{{end}}
 {{define "content"}}
-<div class="two">
-  <div class="card">
-    {{if .Product.Cover}}<img src="{{.Product.Cover}}" alt="" style="width:100%;border-radius:8px;margin-bottom:12px">{{end}}
+<div class="crumbs"><a href="/">商品</a><span>/</span><span>{{.Product.Title}}</span></div>
+<div class="product-layout">
+  <div class="card info">
+    {{if .Product.Cover}}<img class="cover" src="{{.Product.Cover}}" alt="">{{else}}<div class="cover ph" style="--h: {{hue .Product.ID}}; border-radius: 12px; margin-bottom: 16px">{{initial .Product.Title}}</div>{{end}}
     <h1>{{.Product.Title}}</h1>
-    <div class="md">{{markdown .Product.DescriptionMD}}</div>
+    {{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">付款成功后自动发货，可在本页或订单查询中查看。</p>{{end}}
   </div>
-  <div class="card">
+
+  <div class="card order-panel">
     {{if not .Methods}}
-      <p class="flash err">商店暂未开通任何支付方式。</p>
+      <div class="flash err"><svg class="ic"><use href="#i-alert"/></svg><span>商店暂未开通任何支付方式</span></div>
     {{end}}
     <form method="post" action="/order" class="stack" data-order>
       <input type="hidden" name="product_id" value="{{.Product.ID}}">
       <div>
-        <div class="muted">选择规格</div>
+        <div class="field-label">选择规格</div>
         <div class="options">
           {{range $i, $k := .SKUs}}
-          <label class="option {{if eq $k.Stock 0}}disabled{{end}}">
-            <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{$k.LimitPerOrder}}"
+          <label class="option sku {{if eq $k.Stock 0}}disabled{{end}}">
+            <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{if and (gt $k.Stock 0) (lt $k.Stock $k.LimitPerOrder)}}{{$k.Stock}}{{else}}{{$k.LimitPerOrder}}{{end}}"
               data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}"
+              data-cny="{{$k.PriceCNY}}" data-usdt="{{$k.PriceUSDT}}" data-xtr="{{$k.PriceStars}}"
               {{if eq $k.Stock 0}}disabled{{else if eq $i 0}}checked{{end}} required>
-            <span>{{$k.Name}}<br>
-              <span class="price">
-                {{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}}
-                {{if $k.PriceUSDT}}{{if $k.PriceCNY}} / {{end}}{{money $k.PriceUSDT "USDT"}}{{end}}
-              </span>
-              <span class="muted">{{if eq $k.Stock 0}}缺货{{else if gt $k.Stock 0}}库存 {{$k.Stock}}{{else}}有货{{end}}</span>
+            <span>
+              <span class="name">{{$k.Name}}</span><br>
+              <span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}}{{if and $k.PriceCNY $k.PriceUSDT}} / {{end}}{{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}</span>
+              <span class="stock {{if eq $k.Stock 0}}out{{end}}">· {{if eq $k.Stock 0}}缺货{{else if gt $k.Stock 0}}库存 {{$k.Stock}}{{else}}有货{{end}}</span>
             </span>
           </label>
           {{end}}
         </div>
       </div>
-      <label>购买数量 <input type="number" name="qty" value="1" min="1" max="10" required></label>
-      <label>邮箱（接收卡密，用于查单） <input type="email" name="email" required maxlength="200" autocomplete="email"></label>
-      <label>查询密码（查单时使用，至少 4 位） <input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
-      <label>优惠码（可选） <input name="coupon" maxlength="64"></label>
-      <label>备注（可选） <input name="remark" maxlength="200"></label>
       <div>
-        <div class="muted">支付方式</div>
+        <div class="field-label">购买数量</div>
+        <div class="qty">
+          <button type="button" data-step="-1" aria-label="减少">−</button>
+          <input type="number" name="qty" value="1" min="1" max="10" required inputmode="numeric">
+          <button type="button" data-step="1" aria-label="增加">+</button>
+        </div>
+      </div>
+      <label>邮箱（接收卡密，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com"></label>
+      <label>查询密码（查单时使用，至少 4 位）<input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
+      <details>
+        <summary>优惠码 / 备注</summary>
+        <div class="stack" style="margin-top:12px; display:flex; flex-direction:column; gap:12px">
+          <label>优惠码<input name="coupon" maxlength="64"></label>
+          <label>备注<input name="remark" maxlength="200"></label>
+        </div>
+      </details>
+      <div>
+        <div class="field-label">支付方式</div>
         <div class="options">
           {{range .Methods}}
-          <label class="option"><input type="radio" name="method" value="{{.ID}}" required> {{.Label}}</label>
+          <label class="option"><input type="radio" name="method" value="{{.ID}}" data-currency="{{.Currency}}" required> {{.Label}}</label>
           {{end}}
         </div>
       </div>
@@ -48,8 +61,12 @@
       <div class="cf-turnstile" data-sitekey="{{.Settings.TurnstileSite}}"></div>
       <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
       {{end}}
-      <button {{if not .Methods}}disabled{{end}}>立即购买</button>
-      <p class="muted">下单后请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时订单自动关闭。</p>
+      <div class="total-line">
+        <span class="muted">应付（参考）</span>
+        <span class="price big" data-total>—</span>
+      </div>
+      <button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>
+      <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。批发价和优惠码在下单时计算。</p>
     </form>
   </div>
 </div>

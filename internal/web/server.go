@@ -112,15 +112,70 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":   statusLabel,
-	"method":   methodLabel,
-	"markdown": renderMarkdown,
-	"add":      func(a, b int) int { return a + b },
-	"price":    priceInput,
-	"contains": strings.Contains,
-	"join":     strings.Join,
-	"query":    url.QueryEscape,
-	"kb":       func(n int64) float64 { return float64(n) / 1024 },
+	"status":    statusLabel,
+	"method":    methodLabel,
+	"markdown":  renderMarkdown,
+	"add":       func(a, b int) int { return a + b },
+	"price":     priceInput,
+	"contains":  strings.Contains,
+	"join":      strings.Join,
+	"query":     url.QueryEscape,
+	"kb":        func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix": strings.HasPrefix,
+	"initial":   initial,
+	"nav":       navItem,
+	"hue":       func(id uint) int { return int(id*67+220) % 360 },
+	"fromPrice": fromPrice,
+}
+
+// initial is the first letter of a name, for logos and cover placeholders.
+func initial(s string) string {
+	for _, r := range strings.TrimSpace(s) {
+		return strings.ToUpper(string(r))
+	}
+	return "K"
+}
+
+type navLink struct {
+	Label, Icon, Href string
+	On                bool
+}
+
+// navItem builds a sidebar link; it is active on its page and sub-pages
+// (exact matches only for the dashboard).
+func navItem(label, icon, href, path string, exact bool) navLink {
+	on := path == href
+	if !exact && !on {
+		on = strings.HasPrefix(path, href+"/") || strings.HasPrefix(path, href+".")
+	}
+	if !exact && href != "" && strings.HasSuffix(href, "/products") && strings.Contains(path, "/skus") {
+		on = true
+	}
+	return navLink{Label: label, Icon: icon, Href: href, On: on}
+}
+
+// fromPrice is a product's lowest price, preferring CNY, for cards.
+func fromPrice(p model.Product) string {
+	for _, cur := range []string{model.CNY, model.USDT, model.XTR} {
+		var low int64
+		n := 0
+		for _, k := range p.SKUs {
+			if v := k.Price(cur); v > 0 {
+				if n == 0 || v < low {
+					low = v
+				}
+				n++
+			}
+		}
+		if n > 0 {
+			out := shop.FormatMoney(low, cur)
+			if len(p.SKUs) > 1 {
+				out += " 起"
+			}
+			return out
+		}
+	}
+	return ""
 }
 
 func (s *Server) parsePages() map[string]*template.Template {

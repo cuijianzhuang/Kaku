@@ -1,7 +1,7 @@
 {{define "title"}}工单{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<div class="row"><h1>售后工单</h1>
+<div class="page-head"><h1>售后工单</h1>
   <div><a href="?status=open">待回复</a> · <a href="?status=replied">已回复</a> · <a href="?status=closed">已关闭</a> · <a href="?status=all">全部</a></div>
 </div>
 {{range .Tickets}}

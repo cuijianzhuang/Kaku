@@ -1,3 +1,9 @@
 {{define "content"}}
-<div class="card"><p>{{.Message}}</p><p><a href="/">返回首页</a></p></div>
+<div class="narrow">
+  <div class="card empty">
+    <svg class="ic"><use href="#i-alert"/></svg>
+    <p>{{.Message}}</p>
+    <p><a class="btn secondary" href="/">返回首页</a></p>
+  </div>
+</div>
 {{end}}

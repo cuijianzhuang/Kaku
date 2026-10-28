@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$prod := .Product}}
-<div class="row"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a href="{{$p}}/products">← 商品列表</a></div>
+<div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a href="{{$p}}/products">← 商品列表</a></div>
 <div class="card">
   <form method="post" action="{{$p}}/products" class="stack">
     <input type="hidden" name="id" value="{{$prod.ID}}">

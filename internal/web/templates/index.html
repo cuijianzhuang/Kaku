@@ -1,25 +1,46 @@
 {{define "content"}}
+<section class="hero">
+  <h1>{{.Site}}</h1>
+  <p>{{if .Settings.Notice}}{{.Settings.Notice}}{{else}}自动发货 · 付款后立即到账 · 凭邮箱和查询密码随时查单{{end}}</p>
+  <label class="search" aria-label="搜索商品">
+    <svg class="ic"><use href="#i-search"/></svg>
+    <input type="search" placeholder="搜索商品" data-filter=".product-card" autocomplete="off">
+  </label>
+</section>
+
 {{if not .Categories}}
-<div class="card"><p>暂无在售商品。</p></div>
-{{end}}
-{{range .Categories}}
-<h2>{{.Name}}</h2>
-<div class="grid">
-  {{range .Products}}
-  <a class="card product-card" href="/p/{{.ID}}">
-    {{if .Cover}}<img src="{{.Cover}}" alt="" loading="lazy">{{end}}
-    <b>{{.Title}}</b>
-    {{range .SKUs}}
-    <div class="row muted">
-      <span>{{.Name}}</span>
-      <span>
-        {{if .PriceCNY}}<span class="price">{{money .PriceCNY "CNY"}}</span>{{else if .PriceUSDT}}<span class="price">{{money .PriceUSDT "USDT"}}</span>{{else if .PriceStars}}<span class="price">{{money .PriceStars "XTR"}}</span>{{end}}
-        {{$n := index $.Stock .ID}}{{if eq $n 0}} · 缺货{{else if gt $n 0}} · 库存 {{$n}}{{end}}
-      </span>
-    </div>
-    {{end}}
-  </a>
-  {{end}}
+<div class="card empty">
+  <svg class="ic"><use href="#i-box"/></svg>
+  <p>暂无在售商品</p>
 </div>
+{{else}}
+  {{if gt (len .Categories) 1}}
+  <div class="chips">{{range .Categories}}<a class="chip" href="#cat-{{.ID}}">{{.Name}}</a>{{end}}</div>
+  {{end}}
+  {{range .Categories}}
+  <section id="cat-{{.ID}}" data-section>
+    <h2 class="section-title">{{.Name}} <span class="count">{{len .Products}} 件商品</span></h2>
+    <div class="grid">
+      {{range .Products}}
+      <a class="product-card" href="/p/{{.ID}}" data-title="{{.Title}}">
+        {{if .Cover}}<img class="cover" src="{{.Cover}}" alt="" loading="lazy">{{else}}<div class="cover ph" style="--h: {{hue .ID}}">{{initial .Title}}</div>{{end}}
+        <div class="body">
+          <div class="title">{{.Title}}</div>
+          <div class="muted">{{range $i, $k := .SKUs}}{{if $i}} · {{end}}{{$k.Name}}{{end}}</div>
+          <div class="meta">
+            <span class="price">{{fromPrice .}}</span>
+            {{$out := true}}{{range .SKUs}}{{if ne (index $.Stock .ID) 0}}{{$out = false}}{{end}}{{end}}
+            {{if $out}}<span class="badge failed">缺货</span>{{else}}<span class="badge delivered">自动发货</span>{{end}}
+          </div>
+        </div>
+      </a>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+  <div class="card empty" data-filter-empty hidden>
+    <svg class="ic"><use href="#i-search"/></svg>
+    <p>没有找到匹配的商品</p>
+  </div>
 {{end}}
 {{end}}

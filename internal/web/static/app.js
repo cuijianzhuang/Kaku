@@ -4,7 +4,7 @@ document.addEventListener('click', (e) => {
   if (!btn) return;
   e.preventDefault();
   const text = btn.getAttribute('data-copy');
-  const done = () => { const t = btn.textContent; btn.textContent = '已复制'; setTimeout(() => (btn.textContent = t), 1200); };
+  const done = () => { const t = btn.innerHTML; btn.textContent = '已复制'; setTimeout(() => (btn.innerHTML = t), 1200); };
   if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => {});
 });
 
@@ -61,10 +61,62 @@ document.addEventListener('submit', (e) => {
       if (first) first.checked = true;
     }
     const qty = form.querySelector('input[name=qty]');
-    if (sku && qty) qty.max = sku.getAttribute('data-limit');
+    if (sku && qty) {
+      qty.max = sku.getAttribute('data-limit');
+      if (+qty.value > +qty.max) qty.value = qty.max;
+    }
+    total();
+  };
+  // Reference total: unit price × quantity in the chosen method's currency.
+  // Wholesale tiers and coupons are applied by the server.
+  const places = { CNY: 2, USDT: 6, XTR: 0 };
+  const fmt = (v, cur) => {
+    const n = v / Math.pow(10, places[cur]);
+    let s = n.toFixed(places[cur]);
+    if (s.includes('.')) s = s.replace(/\.?0+$/, '');
+    return cur === 'CNY' ? '¥' + s : cur === 'XTR' ? s + ' ⭐' : s + ' USDT';
+  };
+  const total = () => {
+    const out = form.querySelector('[data-total]');
+    if (!out) return;
+    const sku = form.querySelector('input[name=sku_id]:checked');
+    const m = form.querySelector('input[name=method]:checked');
+    const qty = Math.max(1, parseInt(form.querySelector('input[name=qty]')?.value || '1', 10));
+    if (!sku || !m) { out.textContent = '—'; return; }
+    const cur = m.getAttribute('data-currency') || 'CNY';
+    const unit = parseInt(sku.getAttribute('data-' + cur.toLowerCase()) || '0', 10);
+    out.textContent = unit > 0 ? fmt(unit * qty, cur) : '—';
   };
   form.addEventListener('change', update);
+  form.addEventListener('input', total);
+  form.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => {
+    const q = form.querySelector('input[name=qty]');
+    const v = (parseInt(q.value, 10) || 1) + parseInt(b.getAttribute('data-step'), 10);
+    q.value = Math.min(Math.max(v, 1), parseInt(q.max || '99', 10));
+    total();
+  }));
   update();
+})();
+
+// Storefront search: filter product cards by title, hide empty sections.
+(function () {
+  const input = document.querySelector('input[data-filter]');
+  if (!input) return;
+  const cards = document.querySelectorAll(input.getAttribute('data-filter'));
+  const empty = document.querySelector('[data-filter-empty]');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    cards.forEach((c) => {
+      const hit = !q || (c.getAttribute('data-title') || '').toLowerCase().includes(q);
+      c.hidden = !hit;
+      if (hit) shown++;
+    });
+    document.querySelectorAll('[data-section]').forEach((s) => {
+      s.hidden = !s.querySelector('.product-card:not([hidden])');
+    });
+    if (empty) empty.hidden = shown > 0;
+  });
 })();
 
 // SKU form: show an example configuration for the chosen delivery method.

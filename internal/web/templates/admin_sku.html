@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$k := .SKU}}
-<div class="row"><h1>{{if $k.ID}}编辑规格{{else}}新增规格{{end}} · {{.Product.Title}}</h1><a href="{{$p}}/products/{{.Product.ID}}">← 返回商品</a></div>
+<div class="page-head"><h1>{{if $k.ID}}编辑规格{{else}}新增规格{{end}} · {{.Product.Title}}</h1><a href="{{$p}}/products/{{.Product.ID}}">← 返回商品</a></div>
 <div class="card">
   <form method="post" action="{{$p}}/skus" class="stack">
     <input type="hidden" name="id" value="{{$k.ID}}">

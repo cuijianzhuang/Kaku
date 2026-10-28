@@ -1,11 +1,12 @@
 {{define "title"}}续费许可证 · {{.Site}}{{end}}
 {{define "content"}}
+<div class="narrow">
 <div class="card">
   <h1>续费 Polaris 许可证</h1>
   {{if not .LicenseID}}
   <form method="get" action="/renew" class="stack">
     <label>许可证编号（面板「许可证」页可见，形如 lic_…） <input name="lid" required maxlength="64"></label>
-    <button>下一步</button>
+    <button class="lg block">下一步</button>
   </form>
   {{else if .Binding}}
     {{$b := .Binding}}
@@ -17,7 +18,7 @@
       <input type="hidden" name="lid" value="{{$b.LicenseID}}">
       <div class="options">
         {{range $i, $k := .SKUs}}
-        <label class="option">
+        <label class="option sku">
           <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{$k.LimitPerOrder}}"
             data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}" {{if eq $i 0}}checked{{end}} required>
           <span>{{index $.Titles $k.ID}} · {{$k.Name}}<br><span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}} {{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}</span></span>
@@ -31,10 +32,11 @@
       <div class="options">
         {{range .Methods}}<label class="option"><input type="radio" name="method" value="{{.ID}}" required> {{.Label}}</label>{{end}}
       </div>
-      <button>下单续费</button>
+      <button class="lg block">下单续费</button>
       <p class="muted">续费成功后，面板下次校验（每日自动，或在「许可证」页手动刷新）即生效，无需重新激活。</p>
     </form>
     {{end}}
   {{end}}
+</div>
 </div>
 {{end}}
