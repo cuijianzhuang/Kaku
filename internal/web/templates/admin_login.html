@@ -1,7 +1,18 @@
 {{define "title"}}登录{{end}}
 {{define "content"}}
 <div class="card auth-card">
-  <div class="brand"><span class="logo">{{initial .Site}}</span><span>{{.Site}}</span></div>
+  <div class="brand">{{template "logo" .}}<span>{{.Site}}</span></div>
+  {{if .TOTPStep}}
+  <h1 style="text-align:center;font-size:19px">两步验证</h1>
+  <p class="muted" style="text-align:center;margin-top:-4px">已通过 {{.TOTPStep}} 验证{{with .Name}}（{{.}}）{{end}}，请输入验证器中的 6 位数字。</p>
+  {{template "flash" .}}
+  <form method="post" action="{{.AdminPath}}/oauth/totp" class="stack">
+    <input type="hidden" name="next" value="{{.Next}}">
+    <label>两步验证码<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位数字" required autofocus></label>
+    <button class="lg block"><svg class="ic"><use href="#i-lock"/></svg>登录</button>
+  </form>
+  <p style="text-align:center;margin:16px 0 0"><a class="muted" href="{{.AdminPath}}/login">返回</a></p>
+  {{else}}
   <h1 style="text-align:center;font-size:19px">管理员登录</h1>
   {{template "flash" .}}
   <form method="post" action="{{.AdminPath}}/login" class="stack">
@@ -11,5 +22,12 @@
     <label>两步验证码（如已开启）<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位数字"></label>
     <button class="lg block"><svg class="ic"><use href="#i-lock"/></svg>登录</button>
   </form>
+  {{if .Providers}}
+  <div class="divider"><span>或</span></div>
+  <div class="sso-list">
+    {{range .Providers}}<a class="btn secondary lg block sso" href="{{$.AdminPath}}/oauth/{{.Name}}/start?next={{query $.Next}}">{{template "brand-icon" .Name}}使用 {{.Label}} 登录</a>{{end}}
+  </div>
+  {{end}}
+  {{end}}
 </div>
 {{end}}

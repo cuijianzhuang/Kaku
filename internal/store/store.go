@@ -143,11 +143,20 @@ type Settings struct {
 
 	RemindEnabled bool `json:"remind_enabled"` // license expiry reminders (7 days and 1 day before)
 
+	GitHubClientID     string `json:"github_client_id"` // admin sign-in with GitHub
+	GitHubClientSecret string `json:"github_client_secret" secret:"1"`
+	GoogleClientID     string `json:"google_client_id"` // admin sign-in with Google
+	GoogleClientSecret string `json:"google_client_secret" secret:"1"`
+	AdminLinkInFooter  bool   `json:"admin_link_in_footer"` // show a backend link in the shop footer
+
 	AutoUpdate     bool `json:"auto_update"`      // install new releases automatically
 	AutoUpdateHour int  `json:"auto_update_hour"` // local hour of the daily check
 	UpdateNotify   bool `json:"update_notify"`    // tell the admin chat about new releases
 
-	Accent string `json:"accent"` // theme colour preset: "" (ink), indigo, emerald, amber, rose, blue
+	Theme   string `json:"theme"`    // colour scheme: "" (简约), paper, ocean, forest, sakura, midnight
+	Mode    string `json:"mode"`     // appearance: "" (follow the system), light, dark
+	Accent  string `json:"accent"`   // accent override: "" (theme's own), ink, indigo, emerald, amber, rose, blue
+	LogoURL string `json:"logo_url"` // shop logo image; empty = the Kaku mark
 }
 
 func defaults() *Settings {
@@ -218,7 +227,7 @@ func (s *Store) SaveSettings(st Settings) error {
 	return nil
 }
 
-var secretFields = []string{"epay_key", "trongrid_key", "smtp_pass", "tg_token", "tg_webhook_secret", "polaris_secret", "turnstile_secret"}
+var secretFields = []string{"epay_key", "trongrid_key", "smtp_pass", "tg_token", "tg_webhook_secret", "polaris_secret", "turnstile_secret", "github_client_secret", "google_client_secret"}
 
 // ---- small internal values (not admin settings) ----
 

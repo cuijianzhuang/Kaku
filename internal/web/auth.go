@@ -107,22 +107,19 @@ func (s *Server) loginPage(c *gin.Context) {
 		c.Redirect(http.StatusSeeOther, s.cfg.AdminPath)
 		return
 	}
-	s.render(c, 200, "admin_login", gin.H{"Next": c.Query("next")})
+	s.renderLogin(c, 200, gin.H{})
 }
 
 func (s *Server) login(c *gin.Context) {
 	ip, now := c.ClientIP(), s.now()
-	next := c.PostForm("next")
-	if !strings.HasPrefix(next, s.cfg.AdminPath) || strings.HasPrefix(next, "//") {
-		next = s.cfg.AdminPath
-	}
+	next := s.safeNext(c.PostForm("next"))
 	fail := func(msg string) {
 		s.loginLimit.hit(ip, now)
 		s.st.Audit(c.PostForm("username"), "login_failed", "", msg, ip)
-		s.render(c, http.StatusUnauthorized, "admin_login", gin.H{"Error": msg, "Next": next})
+		s.renderLogin(c, http.StatusUnauthorized, gin.H{"Error": msg, "Next": next})
 	}
 	if s.loginLimit.blocked(ip, now) {
-		s.render(c, http.StatusTooManyRequests, "admin_login", gin.H{"Error": "尝试次数过多，请 15 分钟后再试"})
+		s.renderLogin(c, http.StatusTooManyRequests, gin.H{"Error": "尝试次数过多，请 15 分钟后再试"})
 		return
 	}
 	var a model.Admin
@@ -166,7 +163,9 @@ func (s *Server) reauth(c *gin.Context) error {
 
 func (s *Server) securityPage(c *gin.Context) {
 	a := admin(c)
-	data := gin.H{"Admin": a}
+	var idents []model.AdminIdentity
+	s.st.DB.Where("admin_id = ?", a.ID).Order("id").Find(&idents)
+	data := gin.H{"Admin": a, "Identities": idents, "Providers": s.enabledProviders()}
 	if !a.TOTPEnabled && a.TOTPSecret != "" {
 		if secret, err := s.st.Box.Open(a.TOTPSecret); err == nil {
 			data["PendingSecret"] = secret

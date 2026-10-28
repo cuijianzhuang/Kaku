@@ -283,6 +283,18 @@ type Admin struct {
 	UpdatedAt    time.Time
 }
 
+// AdminIdentity links an external account (GitHub, Google) to an admin
+// for sign-in. Identities are only added by a signed-in admin.
+type AdminIdentity struct {
+	ID        uint   `gorm:"primaryKey"`
+	AdminID   uint   `gorm:"index;not null"`
+	Provider  string `gorm:"size:20;not null;uniqueIndex:idx_identity"`
+	Subject   string `gorm:"size:100;not null;uniqueIndex:idx_identity"` // the provider's stable user id
+	Name      string `gorm:"size:200"`                                   // login or email, for display
+	CreatedAt time.Time
+	LastUsed  *time.Time
+}
+
 type AuditLog struct {
 	ID        uint      `gorm:"primaryKey"`
 	Admin     string    `gorm:"size:64"`
@@ -344,5 +356,5 @@ type Ticket struct {
 // All lists every table for migration.
 func All() []any {
 	return []any{&Category{}, &Product{}, &SKU{}, &Card{}, &Order{}, &Payment{}, &OrderItem{},
-		&LicenseBinding{}, &Coupon{}, &Admin{}, &AuditLog{}, &Setting{}, &Job{}, &Ticket{}}
+		&LicenseBinding{}, &Coupon{}, &Admin{}, &AdminIdentity{}, &AuditLog{}, &Setting{}, &Job{}, &Ticket{}}
 }

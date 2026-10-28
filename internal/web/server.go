@@ -45,6 +45,9 @@ type Server struct {
 	pages map[string]*template.Template
 	now   func() time.Time
 
+	oauth     map[string]*oauthProvider // admin sign-in providers
+	oauthHTTP *http.Client
+
 	queryLimit *limiter // failed order lookups per address
 	loginLimit *limiter // failed admin logins per address
 	orderLimit *limiter // orders created per address
@@ -60,6 +63,7 @@ func New(cfg Config, s *shop.Service, bot TGHandler, log *slog.Logger) *Server {
 	}
 	cfg.AdminPath = "/" + strings.Trim(cfg.AdminPath, "/")
 	srv := &Server{cfg: cfg, shop: s, st: s.Store, log: log, bot: bot, now: time.Now,
+		oauth: defaultProviders(), oauthHTTP: &http.Client{Timeout: 20 * time.Second},
 		queryLimit: newLimiter(10, 15*time.Minute), loginLimit: newLimiter(10, 15*time.Minute), orderLimit: newLimiter(20, 10*time.Minute)}
 	srv.pages = srv.parsePages()
 	return srv
@@ -78,6 +82,7 @@ func (s *Server) Handler() http.Handler {
 	r.MaxMultipartMemory = 8 << 20
 	static, _ := fs.Sub(assets, "static")
 	r.StaticFS("/static", http.FS(static))
+	r.GET("/favicon.ico", func(c *gin.Context) { c.FileFromFS("favicon-32.png", http.FS(static)) })
 	r.GET("/healthz", func(c *gin.Context) { c.String(200, "ok") })
 	s.publicRoutes(r)
 	s.adminRoutes(r.Group(s.cfg.AdminPath))
@@ -112,23 +117,32 @@ var funcs = template.FuncMap{
 		}
 		return ""
 	},
-	"status":    statusLabel,
-	"method":    methodLabel,
-	"markdown":  renderMarkdown,
-	"add":       func(a, b int) int { return a + b },
-	"price":     priceInput,
-	"contains":  strings.Contains,
-	"join":      strings.Join,
-	"query":     url.QueryEscape,
-	"kb":        func(n int64) float64 { return float64(n) / 1024 },
-	"hasPrefix": strings.HasPrefix,
-	"initial":   initial,
-	"nav":       navItem,
-	"hue":       func(id uint) int { return int(id*67+220) % 360 },
-	"fromPrice": fromPrice,
-	"accents": func() [][3]string {
-		return [][3]string{{"", "墨黑（默认）", "#18181b"}, {"indigo", "靛蓝", "#4f46e5"}, {"emerald", "翠绿", "#059669"},
-			{"amber", "琥珀", "#d97706"}, {"rose", "玫红", "#e11d48"}, {"blue", "海蓝", "#2563eb"}}
+	"status":          statusLabel,
+	"method":          methodLabel,
+	"markdown":        renderMarkdown,
+	"add":             func(a, b int) int { return a + b },
+	"price":           priceInput,
+	"contains":        strings.Contains,
+	"join":            strings.Join,
+	"query":           url.QueryEscape,
+	"kb":              func(n int64) float64 { return float64(n) / 1024 },
+	"hasPrefix":       strings.HasPrefix,
+	"initial":         initial,
+	"nav":             navItem,
+	"hue":             func(id uint) int { return int(id*67+220) % 360 },
+	"fromPrice":       fromPrice,
+	"themeCSS":        themeCSS,
+	"themePreviews":   themePreviews,
+	"accentOptions":   func() []Accent { return accents },
+	"appearanceModes": func() [][2]string { return modes },
+	"colorScheme": func(theme, mode string) string {
+		switch {
+		case findTheme(theme).DarkOnly || mode == "dark":
+			return "dark"
+		case mode == "light":
+			return "light"
+		}
+		return "light dark"
 	},
 }
 

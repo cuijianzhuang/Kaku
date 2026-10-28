@@ -24,6 +24,9 @@ import (
 func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	g.GET("/login", s.loginPage)
 	g.POST("/login", s.login)
+	g.GET("/oauth/:provider/start", s.oauthStart)
+	g.GET("/oauth/:provider/callback", s.oauthCallback)
+	g.POST("/oauth/totp", s.oauthTOTP)
 	a := g.Group("", s.requireAdmin)
 	a.POST("/logout", s.logout)
 	a.GET("", s.dashboard)
@@ -64,6 +67,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/security/totp/setup", s.totpSetup)
 	a.POST("/security/totp/enable", s.totpEnable)
 	a.POST("/security/totp/disable", s.totpDisable)
+	a.POST("/security/oauth/unlink", s.oauthUnlink)
 	a.GET("/audit", s.auditPage)
 	s.extraRoutes(a)
 	s.updateRoutes(a)
@@ -826,11 +830,12 @@ func (s *Server) settingsPage(c *gin.Context) {
 	st := s.st.Settings()
 	secrets := map[string]bool{"EPayKey": st.EPayKey != "", "TronGridKey": st.TronGridKey != "", "SMTPPass": st.SMTPPass != "",
 		"TGToken": st.TGToken != "", "TGWebhookSecret": st.TGWebhookSecret != "", "PolarisSecret": st.PolarisSecret != "",
-		"TurnstileSecret": st.TurnstileSecret != ""}
+		"TurnstileSecret":    st.TurnstileSecret != "",
+		"GitHubClientSecret": st.GitHubClientSecret != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
 	s.render(c, 200, "admin_settings", gin.H{"S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
-		"RenewBot": renewBotTemplate(st.TGBotUsername)})
+		"RenewBot": renewBotTemplate(st.TGBotUsername), "OAuthBase": base + s.cfg.AdminPath + "/oauth/"})
 }
 
 func renewBotTemplate(user string) string {
@@ -860,10 +865,6 @@ func (s *Server) saveSettings(c *gin.Context) {
 		st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
 		st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
 		st.RemindEnabled = on("remind_enabled")
-		switch a := str("accent"); a {
-		case "", "indigo", "emerald", "amber", "rose", "blue":
-			st.Accent = a
-		}
 		st.TurnstileSite = str("turnstile_site")
 		secret("turnstile_secret", &st.TurnstileSecret)
 		if st.SiteName == "" {
@@ -901,6 +902,20 @@ func (s *Server) saveSettings(c *gin.Context) {
 			redirectErr(c, back, errors.New("授权服务密钥至少 32 位（与 polaris-license 的 KAKU_API_SECRET 一致）"))
 			return
 		}
+	case "appearance":
+		if t, a, m := str("theme"), str("accent"), str("mode"); validTheme(t) && validAccent(a) && validMode(m) {
+			st.Theme, st.Accent, st.Mode = t, a, m
+		}
+		st.LogoURL = str("logo_url")
+		if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
+			redirectErr(c, back, errors.New("Logo 地址需以 https:// 或 / 开头"))
+			return
+		}
+	case "login":
+		st.GitHubClientID, st.GoogleClientID = str("github_client_id"), str("google_client_id")
+		secret("github_client_secret", &st.GitHubClientSecret)
+		secret("google_client_secret", &st.GoogleClientSecret)
+		st.AdminLinkInFooter = on("admin_link_in_footer")
 	default:
 		redirectErr(c, back, errors.New("未知设置分组"))
 		return
