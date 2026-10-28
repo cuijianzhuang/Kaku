@@ -63,6 +63,18 @@ document.addEventListener('submit', (e) => {
       const first = form.querySelector('input[name=method]:not(:disabled)');
       if (first) first.checked = true;
     }
+    // manual SKUs may ask the buyer for something (充值账号) and explain delivery
+    const askField = form.querySelector('[data-ask-field]');
+    if (askField) {
+      const ask = sku ? sku.getAttribute('data-ask') : '';
+      askField.hidden = !ask;
+      askField.querySelector('input').disabled = !ask;
+      askField.querySelector('[data-ask-label]').textContent = ask;
+      const noteField = form.querySelector('[data-note-field]');
+      const note = sku ? sku.getAttribute('data-note') : '';
+      noteField.hidden = !note;
+      noteField.querySelector('[data-note-text]').textContent = note;
+    }
     const qty = form.querySelector('input[name=qty]');
     if (sku && qty) {
       qty.max = sku.getAttribute('data-limit');
@@ -122,29 +134,6 @@ document.addEventListener('submit', (e) => {
   });
 })();
 
-// SKU form: show an example configuration for the chosen delivery method.
-(function () {
-  const sel = document.querySelector('select[name=deliverer_kind]');
-  const cfg = document.querySelector('textarea[name=deliverer_cfg]');
-  const hint = document.querySelector('[data-cfg-hint]');
-  if (!sel || !cfg || !hint) return;
-  const examples = {
-    stock: '无需配置（留空）。在「卡密」页导入库存；Polaris 预生成的激活码也可以这样导入。',
-    text: '{"text": "下载地址：https://…\\n提取码：…", "per_unit": false}',
-    manual: '无需配置（留空）。付款后在订单页手动填写发货内容。',
-    webhook: '{"url": "https://api.example.com/kaku/deliver", "secret": "至少16位的签名密钥", "revoke_url": ""}',
-    polaris: '{"plan": "pro", "days": 365, "updates_days": 365, "limits": {"nodes": 20, "users": 0, "plugins": 0}, "features": ["*"], "offline": false, "max_activations": 1, "renewable": true}',
-  };
-  const show = () => { hint.textContent = examples[sel.value] || ''; };
-  sel.addEventListener('change', show);
-  show();
-  document.querySelector('[data-cfg-fill]')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    const ex = examples[sel.value] || '';
-    cfg.value = ex.startsWith('{') ? JSON.stringify(JSON.parse(ex), null, 2) : '';
-  });
-})();
-
 // Phones show list tables as cards: copy each column's header onto its
 // cells (CSS shows it as a label). Tables whose first row is not a header
 // row, such as key-value tables, are left alone.
@@ -178,40 +167,70 @@ document.addEventListener('change', (e) => {
   if (e.target.matches('select[data-autosubmit]') && e.target.form) e.target.form.submit();
 });
 
-// SKU form: the Polaris section replaces the JSON box for Polaris SKUs.
+// SKU form: each delivery method has its own section; the raw JSON box is
+// only for Polaris "JSON" mode.
 (function () {
   const kind = document.querySelector('select[name=deliverer_kind]');
-  const pc = document.querySelector('[data-cfg-polaris]');
-  const pk = document.querySelector('[data-cfg-panel]');
   const generic = document.querySelector('[data-cfg-generic]');
-  if (!kind || !pc || !generic) return;
-  const mode = () => (pc.querySelector('input[name=pc_mode]:checked') || {}).value || 'custom';
+  if (!kind || !generic) return;
+  const pc = document.querySelector('[data-cfg-polaris]');
+  const sections = {
+    stock: document.querySelector('[data-cfg-stock]'),
+    text: document.querySelector('[data-cfg-text]'),
+    webhook: document.querySelector('[data-cfg-webhook]'),
+    manual: document.querySelector('[data-cfg-manual]'),
+    panelcode: document.querySelector('[data-cfg-panel]'),
+    polaris: pc,
+  };
+  const mode = () => (pc && pc.querySelector('input[name=pc_mode]:checked') || {}).value || 'custom';
   const sync = () => {
-    const isPolaris = kind.value === 'polaris';
-    pc.hidden = !isPolaris;
-    pc.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPolaris; });
-    const isPanel = kind.value === 'panelcode';
-    if (pk) {
-      pk.hidden = !isPanel;
-      pk.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPanel; });
+    for (const [k, el] of Object.entries(sections)) {
+      if (!el) continue;
+      const on = kind.value === k;
+      el.hidden = !on;
+      el.querySelectorAll('input,select,textarea').forEach((f) => { f.disabled = !on; });
     }
-    generic.hidden = isPanel || (isPolaris && mode() !== 'json');
-    const ex = generic.querySelector('[data-cfg-example]');
-    if (ex) ex.hidden = isPolaris || isPanel;
-    pc.querySelectorAll('[data-pc-pane]').forEach((p) => {
-      p.hidden = !p.getAttribute('data-pc-pane').split(' ').includes(mode());
-    });
-    const all = pc.querySelector('[data-pc-all]');
-    pc.querySelectorAll('[data-pc-features] input').forEach((f) => { f.disabled = !isPolaris || (all && all.checked); });
+    const isPolaris = kind.value === 'polaris';
+    generic.hidden = isPolaris ? mode() !== 'json' : !!sections[kind.value];
+    // panel SKUs keep their saved JSON when the panel cannot list its plans
+    generic.querySelector('textarea').disabled = generic.hidden && kind.value !== 'panelcode';
+    if (pc) {
+      pc.querySelectorAll('[data-pc-pane]').forEach((p) => {
+        p.hidden = !p.getAttribute('data-pc-pane').split(' ').includes(mode());
+      });
+      const all = pc.querySelector('[data-pc-all]');
+      pc.querySelectorAll('[data-pc-features] input').forEach((f) => { f.disabled = !isPolaris || (all && all.checked); });
+    }
   };
   kind.addEventListener('change', sync);
-  pc.addEventListener('change', sync);
-  pc.querySelectorAll('[data-set-days]').forEach((b) => b.addEventListener('click', () => {
-    const v = b.getAttribute('data-set-days');
-    pc.querySelector('[data-term=days]').value = v;
-    pc.querySelector('[data-term=updates]').value = v;
-  }));
+  if (pc) {
+    pc.addEventListener('change', sync);
+    pc.querySelectorAll('[data-set-days]').forEach((b) => b.addEventListener('click', () => {
+      const v = b.getAttribute('data-set-days');
+      pc.querySelector('[data-term=days]').value = v;
+      pc.querySelector('[data-term=updates]').value = v;
+    }));
+  }
   sync();
+})();
+
+// Product templates: suggest a name for the picked type until the owner types one.
+(function () {
+  const form = document.querySelector('form[data-quick]');
+  if (!form) return;
+  const title = form.querySelector('input[name=title]');
+  const sku = form.querySelector('input[name=sku_name]');
+  let last = {};
+  const fill = () => {
+    const t = form.querySelector('input[name=template]:checked');
+    if (!t) return;
+    for (const [el, key] of [[title, 'title'], [sku, 'sku']]) {
+      if (!el.value || el.value === last[key]) el.value = t.getAttribute('data-' + key);
+      last[key] = t.getAttribute('data-' + key);
+    }
+  };
+  form.addEventListener('change', (e) => { if (e.target.name === 'template') fill(); });
+  fill();
 })();
 
 // Settings: generate a random API secret and show it (it is needed on the

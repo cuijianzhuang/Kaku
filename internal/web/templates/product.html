@@ -35,6 +35,7 @@
           <label class="option sku {{if eq $k.Stock 0}}disabled{{end}}">
             <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{if and (gt $k.Stock 0) (lt $k.Stock $k.LimitPerOrder)}}{{$k.Stock}}{{else}}{{$k.LimitPerOrder}}{{end}}"
               data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}"
+              data-ask="{{$k.Ask}}" data-note="{{$k.Note}}"
               data-cny="{{$k.PriceCNY}}" data-usdt="{{$k.PriceUSDT}}" data-xtr="{{$k.PriceStars}}"
               {{if eq $k.Stock 0}}disabled{{else if eq $i 0}}checked{{end}} required>
             <span>
@@ -54,6 +55,8 @@
           <button type="button" data-step="1" aria-label="增加">+</button>
         </div>
       </div>
+      <label data-ask-field hidden><span data-ask-label></span><input name="ask" maxlength="100" disabled required></label>
+      <div class="notice" data-note-field hidden><svg class="ic"><use href="#i-info"/></svg><span data-note-text></span></div>
       <label>邮箱（接收卡密，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com"></label>
       <label>查询密码（查单时使用，至少 4 位）<input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
       <details>
