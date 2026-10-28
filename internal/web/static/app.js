@@ -264,14 +264,30 @@ document.addEventListener('change', (e) => {
     const file = cover.querySelector('[data-cover-file]');
     const url = cover.querySelector('[data-cover-url]');
     const remove = cover.querySelector('[data-cover-remove]');
+    const help = cover.querySelector('.cover-help');
+    const helpText = help ? help.textContent : '';
+    const note = (msg, bad) => { if (help) { help.textContent = msg || helpText; help.classList.toggle('err-text', !!bad); } };
     let blob = '';
+    let timer = 0;
     const show = (src) => {
-      img.hidden = !src;
-      ph.hidden = !!src;
+      clearTimeout(timer);
       remove.hidden = !src;
-      if (src) img.src = src; else img.removeAttribute('src');
+      if (!src) { img.hidden = true; ph.hidden = false; img.removeAttribute('src'); note(); return; }
+      note(src.startsWith('blob:') ? '' : '正在加载图片…');
+      img.src = src;
     };
-    img.addEventListener('error', () => { if (img.src) { img.hidden = true; ph.hidden = false; } });
+    // results for an older address are ignored: only the current one counts
+    img.addEventListener('load', () => {
+      if (!img.getAttribute('src')) return;
+      img.hidden = false; ph.hidden = true; note();
+    });
+    const failed = () => {
+      if (!img.getAttribute('src')) return;
+      img.hidden = true; ph.hidden = false;
+      note('图片加载失败：请确认链接能在浏览器里直接打开（有的图床禁止外站引用），或改用「上传图片」。', true);
+    };
+    img.addEventListener('error', failed);
+    if (img.getAttribute('src') && img.complete && img.naturalWidth === 0) failed();
     file.addEventListener('change', () => {
       if (blob) URL.revokeObjectURL(blob);
       const f = file.files[0];
@@ -287,7 +303,13 @@ document.addEventListener('change', (e) => {
     url.addEventListener('input', () => {
       if (file.files.length) return;
       const v = url.value.trim();
-      show(/^(https:\/\/|\/)/.test(v) ? v : '');
+      clearTimeout(timer);
+      // wait until typing / pasting is done before loading
+      timer = setTimeout(() => {
+        const okURL = /^(https:\/\/|\/)/.test(v);
+        show(okURL ? v : '');
+        if (v && !okURL) note('图片链接需以 https:// 开头。', true);
+      }, 400);
     });
     remove.addEventListener('click', () => {
       file.value = '';

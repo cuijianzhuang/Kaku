@@ -37,7 +37,7 @@
             <button type="button" class="secondary" data-cover-remove {{if not $prod.Cover}}hidden{{end}}><svg class="ic"><use href="#i-x"/></svg>移除</button>
           </div>
           <input name="cover" value="{{$prod.Cover}}" maxlength="500" placeholder="https://example.com/cover.png" inputmode="url" data-cover-url {{if not $prod.Cover}}hidden{{end}}>
-          <p class="muted cover-help">PNG / JPG / GIF / WebP，最大 5 MB，建议 4:3（如 800×600）。不设置时显示商品名首字。</p>
+          <p class="muted cover-help">PNG / JPG / GIF / WebP，最大 5 MB。横图（如 800×600）或正方形图标都可以，商店里会完整显示、不裁切。不设置时显示商品名首字。</p>
         </div>
       </div>
     </div>
