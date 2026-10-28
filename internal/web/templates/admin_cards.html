@@ -34,8 +34,8 @@
     <h2 style="margin-top:0">导入卡密</h2>
     <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack">
       <input type="hidden" name="sku_id" value="{{.SKUID}}">
-      <label>每行一条（自动去重，跨规格也不会重复） <textarea name="cards" placeholder="CARD-0001&#10;CARD-0002"></textarea></label>
-      <label>或上传 TXT / CSV（取第一列） <input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label>
+      <label><span>每行一条 <span class="hint">· 自动去重，跨规格也不会重复</span></span><textarea name="cards" placeholder="CARD-0001&#10;CARD-0002"></textarea></label>
+      <label><span>或上传文件 <span class="hint">· TXT / CSV，取第一列</span></span><input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label>
       <button>导入</button>
     </form>
   </div>
@@ -58,10 +58,10 @@
     {{range .Cards}}
     <tr>
       <td>{{.ID}}</td><td><code>{{.Preview}}</code></td><td><span class="badge {{.Status}}">{{status .Status}}</span></td>
-      <td>{{if .OrderID}}#{{.OrderID}}{{end}}</td><td>{{date .CreatedAt}}</td>
+      <td>{{if .OrderID}}#{{.OrderID}}{{end}}</td><td class="nowrap muted">{{date .CreatedAt}}</td>
       <td>{{if eq .Status "available"}}<form method="post" action="{{$p}}/cards/{{.ID}}/void" class="inline" data-confirm="作废这条卡密？"><button class="link">作废</button></form>{{end}}</td>
     </tr>
-    {{else}}<tr><td colspan="6" class="muted">没有卡密</td></tr>{{end}}
+    {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">没有卡密</td></tr>{{end}}
   </table>
   <div class="pager">
     {{if gt .Page 1}}<a href="?sku={{.SKUID}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}

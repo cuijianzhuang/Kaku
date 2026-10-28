@@ -1,12 +1,12 @@
 {{define "title"}}分类{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<div class="page-head"><h1>商品分类</h1><a href="{{$p}}/products">← 商品</a></div>
-<div class="card table-wrap"><table>
-  <tr><th>名称</th><th>排序</th><th>显示</th><th>商品数</th><th></th></tr>
+<div class="page-head"><h1>商品分类</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
+<div class="card table-wrap"><table class="mid">
+  <tr><th>名称 · 排序 · 显示</th><th>商品数</th><th></th></tr>
   {{range .Categories}}
   <tr>
-    <td colspan="3">
+    <td>
       <form method="post" action="{{$p}}/categories" class="filters" style="margin:0">
         <input type="hidden" name="id" value="{{.ID}}">
         <input name="name" value="{{.Name}}" required>
@@ -16,13 +16,13 @@
       </form>
     </td>
     <td>{{index $.Counts .ID}}</td>
-    <td><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类？"><button class="link">删除</button></form></td>
+    <td style="text-align:right"><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类？"><button class="link">删除</button></form></td>
   </tr>
-  {{end}}
+  {{else}}<tr><td colspan="3" class="muted" style="text-align:center;padding:28px">还没有分类</td></tr>{{end}}
 </table></div>
 <div class="card">
-  <h2>新增分类</h2>
-  <form method="post" action="{{$p}}/categories" class="filters">
+  <h2 style="margin-top:0">新增分类</h2>
+  <form method="post" action="{{$p}}/categories" class="filters" style="margin:0">
     <input name="name" placeholder="分类名称" required>
     <input type="number" name="sort" value="0" style="width:80px">
     <label class="check"><input type="checkbox" name="visible" checked> 显示</label>

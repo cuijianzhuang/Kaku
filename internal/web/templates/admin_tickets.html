@@ -2,11 +2,11 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 <div class="page-head"><h1>售后工单</h1>
-  <div><a href="?status=open">待回复</a> · <a href="?status=replied">已回复</a> · <a href="?status=closed">已关闭</a> · <a href="?status=all">全部</a></div>
+  <div class="seg"><a href="?status=open" {{if eq .Status "open"}}class="on"{{end}}>待回复</a><a href="?status=replied" {{if eq .Status "replied"}}class="on"{{end}}>已回复</a><a href="?status=closed" {{if eq .Status "closed"}}class="on"{{end}}>已关闭</a><a href="?status=all" {{if eq .Status "all"}}class="on"{{end}}>全部</a></div>
 </div>
 {{range .Tickets}}
 <div class="card">
-  <div class="row"><b>#{{.ID}} · {{.Email}}{{if .OrderNo}} · 订单 <a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{end}}</b><span class="badge">{{status .Status}}</span></div>
+  <div class="row"><b>#{{.ID}} · {{.Email}}{{if .OrderNo}} · 订单 <a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{end}}</b><span class="badge {{.Status}}">{{status .Status}}</span></div>
   <p class="muted">{{date .CreatedAt}} · {{.ClientIP}}</p>
   <pre>{{.Content}}</pre>
   {{if .Reply}}<p class="muted">已回复：</p><pre>{{.Reply}}</pre>{{end}}
@@ -18,5 +18,5 @@
   <form method="post" action="{{$p}}/tickets/{{.ID}}/close" style="margin-top:8px"><button class="secondary">关闭工单</button></form>
   {{end}}
 </div>
-{{else}}<div class="card muted">没有工单</div>{{end}}
+{{else}}<div class="card empty"><svg class="ic"><use href="#i-message"/></svg><p>没有{{if eq .Status "open"}}待回复的{{end}}工单</p></div>{{end}}
 {{end}}

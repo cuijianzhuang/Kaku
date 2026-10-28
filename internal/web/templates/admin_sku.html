@@ -2,13 +2,13 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$k := .SKU}}
-<div class="page-head"><h1>{{if $k.ID}}编辑规格{{else}}新增规格{{end}} · {{.Product.Title}}</h1><a href="{{$p}}/products/{{.Product.ID}}">← 返回商品</a></div>
+<div class="page-head"><h1>{{if $k.ID}}编辑规格{{else}}新增规格{{end}} · {{.Product.Title}}</h1><a class="btn secondary" href="{{$p}}/products/{{.Product.ID}}"><svg class="ic"><use href="#i-arrow-left"/></svg>返回商品</a></div>
 <div class="card">
   <form method="post" action="{{$p}}/skus" class="stack">
     <input type="hidden" name="id" value="{{$k.ID}}">
     <input type="hidden" name="product_id" value="{{.Product.ID}}">
     <label>规格名称 <input name="name" value="{{$k.Name}}" required maxlength="100" placeholder="如：月卡 / 专业版 1 年"></label>
-    <div class="filters">
+    <div class="fields">
       <label>人民币价格（元） <input name="price_cny" value="{{price $k.PriceCNY "CNY"}}" inputmode="decimal" placeholder="不卖留空"></label>
       <label>USDT 价格 <input name="price_usdt" value="{{price $k.PriceUSDT "USDT"}}" inputmode="decimal" placeholder="不卖留空"></label>
       <label>Telegram Stars <input name="price_stars" value="{{price $k.PriceStars "XTR"}}" inputmode="numeric" placeholder="不卖留空"></label>
@@ -25,7 +25,7 @@
       <p class="muted">plan：pro / enterprise；days：授权天数（0 = 永久）；updates_days：更新服务天数（0 = 不限）；limits：节点 / 用户 / 插件上限（0 = 不限）；features：功能列表，["*"] 为全部；offline：true 时发货为离线 .lic 文件（无法吊销）；renewable：出现在续费页（需 days &gt; 0）。需先在「设置 → Polaris 授权服务」填写地址和密钥。</p>
     </details>
     <label>批发价（JSON，可选） <input name="wholesale" value="{{$k.Wholesale}}" placeholder='[{"min_qty":5,"percent":90},{"min_qty":10,"percent":80}]'></label>
-    <div class="filters">
+    <div class="fields">
       <label>每单上限 <input type="number" name="limit_per_order" value="{{$k.LimitPerOrder}}" min="1"></label>
       <label>库存预警线 <input type="number" name="low_stock" value="{{$k.LowStock}}" min="0"></label>
       <label>排序 <input type="number" name="sort" value="{{$k.Sort}}"></label>
@@ -35,6 +35,9 @@
   </form>
 </div>
 {{if $k.ID}}
-<form method="post" action="{{$p}}/skus/{{$k.ID}}/delete" data-confirm="删除该规格及其未售卡密？"><button class="danger">删除规格</button></form>
+<div class="card danger-zone">
+  <div><h3>删除规格</h3><p class="muted">同时删除该规格下未售出的卡密；已有订单不受影响。</p></div>
+  <form method="post" action="{{$p}}/skus/{{$k.ID}}/delete" data-confirm="删除该规格及其未售卡密？"><button class="danger">删除规格</button></form>
+</div>
 {{end}}
 {{end}}

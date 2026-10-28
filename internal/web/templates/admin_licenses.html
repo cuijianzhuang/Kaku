@@ -14,15 +14,15 @@
   <button class="secondary">筛选</button>
 </form>
 <div class="card table-wrap"><table>
-  <tr><th>license_id</th><th>订单</th><th>买家</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th><th>操作</th></tr>
+  <tr><th>License ID</th><th>订单</th><th>买家</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th><th>操作</th></tr>
   {{range .Bindings}}
   <tr>
     <td><code>{{.LicenseID}}</code></td>
     <td><a href="{{$p}}/orders/{{index $.OrderNos .ID}}">{{index $.OrderNos .ID}}</a></td>
     <td>{{.Email}}{{if .TGUserID}}<br><span class="muted">TG {{.TGUserID}}</span>{{end}}</td>
     <td>{{.Plan}}{{if .Offline}} · 离线{{end}}</td>
-    <td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td>
-    <td>{{.Instance}}</td>
+    <td class="nowrap">{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td>
+    <td>{{if .Instance}}<code>{{.Instance}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
     <td><span class="badge {{.Status}}">{{status .Status}}</span></td>
     <td>
       <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/refresh" class="inline"><button class="link">同步</button></form>
@@ -34,7 +34,7 @@
       {{end}}
     </td>
   </tr>
-  {{else}}<tr><td colspan="8" class="muted">没有授权记录</td></tr>{{end}}
+  {{else}}<tr><td colspan="8" class="muted" style="text-align:center;padding:28px">没有授权记录</td></tr>{{end}}
 </table>
 <div class="pager">
   {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}

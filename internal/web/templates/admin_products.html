@@ -3,7 +3,7 @@
 {{$p := .AdminPath}}
 <div class="page-head">
   <h1>商品</h1>
-  <div><a href="{{$p}}/categories">管理分类</a> · <a class="btn" href="{{$p}}/products/new">新增商品</a></div>
+  <div class="actions"><a class="btn secondary" href="{{$p}}/categories"><svg class="ic"><use href="#i-tag"/></svg>管理分类</a><a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-plus"/></svg>新增商品</a></div>
 </div>
 {{if not .Categories}}<div class="flash err">请先 <a href="{{$p}}/categories">新增分类</a>。</div>{{end}}
 <div class="card table-wrap"><table>
@@ -23,6 +23,6 @@
     </td>
     <td>{{if eq .Status "on"}}<span class="badge delivered">在售</span>{{else}}<span class="badge">下架</span>{{end}}</td>
   </tr>
-  {{else}}<tr><td colspan="4" class="muted">还没有商品</td></tr>{{end}}
+  {{else}}<tr><td colspan="4" class="muted" style="text-align:center;padding:28px">还没有商品</td></tr>{{end}}
 </table></div>
 {{end}}
