@@ -1,31 +1,39 @@
 {{define "title"}}优惠码{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<h1>优惠码</h1>
+<div class="page-head"><h1>优惠码</h1></div>
 <div class="card">
   <h2 style="margin-top:0">新建优惠码</h2>
-  <form method="post" action="{{$p}}/coupons" class="fields">
-    <label>优惠码 <input name="code" placeholder="留空自动生成" maxlength="64"></label>
-    <label>类型 <select name="type"><option value="percent">百分比折扣</option><option value="fixed">立减（元）</option></select></label>
-    <label>数值 <input name="value" required placeholder="10 = 9 折或立减 10 元"></label>
-    <label>限用次数 <input type="number" name="max_uses" value="0" min="0"></label>
-    <label>适用 SKU ID <input name="sku_scope" placeholder="1,2　留空为全部"></label>
-    <label>到期日 <input type="date" name="expires_at"></label>
-    <button>创建</button>
+  <form method="post" action="{{$p}}/coupons" class="stack">
+    <div class="fields">
+      <label>优惠码 <input name="code" placeholder="留空自动生成" maxlength="64"></label>
+      <label>类型 <select name="type"><option value="percent">打折（减百分比）</option><option value="fixed">立减金额（元）</option></select></label>
+      <label><span>数值 <span class="hint">· 打折填 10 即 9 折</span></span><input name="value" required inputmode="decimal" placeholder="10"></label>
+      <label><span>限用次数 <span class="hint">· 0 = 不限</span></span><input type="number" name="max_uses" value="0" min="0"></label>
+      <label><span>到期日 <span class="hint">· 留空不过期</span></span><input type="date" name="expires_at"></label>
+    </div>
+    {{if .SKUs}}
+    <details class="scope-pick">
+      <summary>只对部分规格有效（默认全部商品可用）</summary>
+      <div class="scope-list">{{range .SKUs}}<label class="check"><input type="checkbox" name="sku_scope" value="{{.ID}}"> {{.Name}}</label>{{end}}</div>
+    </details>
+    {{end}}
+    <div><button>创建</button></div>
   </form>
-  <p class="muted" style="margin:14px 0 0;font-size:13px">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。限用次数 0 = 不限。</p>
+  <p class="muted" style="margin:14px 0 0;font-size:13px">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。</p>
 </div>
 <div class="card table-wrap"><table>
   <tr><th>优惠码</th><th>优惠</th><th>使用</th><th>适用</th><th>到期</th><th>状态</th><th></th></tr>
   {{range .Coupons}}
   <tr>
-    <td><code>{{.Code}}</code></td>
-    <td>{{if eq .Type "percent"}}{{.Value}}% off{{else}}立减 {{money .Value "CNY"}}{{end}}</td>
-    <td>{{.Used}}{{if .MaxUses}} / {{.MaxUses}}{{end}}</td>
-    <td>{{if .SKUScope}}SKU {{.SKUScope}}{{else}}全部{{end}}</td>
-    <td>{{date .ExpiresAt}}</td>
+    <td><code>{{.Code}}</code> <button type="button" class="link" data-copy="{{.Code}}">复制</button></td>
+    <td>{{if eq .Type "percent"}}减 {{.Value}}%{{else}}立减 {{money .Value "CNY"}}{{end}}</td>
+    <td>{{.Used}}{{if .MaxUses}} / {{.MaxUses}}{{else}} 次 · 不限{{end}}</td>
+    <td>{{with index $.Scope .ID}}{{.}}{{else}}全部商品{{end}}</td>
+    <td>{{if .ExpiresAt}}{{date .ExpiresAt}}{{else}}不过期{{end}}</td>
     <td>{{if .Active}}<span class="badge on">启用</span>{{else}}<span class="badge">停用</span>{{end}}</td>
-    <td>{{if .Active}}<form method="post" action="{{$p}}/coupons/{{.ID}}/delete" class="inline"><button class="link">停用</button></form>{{end}}</td>
+    <td>{{if .Active}}<form method="post" action="{{$p}}/coupons/{{.ID}}/delete" class="inline" data-confirm="停用优惠码 {{.Code}}？停用后买家无法再使用，可随时重新启用。"><button class="link">停用</button></form>
+      {{else}}<form method="post" action="{{$p}}/coupons/{{.ID}}/enable" class="inline"><button class="link">启用</button></form>{{end}}</td>
   </tr>
   {{else}}<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">还没有优惠码</td></tr>{{end}}
 </table></div>

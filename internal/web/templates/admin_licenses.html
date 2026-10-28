@@ -1,8 +1,8 @@
-{{define "title"}}授权{{end}}
+{{define "title"}}许可证{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<h1>Polaris 授权</h1>
-{{if not .PolarisReady}}<div class="flash err">尚未配置授权服务，续期 / 吊销 / 同步不可用。请到 <a href="{{$p}}/settings/polaris">设置 → 授权服务</a> 填写。</div>{{end}}
+<div class="page-head"><h1>许可证</h1></div>
+{{if not .PolarisReady}}<div class="notice" style="margin-bottom:16px"><svg class="ic"><use href="#i-info"/></svg><span>这里管理卖出的 Polaris 许可证。还没有连接授权服务，续期 / 吊销 / 同步暂不可用：<a href="{{$p}}/settings/polaris">去设置授权服务</a>。</span></div>{{end}}
 <form method="get" class="filters">
   <input name="q" value="{{.Q}}" placeholder="license_id / 邮箱 / 实例 ID">
   <select name="status">

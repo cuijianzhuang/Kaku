@@ -3,23 +3,35 @@
 {{$p := .AdminPath}}
 {{$o := .Order}}
 <div class="page-head"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a class="btn secondary" href="{{$p}}/orders"><svg class="ic"><use href="#i-arrow-left"/></svg>订单列表</a></div>
+{{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}
+<div class="card manual-card">
+  <h2 style="margin-top:0">等待你手动发货</h2>
+  {{if .AskLabel}}<div class="ask-box"><span class="muted">买家填写的{{.AskLabel}}</span><div class="secret-row"><span class="secret">{{.AskValue}}</span><button type="button" class="secondary" data-copy="{{.AskValue}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div></div>{{end}}
+  <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/manual" class="stack">
+    <label>发货内容 <span class="hint">· 买家会在订单页、邮件和 Telegram 收到</span><textarea name="content" required placeholder="例如：已充值到 {{if .AskValue}}{{.AskValue}}{{else}}买家账号{{end}}，有效期至 …"></textarea></label>
+    <label class="check"><input type="checkbox" name="per_line"> 每行作为一条（一单多件时）</label>
+    <div><button><svg class="ic"><use href="#i-check"/></svg>确认发货</button></div>
+  </form>
+</div>
+{{end}}
 <div class="two">
   <div class="card">
     <table>
-      <tr><th>商品</th><td>{{$o.ProductTitle}} {{$o.SKUName}} ×{{$o.Qty}}（SKU #{{$o.SKUID}} · {{.SKU.DelivererKind}}）</td></tr>
+      <tr><th>商品</th><td>{{$o.ProductTitle}} · {{$o.SKUName}} ×{{$o.Qty}} <span class="muted">（{{.KindLabel}}）</span></td></tr>
+      {{if .AskLabel}}<tr><th>{{.AskLabel}}</th><td><b>{{.AskValue}}</b></td></tr>{{end}}
       <tr><th>金额</th><td>{{money $o.Amount $o.Currency}}{{if ne $o.PayAmount $o.Amount}}（应付 {{money $o.PayAmount $o.Currency}}）{{end}}{{if $o.Discount}} · 优惠 {{money $o.Discount $o.Currency}}{{if .Coupon.Code}}（{{.Coupon.Code}}）{{end}}{{end}}</td></tr>
       <tr><th>支付方式</th><td>{{method $o.PayMethod}} · {{if eq $o.Channel "tg"}}Telegram{{else}}网页{{end}}</td></tr>
-      <tr><th>邮箱</th><td>{{$o.Email}}</td></tr>
+      <tr><th>邮箱</th><td>{{or $o.Email "—"}}</td></tr>
       {{if $o.TGUserID}}<tr><th>Telegram</th><td>{{$o.TGUserID}}</td></tr>{{end}}
       <tr><th>IP</th><td>{{$o.ClientIP}}</td></tr>
       {{if $o.RenewOf}}<tr><th>续费许可证</th><td><a href="{{$p}}/licenses?q={{$o.RenewOf}}">{{$o.RenewOf}}</a></td></tr>{{end}}
-      {{if $o.Remark}}<tr><th>备注</th><td>{{$o.Remark}}</td></tr>{{end}}
-      <tr><th>下单</th><td>{{date $o.CreatedAt}}（{{date $o.ExpiresAt}} 超时）</td></tr>
-      <tr><th>支付</th><td>{{date $o.PaidAt}}</td></tr>
-      <tr><th>发货</th><td>{{date $o.DeliveredAt}}{{if $o.DeliverAttempts}} · 尝试 {{$o.DeliverAttempts}} 次{{end}}</td></tr>
+      {{if .Remark}}<tr><th>备注</th><td>{{.Remark}}</td></tr>{{end}}
+      <tr><th>下单</th><td>{{date $o.CreatedAt}}{{if eq $o.Status "pending"}}（{{date $o.ExpiresAt}} 超时）{{end}}</td></tr>
+      {{if $o.PaidAt}}<tr><th>支付</th><td>{{date $o.PaidAt}}</td></tr>{{end}}
+      {{if $o.DeliveredAt}}<tr><th>发货</th><td>{{date $o.DeliveredAt}}</td></tr>{{end}}
       {{if $o.RefundedAt}}<tr><th>退款</th><td>{{date $o.RefundedAt}}</td></tr>{{end}}
-      {{if $o.LastError}}<tr><th>最近错误</th><td class="muted">{{$o.LastError}}</td></tr>{{end}}
-      {{if .Job.ID}}<tr><th>发货任务</th><td>{{.Job.Status}} · 第 {{.Job.Attempts}} 次{{if eq .Job.Status "pending"}} · 下次 {{date .Job.RunAt}}{{end}}</td></tr>{{end}}
+      {{if $o.LastError}}{{if eq $o.LastError "等待人工发货"}}<tr><th>状态说明</th><td>等待你手动发货</td></tr>{{else}}<tr><th>发货问题</th><td class="err-text">{{$o.LastError}}{{if $o.DeliverAttempts}}（已尝试 {{$o.DeliverAttempts}} 次）{{end}}</td></tr>{{end}}{{end}}
+      {{if and .Job.ID (eq .Job.Status "pending") (not .Manual)}}<tr><th>自动重试</th><td>{{date .Job.RunAt}}</td></tr>{{end}}
     </table>
   </div>
   <div class="card stack">
@@ -30,22 +42,31 @@
       <button>补单（标记已支付）</button>
     </form>
     {{end}}
-    {{if or (eq $o.Status "paid") (eq $o.Status "failed")}}
-    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/redeliver"><button>重新发货</button></form>
-    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/manual" class="stack">
-      <label>手动发货内容 <textarea name="content" required></textarea></label>
-      <label class="check"><input type="checkbox" name="per_line"> 每行作为一条</label>
-      <button class="secondary">手动发货</button>
-    </form>
+    {{if and (or (eq $o.Status "paid") (eq $o.Status "failed")) (not .Manual)}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/redeliver" data-confirm="按发货方式重新尝试自动发货？"><button>重新发货</button></form>
+    <details class="op-more">
+      <summary>改为手动发货</summary>
+      <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/manual" class="stack">
+        <label>发货内容 <textarea name="content" required></textarea></label>
+        <label class="check"><input type="checkbox" name="per_line"> 每行作为一条</label>
+        <div><button class="secondary">手动发货</button></div>
+      </form>
+    </details>
     {{end}}
     {{if eq $o.Status "delivered"}}
     <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/resend"><button class="secondary">重发邮件 / 消息</button></form>
     {{end}}
+    {{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}<p class="muted" style="margin:0">在上方填写发货内容后点「确认发货」。</p>{{end}}
+    {{if eq $o.Status "refunded"}}<p class="muted" style="margin:0">订单已退款，没有可用操作。</p>{{end}}
     {{if or (eq $o.Status "paid") (eq $o.Status "delivered") (eq $o.Status "failed")}}
-    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/refund" class="stack" data-confirm="确认退款？Polaris 授权会被吊销，Stars 会原路退回；易支付 / USDT 需在渠道手动退款。">
-      <label>退款原因 <input name="reason" maxlength="200"></label>
-      <button class="danger">退款{{if eq .SKU.DelivererKind "polaris"}}并吊销授权{{end}}</button>
-    </form>
+    <div class="op-danger">
+      <h3>退款</h3>
+      <p class="muted">{{.RefundNote}}</p>
+      <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/refund" class="stack" data-confirm="{{.RefundNote}} 确认继续？">
+        <label>退款原因 <input name="reason" maxlength="200" placeholder="可选，记录在日志里"></label>
+        <div><button class="danger">{{if eq $o.PayMethod "stars"}}退款（Stars 原路退回）{{else}}标记为已退款{{end}}{{if eq .SKU.DelivererKind "polaris"}}并吊销授权{{end}}</button></div>
+      </form>
+    </div>
     {{end}}
   </div>
 </div>
@@ -57,7 +78,7 @@
   <div class="secret-row"><span>{{add $i 1}}.</span>
     {{if $it.FileName}}<span>文件 {{$it.FileName}}</span><details><summary>查看</summary><pre>{{$it.Content}}</pre></details>
     {{else}}<span class="secret">{{$it.Content}}</span><button class="secondary" data-copy="{{$it.Content}}">复制</button>{{end}}
-    <span class="muted">{{$it.Source}}{{if $it.RefID}} · {{$it.RefID}}{{end}}</span>
+    
   </div>
   {{end}}
 </div>
@@ -75,7 +96,7 @@
 <div class="card table-wrap">
   <h2 style="margin-top:0">支付流水</h2>
   <table><tr><th>渠道</th><th>流水号</th><th>金额</th><th>状态</th><th>时间</th></tr>
-  {{range .Payments}}<tr><td>{{method .Channel}}</td><td><code>{{.TradeNo}}</code></td><td>{{money .Amount .Currency}}</td><td>{{.Status}}</td><td>{{date .CreatedAt}}</td></tr>
+  {{range .Payments}}<tr><td>{{method .Channel}}</td><td><code>{{.TradeNo}}</code></td><td>{{money .Amount .Currency}}</td><td>{{if eq .Status "paid"}}已支付{{else if eq .Status "refunded"}}已退款{{else}}{{.Status}}{{end}}</td><td>{{date .CreatedAt}}</td></tr>
   {{else}}<tr><td colspan="5" class="muted">暂无</td></tr>{{end}}
   </table>
 </div>

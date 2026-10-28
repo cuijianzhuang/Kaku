@@ -56,6 +56,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.GET("/coupons", s.coupons)
 	a.POST("/coupons", s.saveCoupon)
 	a.POST("/coupons/:id/delete", s.deleteCoupon)
+	a.POST("/coupons/:id/enable", s.enableCoupon)
 	a.GET("/tickets", s.tickets)
 	a.POST("/tickets/:id/reply", s.replyTicket)
 	a.POST("/tickets/:id/close", s.closeTicket)
@@ -93,6 +94,35 @@ func atoiU(s string) uint {
 
 // ---- dashboard ----
 
+// setupCheck is one item of the dashboard's 开店检查.
+type setupCheck struct {
+	Done       bool
+	Text, Hint string
+	Link       string
+}
+
+// setupChecks lists what a shop needs before it can really sell; nil once
+// everything is done.
+func (s *Server) setupChecks() []setupCheck {
+	st := s.st.Settings()
+	ap := s.cfg.AdminPath
+	var onSale int64
+	s.st.DB.Model(&model.Product{}).Where("status = ?", model.ProductOn).Count(&onSale)
+	checks := []setupCheck{
+		{strings.HasPrefix(st.PublicURL, "https://"), "填写站点地址（HTTPS）", "支付回调、邮件和续费链接都要用它；不填买家付款后无法自动确认", ap + "/settings/site"},
+		{len(s.shop.Methods(model.ChannelWeb)) > 0, "开通至少一种支付方式", "易支付（支付宝 / 微信）或 USDT", ap + "/settings/payment"},
+		{s.shop.Notify.MailReady(), "配置发件邮箱（SMTP）", "买家靠邮件收到发货内容和工单回复", ap + "/settings/mail"},
+		{onSale > 0, "上架第一个商品", "从模板创建最快", ap + "/products/quick"},
+		{st.BackupEnabled, "开启自动备份", "每天备份数据库，出问题时能恢复", ap + "/backups"},
+	}
+	for _, c := range checks {
+		if !c.Done {
+			return checks
+		}
+	}
+	return nil
+}
+
 func (s *Server) dashboard(c *gin.Context) {
 	now := s.now()
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
@@ -112,8 +142,16 @@ func (s *Server) dashboard(c *gin.Context) {
 	s.st.DB.Order("id DESC").Limit(10).Find(&recent)
 	var openTickets int64
 	s.st.DB.Model(&model.Ticket{}).Where("status = ?", model.TicketOpen).Count(&openTickets)
-	s.render(c, 200, "admin_dashboard", gin.H{"Today": rToday, "Month": r30, "Counts": counts, "Low": low,
-		"Attention": attention, "Recent": recent, "OpenTickets": openTickets, "NewRelease": s.availableUpdate()})
+	titles := map[uint]string{}
+	for _, k := range low {
+		if _, ok := titles[k.ProductID]; !ok {
+			var p model.Product
+			s.st.DB.Select("id, title").Take(&p, k.ProductID)
+			titles[k.ProductID] = p.Title
+		}
+	}
+	s.render(c, 200, "admin_dashboard", gin.H{"Today": rToday, "Month": r30, "Counts": counts, "Low": low, "LowTitles": titles,
+		"Attention": attention, "Recent": recent, "OpenTickets": openTickets, "NewRelease": s.availableUpdate(), "Setup": s.setupChecks()})
 }
 
 // ---- categories ----
@@ -211,7 +249,8 @@ func (s *Server) renderProductForm(c *gin.Context, p *model.Product, saveErr err
 	for _, d := range s.shop.Reg.Kinds() {
 		kinds[d.Kind()] = d.Label()
 	}
-	data := gin.H{"Product": *p, "Categories": cats, "Kinds": kinds}
+	blocking, warnings := s.productTodo(p)
+	data := gin.H{"Product": *p, "Categories": cats, "Kinds": kinds, "Todo": blocking, "Warn": warnings}
 	code := http.StatusOK
 	if saveErr != nil {
 		data["Error"] = saveErr.Error()
@@ -240,6 +279,12 @@ func (s *Server) saveProduct(c *gin.Context) {
 		return
 	} else if up != "" {
 		p.Cover = up
+	}
+	if p.Status == model.ProductOn {
+		if blocking, _ := s.productTodo(&p); len(blocking) > 0 {
+			s.renderProductForm(c, &p, errors.New("还不能上架："+strings.Join(blocking, "；")))
+			return
+		}
 	}
 	var err error
 	if id == 0 {
@@ -470,6 +515,7 @@ func (s *Server) deleteSKU(c *gin.Context) {
 type cardRow struct {
 	model.Card
 	Preview string
+	OrderNo string
 }
 
 func (s *Server) stockSKUs() ([]model.SKU, map[uint]string) {
@@ -484,9 +530,20 @@ func (s *Server) stockSKUs() ([]model.SKU, map[uint]string) {
 	return skus, titles
 }
 
+// cardPreview shows the start and end of a card, enough to tell cards
+// apart without showing the whole secret.
+func cardPreview(secret string) string {
+	r := []rune(secret)
+	if len(r) <= 8 {
+		return string(r[:min(2, len(r))]) + "••••"
+	}
+	return string(r[:4]) + "…" + string(r[len(r)-4:])
+}
+
 func (s *Server) cards(c *gin.Context) {
+	a := s.currentAdmin(c)
 	skus, titles := s.stockSKUs()
-	data := gin.H{"SKUs": skus, "Titles": titles, "Status": c.Query("status")}
+	data := gin.H{"SKUs": skus, "Titles": titles, "Status": c.Query("status"), "TOTP": a != nil && a.TOTPEnabled}
 	skuID := atoiU(c.Query("sku"))
 	if skuID == 0 && len(skus) > 0 {
 		skuID = skus[0].ID
@@ -505,10 +562,17 @@ func (s *Server) cards(c *gin.Context) {
 		rows := make([]cardRow, len(cards))
 		for i, cd := range cards {
 			secret := s.st.Box.MustOpen(cd.SecretEnc)
-			r := []rune(secret)
-			preview := string(r[:min(4, len(r))]) + "••••"
-			rows[i] = cardRow{Card: cd, Preview: preview}
+			rows[i] = cardRow{Card: cd, Preview: cardPreview(secret)}
+			if cd.OrderID != nil {
+				var o model.Order
+				if s.st.DB.Select("order_no").Take(&o, *cd.OrderID).Error == nil {
+					rows[i].OrderNo = o.OrderNo
+				}
+			}
 		}
+		var sku model.SKU
+		s.st.DB.Take(&sku, skuID)
+		data["SKU"] = sku
 		counts := map[string]int64{}
 		var grouped []struct {
 			Status string
@@ -652,8 +716,46 @@ func (s *Server) adminOrder(c *gin.Context) {
 	}
 	var sku model.SKU
 	s.st.DB.Take(&sku, o.SKUID)
+	kind := sku.DelivererKind
+	if d, err := s.shop.Reg.Get(kind); err == nil {
+		kind = d.Label()
+	}
+	// a manual SKU's question and the buyer's answer lead the remark
+	askLabel, askValue, remark := "", "", o.Remark
+	if sku.DelivererKind == "manual" {
+		if cfg, err := deliver.ParseManualCfg(sku.DelivererCfg); err == nil && cfg.Ask != "" {
+			if v, ok := strings.CutPrefix(o.Remark, cfg.Ask+"："); ok {
+				askLabel = cfg.Ask
+				askValue, remark, _ = strings.Cut(v, "；备注：")
+			}
+		}
+	}
 	s.render(c, 200, "admin_order", gin.H{"Order": o, "Items": items, "Payments": pays, "Bindings": bindings, "Job": job,
-		"Coupon": coupon, "SKU": sku})
+		"Coupon": coupon, "SKU": sku, "KindLabel": kind, "AskLabel": askLabel, "AskValue": askValue, "Remark": remark,
+		"Manual": sku.DelivererKind == "manual", "RefundNote": refundNote(o, &sku)})
+}
+
+// refundNote says what a refund will actually do for this order.
+func refundNote(o *model.Order, sku *model.SKU) string {
+	var parts []string
+	if o.PayMethod == model.PayStars {
+		parts = append(parts, "Stars 会自动原路退回买家")
+	} else {
+		parts = append(parts, "Kaku 只把订单标记为已退款，钱需要你在支付平台（易支付后台 / 原转账方式）手动退给买家")
+	}
+	switch sku.DelivererKind {
+	case "polaris":
+		parts = append(parts, "已签发的 Polaris 授权会被吊销")
+	case "panelcode":
+		parts = append(parts, "未兑换的面板兑换码会作废，已兑换的不受影响")
+	case "webhook":
+		parts = append(parts, "如果配置了退款通知地址，会通知你的系统回收")
+	default:
+		if o.Status == model.OrderDelivered {
+			parts = append(parts, "已发出的内容无法收回")
+		}
+	}
+	return strings.Join(parts, "；") + "。"
 }
 
 func (s *Server) orderAction(c *gin.Context) {
@@ -793,10 +895,48 @@ func (s *Server) licenseAction(c *gin.Context) {
 
 // ---- coupons ----
 
+// couponSKU is a spec a coupon can be limited to.
+type couponSKU struct {
+	ID   uint
+	Name string // 商品 · 规格
+}
+
 func (s *Server) coupons(c *gin.Context) {
 	var cs []model.Coupon
 	s.st.DB.Order("id DESC").Find(&cs)
-	s.render(c, 200, "admin_coupons", gin.H{"Coupons": cs})
+	var prods []model.Product
+	s.st.DB.Preload("SKUs", func(db *gorm.DB) *gorm.DB { return db.Order("sort, id") }).Order("sort, id").Find(&prods)
+	var skus []couponSKU
+	names := map[string]string{}
+	for _, p := range prods {
+		for _, k := range p.SKUs {
+			n := p.Title + " · " + k.Name
+			skus = append(skus, couponSKU{k.ID, n})
+			names[strconv.Itoa(int(k.ID))] = n
+		}
+	}
+	scope := map[uint]string{}
+	for _, cp := range cs {
+		if cp.SKUScope == "" {
+			continue
+		}
+		var parts []string
+		for _, id := range strings.Split(cp.SKUScope, ",") {
+			if n, ok := names[id]; ok {
+				parts = append(parts, n)
+			} else {
+				parts = append(parts, "已删除的规格")
+			}
+		}
+		scope[cp.ID] = strings.Join(parts, "、")
+	}
+	s.render(c, 200, "admin_coupons", gin.H{"Coupons": cs, "SKUs": skus, "Scope": scope})
+}
+
+func (s *Server) enableCoupon(c *gin.Context) {
+	s.st.DB.Model(&model.Coupon{}).Where("id = ?", c.Param("id")).Update("active", true)
+	s.audit(c, "coupon_enable", c.Param("id"), "")
+	redirectMsg(c, s.cfg.AdminPath+"/coupons", "已启用")
 }
 
 func (s *Server) saveCoupon(c *gin.Context) {
@@ -826,7 +966,7 @@ func (s *Server) saveCoupon(c *gin.Context) {
 		return
 	}
 	maxUses, _ := strconv.Atoi(c.PostForm("max_uses"))
-	cp := model.Coupon{Code: code, Type: typ, Value: value, SKUScope: strings.ReplaceAll(c.PostForm("sku_scope"), " ", ""),
+	cp := model.Coupon{Code: code, Type: typ, Value: value, SKUScope: strings.Join(c.PostFormArray("sku_scope"), ","),
 		MaxUses: max(maxUses, 0), Active: true}
 	if v := c.PostForm("expires_at"); v != "" {
 		t, err := time.ParseInLocation("2006-01-02", v, time.Local)
@@ -860,7 +1000,7 @@ func (s *Server) tickets(c *gin.Context) {
 	}
 	var ts []model.Ticket
 	q.Order("id DESC").Limit(100).Find(&ts)
-	s.render(c, 200, "admin_tickets", gin.H{"Tickets": ts, "Status": c.DefaultQuery("status", model.TicketOpen)})
+	s.render(c, 200, "admin_tickets", gin.H{"MailReady": s.shop.Notify.MailReady(), "Tickets": ts, "Status": c.DefaultQuery("status", model.TicketOpen)})
 }
 
 func (s *Server) replyTicket(c *gin.Context) {
@@ -1100,7 +1240,7 @@ func (s *Server) auditPage(c *gin.Context) {
 	var total int64
 	q.Count(&total)
 	q.Order("id DESC").Offset((p - 1) * 100).Limit(100).Find(&logs)
-	s.render(c, 200, "admin_audit", gin.H{"Logs": logs, "Page": p, "HasNext": int64(p*100) < total})
+	s.render(c, 200, "admin_audit", gin.H{"Logs": logs, "Page": p, "HasNext": int64(p*100) < total, "Action": c.Query("action")})
 }
 
 func htmlEscape(s string) string {

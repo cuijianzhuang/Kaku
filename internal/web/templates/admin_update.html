@@ -2,67 +2,78 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$s := .S}}
-<div class="page-head">
-  <h1>在线升级</h1>
-  <form method="post" action="{{$p}}/update/check"><button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>检查更新</button></form>
-</div>
+<div class="page-head"><h1>在线升级</h1></div>
 
-<div class="card version-card"{{if .Pending}} data-poll="{{$p}}/update/state" data-status="{{.Token}}" data-reload="{{$p}}/update"{{end}}>
-  <div class="version-row">
-    <div><span class="muted">当前版本</span><b>{{.Current}}</b></div>
-    <svg class="ic arrow"><use href="#i-arrow-left"/></svg>
-    <div><span class="muted">最新版本</span><b>{{with .Latest}}{{.Tag}}{{else}}—{{end}}</b>
-      {{with .Latest}}<span class="muted">{{date .Published}} 发布 · <a href="{{.URL}}" target="_blank" rel="noopener">更新说明</a></span>{{end}}</div>
+<div class="card upd-hero {{if .Pending}}busy{{else if .CheckErr}}err{{else if .HasNew}}new{{else if .Latest}}ok{{end}}"{{if .Pending}} data-poll="{{$p}}/update/state" data-status="{{.Token}}" data-reload="{{$p}}/update"{{end}}>
+  <div class="upd-main">
+    <div class="upd-icon">{{if .Pending}}<span class="spinner"></span>{{else if .CheckErr}}<svg class="ic"><use href="#i-alert"/></svg>{{else if .HasNew}}<svg class="ic"><use href="#i-download"/></svg>{{else}}<svg class="ic"><use href="#i-check"/></svg>{{end}}</div>
+    <div class="upd-text">
+      <h2>{{if .Pending}}正在升级…{{else if .CheckErr}}检查更新失败{{else if .HasNew}}发现新版本 {{.Latest.Tag}}{{else if eq .Current "dev"}}本地开发版本{{else if .Latest}}已是最新版本{{else}}当前版本 {{.Current}}{{end}}</h2>
+      <p class="upd-versions">
+        <span class="chip mono">当前 {{.Current}}</span>
+        {{if .HasNew}}<svg class="ic upd-arrow"><use href="#i-arrow-left"/></svg><span class="chip mono new">新版 {{.Latest.Tag}}</span>{{end}}
+        {{with .Latest}}<span class="muted">{{date .Published}} 发布 · <a href="{{.URL}}" target="_blank" rel="noopener">更新说明</a></span>{{end}}
+      </p>
+      {{if .Pending}}<p class="muted upd-note">下载新版本、校验 SHA-256 并重启服务，通常不到一分钟；完成后本页自动刷新，新版本无法启动时会自动回滚。</p>{{end}}
+      {{with .CheckErr}}<p class="upd-note err-text">{{.}}</p>{{end}}
+      {{if not .Checked.IsZero}}<p class="muted upd-note">上次检查：{{date .Checked}}</p>{{end}}
+    </div>
+    <div class="upd-actions">
+      {{if and (eq .Mode "systemd") .HasNew (not .Pending)}}
+      <form method="post" action="{{$p}}/update/run" class="inline" data-confirm="升级到 {{.Latest.Tag}}？升级前会自动备份数据库，服务会重启几秒钟。">
+        <input type="hidden" name="tag" value="{{.Latest.Tag}}">
+        <button><svg class="ic"><use href="#i-download"/></svg>立即升级</button>
+      </form>
+      {{end}}
+      {{if not .Pending}}<form method="post" action="{{$p}}/update/check" class="inline"><button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>检查更新</button></form>{{end}}
+    </div>
   </div>
-  {{if .CheckErr}}<div class="flash err" style="margin:16px 0 0">{{.CheckErr}}</div>{{end}}
-  {{if not .Checked.IsZero}}<p class="muted" style="margin:12px 0 0;font-size:13px">上次检查：{{date .Checked}}</p>{{end}}
-
-  <div class="section" style="margin-top:18px">
-  {{if .Pending}}
-    <div class="upgrading"><span class="spinner"></span><div><b>正在升级…</b><p class="muted">下载新版本、校验 SHA-256 并重启服务，通常不到一分钟。完成后本页会自动刷新；新版本无法启动时会自动回滚。</p></div></div>
-  {{else if eq .Mode "systemd"}}
-    {{if .HasNew}}
-    <form method="post" action="{{$p}}/update/run" class="form-foot" data-confirm="升级到 {{.Latest.Tag}}？升级前会自动备份数据库，服务会重启几秒钟。">
-      <input type="hidden" name="tag" value="{{.Latest.Tag}}">
-      <button><svg class="ic"><use href="#i-download"/></svg>升级到 {{.Latest.Tag}}</button>
-      <span class="muted">升级前自动备份数据库；新版本无法启动时自动回滚。</span>
-    </form>
-    {{else if .Latest}}<p class="ok-line"><svg class="ic"><use href="#i-check"/></svg>已是最新版本</p>{{end}}
-  {{else if eq .Mode "legacy"}}
+  {{if and (eq .Mode "systemd") .HasNew (not .Pending)}}<p class="muted upd-foot">升级前自动备份数据库；新版本无法启动时自动回滚。</p>{{end}}
+  {{if eq .Mode "legacy"}}
+  <div class="upd-foot">
     <p>本机由一键安装脚本安装，但还没有启用在线升级。在服务器上执行一次：</p>
     <pre>kaku-ctl update</pre>
     <p class="muted">执行后会安装升级服务，之后就可以在这里一键升级和定时升级。</p>
+  </div>
   {{else if eq .Mode "docker"}}
+  <div class="upd-foot">
     <p>Docker 部署请在服务器上拉取新镜像并重建容器：</p>
     <pre>docker compose pull && docker compose up -d</pre>
     <p class="muted">需要定时升级可以使用 <a href="https://containrrr.dev/watchtower/" target="_blank" rel="noopener">Watchtower</a>。数据在挂载的数据目录中，不受影响。</p>
-  {{else}}
+  </div>
+  {{else if ne .Mode "systemd"}}
+  <div class="upd-foot">
     <p>当前程序不是通过一键安装脚本安装的，请从 <a href="https://github.com/cuijianzhuang/Kaku/releases/latest" target="_blank" rel="noopener">GitHub Releases</a> 下载新版本替换程序后重启。</p>
     {{if eq .Current "dev"}}<p class="muted">当前是本地开发版本（dev），不参与版本比较。</p>{{end}}
-  {{end}}
   </div>
+  {{end}}
 </div>
 
-<div class="two">
+<div class="upd-grid">
   <div class="card">
-    <h2 style="margin-top:0">定时升级</h2>
+    <h2 class="card-title">定时升级</h2>
     <form method="post" action="{{$p}}/update/settings" class="stack">
-      <label class="check"><input type="checkbox" name="auto_update" {{if $s.AutoUpdate}}checked{{end}} {{if ne .Mode "systemd"}}disabled{{end}}> 自动安装新版本</label>
-      <div class="fields">
-        <label>每天检查时间（时） <input type="number" name="auto_update_hour" value="{{$s.AutoUpdateHour}}" min="0" max="23"></label>
-      </div>
-      <label class="check"><input type="checkbox" name="update_notify" {{if $s.UpdateNotify}}checked{{end}}> 有新版本时通知 Telegram 管理员</label>
-      <button>保存</button>
-      <p class="muted" style="margin:0;font-size:13px">{{if eq .Mode "systemd"}}在设定的整点检查，有新版本就自动备份并升级；某个版本升级失败后不会自动重试。{{else}}自动升级需要通过一键安装脚本部署。{{end}}</p>
+      <label class="check opt-row"><input type="checkbox" name="auto_update" {{if $s.AutoUpdate}}checked{{end}} {{if ne .Mode "systemd"}}disabled{{end}}>
+        <span><b>自动安装新版本</b><small class="muted">{{if eq .Mode "systemd"}}有新版本就先备份再升级；某个版本失败后不会反复重试{{else}}需要通过一键安装脚本部署{{end}}</small></span></label>
+      <label class="check opt-row"><input type="checkbox" name="update_notify" {{if $s.UpdateNotify}}checked{{end}} {{if not (and $s.TGToken $s.TGAdminChat)}}disabled{{end}}>
+        <span><b>有新版本时通知我</b><small class="muted">{{if and $s.TGToken $s.TGAdminChat}}发送到 Telegram 管理员{{else}}需先在 <a href="{{$p}}/settings/telegram">设置 → Telegram</a> 填写 Bot Token 和管理员 Chat ID{{end}}</small></span></label>
+      <label class="hour-row">每天检查时间
+        <select name="auto_update_hour">{{range $h := hours}}<option value="{{$h}}" {{if eq $h $s.AutoUpdateHour}}selected{{end}}>{{printf "%02d:00" $h}}</option>{{end}}</select>
+        <span class="muted">服务器时间（{{.TZ}}）</span>
+      </label>
+      <div><button>保存</button></div>
     </form>
   </div>
   <div class="card">
-    <h2 style="margin-top:0">上次升级</h2>
+    <h2 class="card-title">上次升级</h2>
     {{with .Last}}
-      <p>{{if eq .State "ok"}}<span class="badge delivered">成功</span>{{else if eq .State "failed"}}<span class="badge failed">失败，已回滚</span>{{else if eq .State "uptodate"}}<span class="badge">已是最新</span>{{else}}<span class="badge pending">{{.State}}</span>{{end}}
-        {{.From}}{{if and .To (ne .To .From)}} → {{.To}}{{end}} <span class="muted">· {{date .Time}}</span></p>
-      {{if .Log}}<details><summary>升级日志</summary><pre style="margin-top:8px;max-height:320px;overflow:auto">{{.Log}}</pre></details>{{end}}
-    {{else}}<p class="muted">还没有在线升级记录。</p>{{end}}
+      <div class="last-row">
+        {{if eq .State "ok"}}<span class="badge delivered">成功</span>{{else if eq .State "failed"}}<span class="badge failed">失败，已回滚</span>{{else if eq .State "uptodate"}}<span class="badge">已是最新</span>{{else}}<span class="badge pending">{{.State}}</span>{{end}}
+        <span class="mono">{{.From}}{{if and .To (ne .To .From)}} → {{.To}}{{end}}</span>
+        <span class="muted">{{date .Time}}</span>
+      </div>
+      {{if .Log}}<details class="log"><summary>查看升级日志</summary><pre>{{.Log}}</pre></details>{{end}}
+    {{else}}<p class="muted" style="margin:0">还没有在线升级记录。</p>{{end}}
   </div>
 </div>
 {{end}}

@@ -116,6 +116,9 @@ func (r *Registry) Kinds() []Deliverer {
 	return out
 }
 
+// Placeholder marks text a product template left for the owner to fill in.
+const Placeholder = "【请填写"
+
 // ---- fixed text ----
 
 // Text delivers the same text to every buyer (download links, guides).
@@ -146,6 +149,9 @@ func (Text) Validate(cfg json.RawMessage) error {
 	}
 	if strings.TrimSpace(c.Text) == "" {
 		return errors.New("请填写发货内容")
+	}
+	if strings.Contains(c.Text, Placeholder) {
+		return errors.New("发货内容里还有「" + Placeholder + "…】」，请换成实际内容")
 	}
 	if len(c.Text) > 20000 {
 		return errors.New("发货内容最多 20000 字节")

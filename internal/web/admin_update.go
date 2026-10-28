@@ -59,6 +59,7 @@ func (s *Server) updatePage(c *gin.Context) {
 	}
 	data["Latest"], data["Checked"] = rel, checked
 	data["HasNew"] = rel != nil && update.Newer(u.Current, rel.Tag)
+	data["TZ"] = s.now().Format("MST，UTC-07:00")
 	s.render(c, 200, "admin_update", data)
 }
 

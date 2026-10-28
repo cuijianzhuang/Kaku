@@ -134,10 +134,22 @@ func TestQuickProductTemplates(t *testing.T) {
 		if p.Status != model.ProductOff || len(p.SKUs) != 1 || p.SKUs[0].DelivererKind != tc.kind || p.SKUs[0].PriceCNY != 990 {
 			t.Fatalf("%s: product %+v", tc.tpl, p)
 		}
-		if tc.kind == "manual" || tc.kind == "text" {
-			d, _ := e.shop.Reg.Get(tc.kind)
-			if err := d.Validate([]byte(p.SKUs[0].DelivererCfg)); err != nil {
-				t.Fatalf("%s: template config invalid: %v", tc.tpl, err)
+		d, _ := e.shop.Reg.Get(tc.kind)
+		switch err := d.Validate([]byte(p.SKUs[0].DelivererCfg)); {
+		case tc.kind == "manual" && err != nil:
+			t.Fatalf("%s: template config invalid: %v", tc.tpl, err)
+		case tc.kind == "text" && (err == nil || !strings.Contains(err.Error(), "请填写")):
+			t.Fatalf("%s: placeholder text accepted: %v", tc.tpl, err)
+		}
+		if tc.kind == "text" {
+			// a product with template text left in cannot go on sale
+			f := url.Values{"id": {itoa(int64(p.ID))}, "title": {p.Title}, "category_id": {itoa(int64(cat.ID))}, "status": {"on"}, "description": {p.DescriptionMD}}
+			resp := e.post(c, "/manage/products", f)
+			b, _ := io.ReadAll(resp.Body)
+			var after model.Product
+			e.st.DB.Take(&after, p.ID)
+			if after.Status != model.ProductOff || !strings.Contains(string(b), "还不能上架") || !strings.Contains(string(b), "发货设置未完成") {
+				t.Fatalf("product with placeholders went on sale: %s", after.Status)
 			}
 		}
 	}

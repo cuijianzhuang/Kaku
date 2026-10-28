@@ -1,5 +1,5 @@
 {{define "title"}}{{.Product.Title}} · {{.Site}}{{end}}
-{{define "meta"}}{{$desc := or (plain .Product.DescriptionMD 120) (printf "%s · 自动发货" (fromPrice .Product))}}
+{{define "meta"}}{{$desc := or (plain .Product.DescriptionMD 120) (printf "%s · %s" (fromPrice .Product) (or (and (manualOnly .Product) "人工发货") "自动发货"))}}
 <meta name="description" content="{{$desc}}">
 <meta property="og:type" content="product">
 <meta property="og:title" content="{{.Product.Title}} · {{fromPrice .Product}}">
@@ -19,7 +19,7 @@
   </div>
   <div class="card desc">
     <h2 class="desc-title">商品详情</h2>
-    {{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">付款成功后自动发货，可在本页或订单查询中查看。</p>{{end}}
+    {{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">{{if manualOnly .Product}}付款后由店主处理，完成后可在订单页查看。{{else}}付款成功后自动发货，可在订单页或订单查询中查看。{{end}}</p>{{end}}
   </div>
 
   <div class="card order-panel">
@@ -37,7 +37,7 @@
               data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}"
               data-ask="{{$k.Ask}}" data-note="{{$k.Note}}"
               data-cny="{{$k.PriceCNY}}" data-usdt="{{$k.PriceUSDT}}" data-xtr="{{$k.PriceStars}}"
-              {{if eq $k.Stock 0}}disabled{{else if eq $i 0}}checked{{end}} required>
+              {{if eq $k.Stock 0}}disabled{{else if $.Form.sku_id}}{{if eq (printf "%d" $k.ID) $.Form.sku_id}}checked{{end}}{{else if eq $i 0}}checked{{end}} required>
             <span>
               <span class="name">{{$k.Name}}</span><br>
               <span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}}{{if and $k.PriceCNY $k.PriceUSDT}} / {{end}}{{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}</span>
@@ -51,26 +51,26 @@
         <div class="field-label">购买数量</div>
         <div class="qty">
           <button type="button" data-step="-1" aria-label="减少">−</button>
-          <input type="number" name="qty" value="1" min="1" max="10" required inputmode="numeric">
+          <input type="number" name="qty" value="{{or .Form.qty "1"}}" min="1" max="10" required inputmode="numeric">
           <button type="button" data-step="1" aria-label="增加">+</button>
         </div>
       </div>
-      <label data-ask-field hidden><span data-ask-label></span><input name="ask" maxlength="100" disabled required></label>
+      <label data-ask-field hidden><span data-ask-label></span><input name="ask" maxlength="100" disabled required value="{{.Form.ask}}"></label>
       <div class="notice" data-note-field hidden><svg class="ic"><use href="#i-info"/></svg><span data-note-text></span></div>
-      <label>邮箱（接收卡密，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com"></label>
+      <label>邮箱（接收发货通知，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com" value="{{.Form.email}}"></label>
       <label>查询密码（查单时使用，至少 4 位）<input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
-      <details>
+      <details {{if or .Form.coupon .Form.remark}}open{{end}}>
         <summary>优惠码 / 备注</summary>
         <div class="stack" style="margin-top:12px; display:flex; flex-direction:column; gap:12px">
-          <label>优惠码<input name="coupon" maxlength="64"></label>
-          <label>备注<input name="remark" maxlength="200"></label>
+          <label>优惠码<input name="coupon" maxlength="64" value="{{.Form.coupon}}"></label>
+          <label>备注<input name="remark" maxlength="200" value="{{.Form.remark}}"></label>
         </div>
       </details>
       <div>
         <div class="field-label">支付方式</div>
         <div class="options">
           {{range .Methods}}
-          <label class="option"><input type="radio" name="method" value="{{.ID}}" data-currency="{{.Currency}}" required> {{.Label}}</label>
+          <label class="option"><input type="radio" name="method" value="{{.ID}}" data-currency="{{.Currency}}" required {{if eq .ID $.Form.method}}checked{{end}}> {{.Label}}</label>
           {{end}}
         </div>
       </div>
@@ -83,8 +83,9 @@
           <span class="muted">应付（参考）</span>
           <span class="price big" data-total>—</span>
         </div>
-        <button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>
+        {{if not .InStock}}<button class="lg block" disabled>暂时缺货</button>{{else}}<button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>{{end}}
       </div>
+      {{if not .InStock}}<p class="muted" style="margin:0">全部规格都已售罄，可以<a href="/ticket">提交工单</a>询问补货时间。</p>{{end}}
       <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。批发价和优惠码在下单时计算。</p>
     </form>
   </div>

@@ -1,7 +1,7 @@
 {{define "title"}}卡密{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<h1>卡密库存</h1>
+<div class="page-head"><h1>卡密库存</h1>{{if .SKU.ID}}<div class="actions"><a class="btn secondary" href="{{$p}}/products/{{.SKU.ProductID}}"><svg class="ic"><use href="#i-box"/></svg>返回商品（上架 / 编辑）</a></div>{{end}}</div>
 {{if not .SKUs}}
   <div class="card"><p>还没有「卡密库存」类型的规格。请先在商品里新增规格并选择发货方式「卡密库存」。</p></div>
 {{else}}
@@ -29,36 +29,38 @@
   <div class="stat"><span class="muted">已作废</span><b>{{index .Counts "void"}}</b></div>
 </div>
 
-<div class="two" style="margin-top:16px">
+<div style="margin-top:16px">
   <div class="card">
     <h2 style="margin-top:0">导入卡密</h2>
     <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack">
       <input type="hidden" name="sku_id" value="{{.SKUID}}">
-      <label><span>每行一条 <span class="hint">· 自动去重，跨规格也不会重复</span></span><textarea name="cards" placeholder="CARD-0001&#10;CARD-0002"></textarea></label>
-      <label><span>或上传文件 <span class="hint">· TXT / CSV，取第一列</span></span><input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label>
+      <label><span>每行一条 <span class="hint">· 自动去重，跨规格也不会重复</span></span><textarea name="cards" placeholder="每行一条，例如：&#10;CARD-0001&#10;账号----密码"></textarea></label>
+      <div><span class="field-label">或上传文件 <span class="hint">· TXT / CSV，取第一列</span></span>
+        <label class="btn secondary file-btn"><svg class="ic"><use href="#i-download"/></svg><span data-file-name>选择文件</span><input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
       <button>导入</button>
     </form>
   </div>
   <div class="card">
-    <h2 style="margin-top:0">导出卡密</h2>
-    <form method="post" action="{{$p}}/cards/export" class="stack">
-      <input type="hidden" name="sku_id" value="{{.SKUID}}">
-      <label>状态 <select name="status"><option value="available">可售</option><option value="sold">已售</option><option value="void">已作废</option></select></label>
-      <label>确认密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
-      <label>两步验证码（如已开启） <input name="confirm_code" inputmode="numeric" maxlength="6"></label>
-      <button class="secondary">导出 TXT</button>
-      <p class="muted">导出操作会记录到审计日志。</p>
-    </form>
+    <details class="export-box">
+      <summary><b>导出卡密</b> <span class="muted">· 需要输入密码，会记录到日志</span></summary>
+      <form method="post" action="{{$p}}/cards/export" class="stack" style="margin-top:12px">
+        <input type="hidden" name="sku_id" value="{{.SKUID}}">
+        <label>状态 <select name="status"><option value="available">可售</option><option value="sold">已售</option><option value="void">已作废</option></select></label>
+        <label>确认密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+        {{if .TOTP}}<label>两步验证码 <input name="confirm_code" inputmode="numeric" maxlength="6" required></label>{{end}}
+        <div><button class="secondary">导出 TXT</button></div>
+      </form>
+    </details>
   </div>
 </div>
 
 <div class="card table-wrap">
   <table>
-    <tr><th>ID</th><th>卡密</th><th>状态</th><th>订单</th><th>导入时间</th><th></th></tr>
+    <tr><th>#</th><th>卡密</th><th>状态</th><th>订单</th><th>导入时间</th><th></th></tr>
     {{range .Cards}}
     <tr>
       <td>{{.ID}}</td><td><code>{{.Preview}}</code></td><td><span class="badge {{.Status}}">{{status .Status}}</span></td>
-      <td>{{if .OrderID}}#{{.OrderID}}{{end}}</td><td class="nowrap muted">{{date .CreatedAt}}</td>
+      <td>{{if .OrderNo}}<a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{else}}—{{end}}</td><td class="nowrap muted">{{date .CreatedAt}}</td>
       <td>{{if eq .Status "available"}}<form method="post" action="{{$p}}/cards/{{.ID}}/void" class="inline" data-confirm="作废这条卡密？"><button class="link">作废</button></form>{{end}}</td>
     </tr>
     {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">没有卡密</td></tr>{{end}}

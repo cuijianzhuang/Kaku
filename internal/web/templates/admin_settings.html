@@ -21,7 +21,8 @@
       <label><span>最多未付订单 <span class="hint">· 每个买家</span></span><input type="number" name="max_unpaid" value="{{$s.MaxUnpaid}}" min="1" max="20"></label>
       <label>客服链接 <input name="support_url" value="{{$s.SupportURL}}" placeholder="https://t.me/…"></label>
     </div>
-    <label class="check"><input type="checkbox" name="remind_enabled" {{if $s.RemindEnabled}}checked{{end}}> 许可证到期提醒：本店售出的 Polaris 许可证到期前 7 天和 1 天，通过邮件 / Telegram 发送续费链接</label>
+    {{if .ShowLicenses}}<label class="check"><input type="checkbox" name="remind_enabled" {{if $s.RemindEnabled}}checked{{end}}> 许可证到期提醒：本店售出的 Polaris 许可证到期前 7 天和 1 天，通过邮件 / Telegram 发送续费链接</label>
+    {{else if $s.RemindEnabled}}<input type="hidden" name="remind_enabled" value="on">{{end}}
     <div class="two">
       <label><span>Cloudflare Turnstile Site Key <span class="hint">· 可选</span></span><input name="turnstile_site" value="{{$s.TurnstileSite}}"></label>
       <label>Turnstile Secret Key <input type="password" name="turnstile_secret" autocomplete="off" placeholder="{{if index .Secrets "TurnstileSecret"}}已设置，留空不变{{end}}"></label>
@@ -120,7 +121,7 @@
     <div class="section">
       <h3>Telegram Stars</h3>
       <p class="muted">仅在 Telegram 机器人中可用，需要先配置 Bot。</p>
-      <label class="check"><input type="checkbox" name="stars_enabled" {{if $s.StarsEnabled}}checked{{end}}> 启用 Stars 支付</label>
+      <label class="check"><input type="checkbox" name="stars_enabled" {{if $s.StarsEnabled}}checked{{end}} {{if not (index .Secrets "TGToken")}}disabled{{end}}> 启用 Stars 支付{{if not (index .Secrets "TGToken")}} <span class="hint">· 需先在 <a href="{{$p}}/settings/telegram">Telegram</a> 里填写 Bot Token</span>{{end}}</label>
     </div>
     <button>保存</button>
   </form>
