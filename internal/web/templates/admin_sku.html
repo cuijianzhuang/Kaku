@@ -88,6 +88,35 @@
       </div>
     </div>
 
+    {{$pk := .PK}}
+    <div class="pc" data-cfg-panel>
+      <div class="field-label" style="margin:0">面板套餐</div>
+      {{with $pk.Err}}<div class="notice"><svg class="ic"><use href="#i-info"/></svg><span>{{.}}</span></div>{{end}}
+      {{if $pk.Cfg.Name}}<p class="muted pc-help">当前：{{$pk.Cfg.Name}}{{with $pk.Cfg.Detail}}（{{.}}）{{end}}</p>{{end}}
+      {{with $pk.Offer}}
+      {{if or .Plans .Packs}}
+      <div class="pc-templates">
+        {{range .Plans}}
+        <label class="option pc-tpl">
+          <input type="radio" name="pk_target" value="plan:{{.ID}}" {{if eq (printf "plan:%s" .ID) $pk.Target}}checked{{end}}>
+          <span class="pc-tpl-body"><b>{{.Name}}</b><span class="muted">套餐 · {{if .Days}}{{.Days}} 天{{else}}不限期{{end}}{{if .Price}} · 面板标价 {{.Price}}{{end}}</span>{{with .Remark}}<span class="muted">{{.}}</span>{{end}}</span>
+        </label>
+        {{end}}
+        {{range .Packs}}
+        <label class="option pc-tpl">
+          <input type="radio" name="pk_target" value="pack:{{.ID}}" {{if eq (printf "pack:%s" .ID) $pk.Target}}checked{{end}}>
+          <span class="pc-tpl-body"><b>{{.Name}}</b><span class="muted">流量包</span></span>
+        </label>
+        {{end}}
+      </div>
+      {{else}}<p class="muted">面板里还没有套餐：在面板「用户 → 套餐」添加。</p>{{end}}
+      {{end}}
+      <div class="fields">
+        <label><span>兑换码有效期（天） <span class="hint">· 0 = 不过期；超过有效期未兑换则作废</span></span><input type="number" name="pk_expire_days" value="{{$pk.Cfg.ExpireDays}}" min="0" max="3650"></label>
+      </div>
+      <p class="muted pc-help">买家付款后，Kaku 在面板生成该套餐的兑换码（批次名为订单号），一件一个。</p>
+    </div>
+
     <div data-cfg-generic>
       <label>发货配置（JSON） <textarea name="deliverer_cfg">{{.SKU.DelivererCfg}}</textarea></label>
       <p class="muted" data-cfg-example>示例：<span data-cfg-hint></span> <a href="#" data-cfg-fill>填入示例</a></p>

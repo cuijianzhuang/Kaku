@@ -72,6 +72,12 @@ func (s *Service) mailBody(o *model.Order, items []ItemView) string {
 			break
 		}
 	}
+	for _, it := range items {
+		if it.Source == model.SourcePanel {
+			b.WriteString("\n兑换方法：" + s.PanelRedeemHint() + "\n")
+			break
+		}
+	}
 	if u := s.orderURL(o); u != "" {
 		fmt.Fprintf(&b, "\n订单页面：%s（凭下单时设置的查询密码查看）\n", u)
 	}
@@ -94,6 +100,12 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 		fmt.Fprintf(&b, "\n%d. <code>%s</code>", i+1, html.EscapeString(it.Content))
 		if len(it.Content) <= 256 && len(kb.InlineKeyboard) < 10 {
 			kb.InlineKeyboard = append(kb.InlineKeyboard, []tgapi.InlineButton{tgapi.CopyButton(fmt.Sprintf("复制 %d", i+1), it.Content)})
+		}
+	}
+	for _, it := range items {
+		if it.Source == model.SourcePanel {
+			b.WriteString("\n\n兑换方法：" + html.EscapeString(s.PanelRedeemHint()))
+			break
 		}
 	}
 	text := b.String()

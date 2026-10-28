@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/cuijianzhuang/kaku/internal/model"
+	"github.com/cuijianzhuang/kaku/internal/panelapi"
 	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/store"
 )
@@ -68,6 +69,7 @@ func Permanent(err error) error { return &PermanentError{Err: err} }
 type Env struct {
 	Store   *store.Store
 	Polaris func() *polaris.Client
+	Panel   func() *panelapi.Client
 	HTTP    *http.Client
 	Now     func() time.Time
 }
@@ -86,7 +88,7 @@ func NewRegistry(env *Env) *Registry {
 		env.Now = time.Now
 	}
 	r := &Registry{m: map[string]Deliverer{}}
-	for _, d := range []Deliverer{&Stock{env}, &Text{}, &Manual{}, &Webhook{env}, &Polaris{env}} {
+	for _, d := range []Deliverer{&Stock{env}, &Text{}, &Manual{}, &Webhook{env}, &Polaris{env}, &PanelCode{env}} {
 		r.m[d.Kind()] = d
 	}
 	return r
@@ -103,7 +105,7 @@ func (r *Registry) Get(kind string) (Deliverer, error) {
 
 // Kinds lists the deliverers for forms, in a stable order.
 func (r *Registry) Kinds() []Deliverer {
-	order := map[string]int{"stock": 0, "polaris": 1, "text": 2, "webhook": 3, "manual": 4}
+	order := map[string]int{"stock": 0, "polaris": 1, "panelcode": 2, "text": 3, "webhook": 4, "manual": 5}
 	out := make([]Deliverer, 0, len(r.m))
 	for _, d := range r.m {
 		out = append(out, d)

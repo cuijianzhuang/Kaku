@@ -182,6 +182,7 @@ document.addEventListener('change', (e) => {
 (function () {
   const kind = document.querySelector('select[name=deliverer_kind]');
   const pc = document.querySelector('[data-cfg-polaris]');
+  const pk = document.querySelector('[data-cfg-panel]');
   const generic = document.querySelector('[data-cfg-generic]');
   if (!kind || !pc || !generic) return;
   const mode = () => (pc.querySelector('input[name=pc_mode]:checked') || {}).value || 'custom';
@@ -189,9 +190,14 @@ document.addEventListener('change', (e) => {
     const isPolaris = kind.value === 'polaris';
     pc.hidden = !isPolaris;
     pc.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPolaris; });
-    generic.hidden = isPolaris && mode() !== 'json';
+    const isPanel = kind.value === 'panelcode';
+    if (pk) {
+      pk.hidden = !isPanel;
+      pk.querySelectorAll('input,select').forEach((el) => { el.disabled = !isPanel; });
+    }
+    generic.hidden = isPanel || (isPolaris && mode() !== 'json');
     const ex = generic.querySelector('[data-cfg-example]');
-    if (ex) ex.hidden = isPolaris;
+    if (ex) ex.hidden = isPolaris || isPanel;
     pc.querySelectorAll('[data-pc-pane]').forEach((p) => {
       p.hidden = !p.getAttribute('data-pc-pane').split(' ').includes(mode());
     });

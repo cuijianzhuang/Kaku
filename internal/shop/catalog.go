@@ -2,8 +2,10 @@ package shop
 
 import (
 	"context"
+	"strings"
 	"time"
 
+	"github.com/cuijianzhuang/kaku/internal/panelapi"
 	"github.com/cuijianzhuang/kaku/internal/polaris"
 )
 
@@ -42,4 +44,46 @@ func (s *Service) PolarisCatalogOrBuiltin(ctx context.Context) (*polaris.Catalog
 		return &b, err
 	}
 	return cat, nil
+}
+
+// PanelRedeemHint tells buyers how to redeem a panel code.
+func (s *Service) PanelRedeemHint() string {
+	if h := strings.TrimSpace(s.Store.Settings().PanelRedeemHint); h != "" {
+		return h
+	}
+	return "在面板的用户商店输入兑换码，或在面板 Telegram 机器人中发送 /redeem 兑换码"
+}
+
+// PanelOffer is the panel's plans and traffic packs, cached for five
+// minutes (30 seconds after a failure).
+type PanelOffer struct {
+	Plans []panelapi.Plan
+	Packs []panelapi.Pack
+}
+
+func (s *Service) PanelOffer(ctx context.Context, force bool) (*PanelOffer, error) {
+	s.panelMu.Lock()
+	defer s.panelMu.Unlock()
+	ttl := 5 * time.Minute
+	if s.panelErr != nil {
+		ttl = 30 * time.Second
+	}
+	key := s.Store.Settings().PanelURL
+	if !force && key == s.panelKey && !s.panelAt.IsZero() && s.Now().Sub(s.panelAt) < ttl {
+		return s.panelOffer, s.panelErr
+	}
+	c := s.Panel()
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	var o PanelOffer
+	var err error
+	if o.Plans, err = c.Plans(cctx); err == nil {
+		o.Packs, err = c.Packs(cctx)
+	}
+	s.panelAt, s.panelKey, s.panelErr = s.Now(), key, err
+	s.panelOffer = &o
+	if err != nil {
+		s.panelOffer = nil
+	}
+	return s.panelOffer, s.panelErr
 }

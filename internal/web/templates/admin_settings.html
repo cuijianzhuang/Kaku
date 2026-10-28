@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$s := .S}}
-<div class="page-head"><h1>设置</h1><div class="seg"><a href="#site">站点</a><a href="#appearance">外观</a><a href="#payment">支付</a><a href="#mail">邮件</a><a href="#telegram">Telegram</a><a href="#login">登录</a><a href="#polaris">Polaris</a></div></div>
+<div class="page-head"><h1>设置</h1><div class="seg"><a href="#site">站点</a><a href="#appearance">外观</a><a href="#payment">支付</a><a href="#mail">邮件</a><a href="#telegram">Telegram</a><a href="#login">登录</a><a href="#panel">面板</a><a href="#polaris">授权</a></div></div>
 
 <div class="card" id="site">
   <h2 style="margin-top:0">站点</h2>
@@ -168,6 +168,24 @@
       <p class="muted" style="margin:6px 0 0 24px;font-size:13px">开启后任何访客都能看到后台路径（安装时随机生成，用于防扫描）。开启时建议同时在「安全」页面开启两步验证。</p>
     </div>
     <button>保存</button>
+  </form>
+</div>
+
+<div class="card" id="panel">
+  <h2 style="margin-top:0">Polaris 面板（套餐兑换码）</h2>
+  <p class="muted" style="margin-top:-4px;font-size:13px">在 Kaku 出售面板里的用户套餐和流量包：买家付款后自动在面板生成兑换码发给买家，买家在面板商店或机器人里兑换；退款时作废未兑换的码。</p>
+  <form method="post" action="{{$p}}/settings" class="stack">
+    <input type="hidden" name="section" value="panel">
+    <div class="two">
+      <label><span>面板地址 <span class="hint">· 含后台路径</span></span><input name="panel_url" value="{{$s.PanelURL}}" placeholder="https://panel.example.com/你的后台路径"></label>
+      <label><span>API 令牌 <span class="hint">· 在面板「扩展 → API 令牌」创建，只勾「生成和作废兑换码」</span></span><input type="password" name="panel_token" autocomplete="off" placeholder="{{if index .Secrets "PanelToken"}}已设置，留空不变{{else}}plt_…{{end}}"></label>
+    </div>
+    <label><span>兑换说明 <span class="hint">· 显示在订单页、邮件和 Telegram 发货消息里，留空用默认说明</span></span><input name="panel_redeem_hint" value="{{$s.PanelRedeemHint}}" placeholder="在面板的用户商店输入兑换码，或在面板 Telegram 机器人中发送 /redeem 兑换码"></label>
+    <div class="form-foot"><button>保存</button></div>
+  </form>
+  <form method="post" action="{{$p}}/settings/panel/test" class="section form-foot" style="margin-top:18px">
+    <span class="muted" style="flex:1;min-width:220px">保存后测试：检查地址、令牌和权限，并读取面板的套餐和流量包。</span>
+    <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>测试连接</button>
   </form>
 </div>
 
