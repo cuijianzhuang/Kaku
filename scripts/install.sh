@@ -8,7 +8,8 @@
 #                         install the latest (or given) release; with --domain, Caddy serves HTTPS.
 #                         Default port 8090, or the next free one when it is taken
 #   port N                move the service to port N (updates Caddy and the firewall)
-#   update [--version TAG]  upgrade the binary (data and keys kept; rolls back if it does not start)
+#   update [--version TAG]  upgrade the binary (data and keys kept; rolls back if it does not start);
+#                         also enables online upgrades from the admin backend
 #   status | log | restart | stop | start
 #   info                  show the shop and admin URLs and where the configuration is
 #   backup                database + configuration (includes the master key) -> /root
@@ -18,6 +19,12 @@
 #
 # Downloads come from GitHub Releases. Where github.com is slow, set GH_PROXY
 # to a download proxy prefix, e.g. GH_PROXY=https://ghproxy.example.com/
+# (remembered in the configuration and used for online upgrades too).
+#
+# Online upgrades: the shop runs unprivileged and only writes a request file
+# ($DATA/update-request). The root-owned kaku-update.path unit then runs
+# `kaku-ctl apply-request`, which upgrades as `update` does and writes the
+# result to $UPD_DIR (readable, not writable, by the shop).
 set -euo pipefail
 
 REPO="cuijianzhuang/Kaku"
@@ -28,6 +35,9 @@ ENV_FILE=$ETC/kaku.env
 DATA=/var/lib/kaku
 UNIT=/etc/systemd/system/kaku.service
 SVC_USER=kaku
+UPD_DIR=/var/lib/kaku-updater
+UPD_PATH=/etc/systemd/system/kaku-update.path
+UPD_UNIT=/etc/systemd/system/kaku-update.service
 GH_PROXY="${GH_PROXY:-}"
 
 DEFAULT_PORT=8090
@@ -38,7 +48,7 @@ ok() { printf '  %s✓%s %s\n' "$C_G" "$C_0" "$*"; }
 warn() { printf '  %s!%s %s\n' "$C_Y" "$C_0" "$*"; }
 step() { printf '%s==>%s %s\n' "$C_B" "$C_0" "$*"; }
 die() { printf '  %s✗ %s%s\n' "$C_R" "$*" "$C_0" >&2; exit 1; }
-usage() { sed -n '2,21p' "$0" 2>/dev/null || echo "用法：install | update | port | status | log | restart | stop | start | info | backup | reset-password | uninstall"; }
+usage() { sed -n '2,22p' "$0" 2>/dev/null || echo "用法：install | update | port | status | log | restart | stop | start | info | backup | reset-password | uninstall"; }
 
 need_root() { [ "$(id -u)" = 0 ] || die "请用 root 运行"; }
 installed() { [ -x "$BIN" ] && [ -f "$ENV_FILE" ]; }
@@ -120,6 +130,45 @@ ReadWritePaths=$DATA
 WantedBy=multi-user.target
 EOF
   systemctl daemon-reload
+}
+
+# write_updater installs the units that run upgrades requested from the
+# admin backend.
+write_updater() {
+  install -d -m 0755 "$UPD_DIR"
+  touch "$UPD_DIR/enabled"
+  cat > "$UPD_PATH" <<EOF
+[Unit]
+Description=Kaku online upgrade requests
+
+[Path]
+PathExists=$DATA/update-request
+
+[Install]
+WantedBy=multi-user.target
+EOF
+  cat > "$UPD_UNIT" <<EOF
+[Unit]
+Description=Kaku online upgrade
+
+[Service]
+Type=oneshot
+ExecStart=$CTL apply-request
+TimeoutStartSec=15min
+EOF
+  systemctl daemon-reload
+  systemctl enable --now kaku-update.path >/dev/null 2>&1 || warn "未能启用在线升级服务（kaku-update.path）"
+}
+
+# remember_proxy stores GH_PROXY in the configuration for later upgrades.
+remember_proxy() {
+  [ -n "$GH_PROXY" ] || return 0
+  [[ "$GH_PROXY" =~ ^https?://[A-Za-z0-9._:/-]+$ ]] || die "GH_PROXY 格式不正确：$GH_PROXY"
+  if grep -q '^GH_PROXY=' "$ENV_FILE"; then
+    sed -i "s|^GH_PROXY=.*|GH_PROXY=$GH_PROXY|" "$ENV_FILE"
+  else
+    echo "GH_PROXY=$GH_PROXY" >> "$ENV_FILE"
+  fi
 }
 
 listen_addr() { env_get LISTEN; }
@@ -215,10 +264,11 @@ public_url() {
 # kaku-ctl (when run through `bash <(curl …)` there is no file to copy).
 install_ctl() {
   local t; t="$(mktemp)"
+  # replace by rename: a running kaku-ctl keeps reading its old copy
   if download install.sh "$t" >/dev/null 2>&1 && head -1 "$t" | grep -q bash; then
-    install -m 0755 "$t" "$CTL"
-  elif [ -f "$0" ]; then
-    install -m 0755 "$0" "$CTL"
+    install -m 0755 "$t" "$CTL.new" && mv -f "$CTL.new" "$CTL"
+  elif [ -f "$0" ] && [ "$0" != "$CTL" ]; then
+    install -m 0755 "$0" "$CTL.new" && mv -f "$CTL.new" "$CTL"
   fi
   rm -f "$t"
 }
@@ -268,6 +318,7 @@ EOF
     chmod 600 "$ENV_FILE"
     ok "已生成主密钥和管理员密码"
   fi
+  remember_proxy
   write_unit
   systemctl enable --now kaku >/dev/null 2>&1
   wait_healthy || die "服务未能启动：journalctl -u kaku -n 50"
@@ -281,6 +332,7 @@ EOF
     open_firewall "$PORT"
   fi
   install_ctl
+  write_updater
   print_info "$pass"
 }
 
@@ -304,6 +356,8 @@ print_info() {
 do_update() {
   need_root; need_installed
   local cur; cur="$("$BIN" version | awk '{print $2}')"
+  remember_proxy
+  [ -f "$UPD_PATH" ] || { write_updater; ok "已启用后台在线升级"; }
   fetch_release
   if [ "$cur" = "$VERSION" ]; then ok "已是最新版本 $cur"; return 0; fi
   step "升级 $cur → $VERSION"
@@ -319,6 +373,45 @@ do_update() {
     mv -f "$BIN.bak" "$BIN"
     systemctl restart kaku
     die "升级失败（已回滚）：journalctl -u kaku -n 50"
+  fi
+}
+
+write_status() { # STATE FROM TO
+  local t="$UPD_DIR/status.tmp"
+  printf 'state=%s\nfrom=%s\nto=%s\ntime=%s\n' "$1" "$2" "$3" "$(date +%s)" > "$t"
+  chmod 0644 "$t"
+  mv -f "$t" "$UPD_DIR/status"
+}
+
+# do_apply_request runs an upgrade requested from the admin backend
+# (started as root by kaku-update.path). The request only names a version;
+# where to download from and how to install come from this script.
+do_apply_request() {
+  need_root; need_installed
+  local req="$DATA/update-request" tag="" cur now log="$UPD_DIR/last.log"
+  install -d -m 0755 "$UPD_DIR"
+  if [ -f "$req" ] && [ ! -L "$req" ]; then
+    tag="$(timeout 5 head -c 64 -- "$req" 2>/dev/null | tr -d '[:space:]')" || true
+  fi
+  rm -f -- "$req"
+  cur="$("$BIN" version | awk '{print $2}')"
+  if ! [[ "$tag" =~ ^v[0-9][0-9A-Za-z.+-]{0,39}$ ]]; then
+    echo "无效的升级请求" > "$log"; chmod 0644 "$log"
+    write_status failed "$cur" ""
+    die "无效的升级请求"
+  fi
+  write_status running "$cur" "$tag"
+  VERSION="$tag"
+  ( do_update ) > "$log" 2>&1 || true
+  chmod 0644 "$log"
+  now="$("$BIN" version | awk '{print $2}')"
+  if [ "$cur" = "$tag" ]; then
+    write_status uptodate "$cur" "$tag"
+  elif [ "$now" = "$tag" ]; then
+    write_status ok "$cur" "$tag"
+  else
+    write_status failed "$cur" "$tag"
+    exit 1
   fi
 }
 
@@ -380,8 +473,9 @@ do_reset_password() {
 do_uninstall() {
   need_root
   local domain; domain="$(env_get KAKU_DOMAIN 2>/dev/null || true)"
-  systemctl disable --now kaku >/dev/null 2>&1 || true
-  rm -f "$UNIT" "$BIN" "$BIN.bak"
+  systemctl disable --now kaku kaku-update.path >/dev/null 2>&1 || true
+  rm -f "$UNIT" "$UPD_PATH" "$UPD_UNIT" "$BIN" "$BIN.bak"
+  rm -rf "$UPD_DIR"
   systemctl daemon-reload
   if [ "$PURGE" = 1 ]; then
     rm -rf "$ETC" "$DATA" "$CTL"
@@ -394,11 +488,13 @@ do_uninstall() {
   return 0
 }
 
+[ -z "$GH_PROXY" ] && [ -f "$ENV_FILE" ] && GH_PROXY="$(env_get GH_PROXY)"
+
 RUN_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     run) ACTION=run; shift; RUN_ARGS=("$@"); break ;;
-    install | update | status | log | restart | stop | start | info | backup | reset-password | uninstall) ACTION="$1"; shift ;;
+    apply-request | install | update | status | log | restart | stop | start | info | backup | reset-password | uninstall) ACTION="$1"; shift ;;
     port) ACTION=port; NEW_PORT="${2:-}"; shift; [ $# -gt 0 ] && shift ;;
     --domain) DOMAIN="${2:-}"; shift 2 ;;
     --port) PORT="${2:-}"; shift 2 ;;
@@ -413,6 +509,7 @@ done
 case "$ACTION" in
   install) do_install ;;
   update) do_update ;;
+  apply-request) do_apply_request ;;
   port) do_port ;;
   status) need_installed; systemctl status kaku --no-pager -l ;;
   log) need_installed; journalctl -u kaku -f -n 100 ;;

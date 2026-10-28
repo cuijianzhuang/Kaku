@@ -25,6 +25,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/shop"
 	"github.com/cuijianzhuang/kaku/internal/store"
 	"github.com/cuijianzhuang/kaku/internal/tgbot"
+	"github.com/cuijianzhuang/kaku/internal/update"
 	"github.com/cuijianzhuang/kaku/internal/web"
 )
 
@@ -132,6 +133,7 @@ func serve() error {
 	n := &notify.Notifier{Store: st, Log: log}
 	svc := shop.New(st, n, log)
 	svc.BackupDir = filepath.Join(env("DATA_DIR", "data"), "backups")
+	svc.Updater = update.New(Version, env("DATA_DIR", "data"))
 	bot := tgbot.New(svc, log)
 	srv := web.New(web.Config{
 		AdminPath: env("ADMIN_PATH", "/admin"), TrustProxy: os.Getenv("TRUST_PROXY") == "1",

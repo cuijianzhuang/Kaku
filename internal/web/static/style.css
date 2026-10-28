@@ -439,3 +439,17 @@ body.admin { background: var(--bg); }
   .card { padding: 16px; }
   .steps .step span.label { display: none; }
 }
+
+/* upgrade page */
+.version-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.version-row > div { display: flex; flex-direction: column; gap: 2px; }
+.version-row b { font-size: 26px; letter-spacing: -.02em; font-family: var(--mono); }
+.version-row .arrow { transform: rotate(180deg); color: var(--muted); width: 20px; height: 20px; }
+.ok-line { display: flex; align-items: center; gap: 8px; color: var(--ok); margin: 0; font-weight: 500; }
+.upgrading { display: flex; gap: 14px; align-items: flex-start; }
+.upgrading p { margin: 4px 0 0; font-size: 13px; }
+.spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line-2); border-top-color: var(--accent); animation: spin .8s linear infinite; flex: none; margin-top: 2px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.flash.info { background: var(--bg-soft); color: var(--text); border: 1px solid var(--line); }
+.update-banner { text-decoration: none; align-items: center; }
+.update-banner:hover { text-decoration: none; border-color: var(--line-2); }

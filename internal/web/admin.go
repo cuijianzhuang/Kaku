@@ -66,6 +66,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/security/totp/disable", s.totpDisable)
 	a.GET("/audit", s.auditPage)
 	s.extraRoutes(a)
+	s.updateRoutes(a)
 }
 
 func page(c *gin.Context) int {
@@ -100,7 +101,7 @@ func (s *Server) dashboard(c *gin.Context) {
 	var openTickets int64
 	s.st.DB.Model(&model.Ticket{}).Where("status = ?", model.TicketOpen).Count(&openTickets)
 	s.render(c, 200, "admin_dashboard", gin.H{"Today": rToday, "Month": r30, "Counts": counts, "Low": low,
-		"Attention": attention, "Recent": recent, "OpenTickets": openTickets})
+		"Attention": attention, "Recent": recent, "OpenTickets": openTickets, "NewRelease": s.availableUpdate()})
 }
 
 // ---- categories ----

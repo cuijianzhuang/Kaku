@@ -408,6 +408,7 @@ func (s *Service) Run(ctx context.Context) {
 		case <-daily.C:
 			s.maybeBackup(ctx)
 			s.maybeRemind()
+			s.maybeUpdate(ctx)
 		}
 	}
 }
