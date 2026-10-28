@@ -234,8 +234,8 @@ document.addEventListener('change', (e) => {
   fill();
 })();
 
-// Product editor: cover preview and the description editor (toolbar,
-// preview, pasting / dropping / picking images).
+// Product editor and settings: image pickers (cover, logo) and the
+// description editor (toolbar, preview, pasting / dropping / picking images).
 (function () {
   const cover = document.querySelector('[data-cover]');
   const md = document.querySelector('[data-md]');
@@ -243,7 +243,8 @@ document.addEventListener('change', (e) => {
   const form = (cover || md).closest('form');
   const base = (form.getAttribute('action') || '').replace(/\/products$/, '');
 
-  if (cover) {
+  // image pickers: product cover, shop logo
+  document.querySelectorAll('[data-cover]').forEach((cover) => {
     const img = cover.querySelector('[data-cover-img]');
     const ph = cover.querySelector('[data-cover-ph]');
     const file = cover.querySelector('[data-cover-file]');
@@ -272,7 +273,7 @@ document.addEventListener('change', (e) => {
     url.addEventListener('input', () => {
       if (file.files.length) return;
       const v = url.value.trim();
-      show(/^(https:\/\/|\/uploads\/)/.test(v) ? v : '');
+      show(/^(https:\/\/|\/)/.test(v) ? v : '');
     });
     remove.addEventListener('click', () => {
       file.value = '';
@@ -280,10 +281,11 @@ document.addEventListener('change', (e) => {
       url.hidden = true;
       show('');
     });
-    // keep the initial letter in step with the name
-    const title = form.querySelector('input[name=title]');
-    title?.addEventListener('input', () => { ph.textContent = (title.value.trim()[0] || 'K').toUpperCase(); });
-  }
+  });
+  // the cover placeholder follows the product name
+  const ph = cover && cover.querySelector('[data-cover-ph][data-initial]');
+  const title = ph && form.querySelector('input[name=title]');
+  title?.addEventListener('input', () => { ph.textContent = (title.value.trim()[0] || 'K').toUpperCase(); });
 
   if (md) {
     const ta = md.querySelector('[data-md-input]');
