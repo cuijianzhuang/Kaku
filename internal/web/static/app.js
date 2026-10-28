@@ -234,6 +234,172 @@ document.addEventListener('change', (e) => {
   fill();
 })();
 
+// Product editor: cover preview and the description editor (toolbar,
+// preview, pasting / dropping / picking images).
+(function () {
+  const cover = document.querySelector('[data-cover]');
+  const md = document.querySelector('[data-md]');
+  if (!cover && !md) return;
+  const form = (cover || md).closest('form');
+  const base = (form.getAttribute('action') || '').replace(/\/products$/, '');
+
+  if (cover) {
+    const img = cover.querySelector('[data-cover-img]');
+    const ph = cover.querySelector('[data-cover-ph]');
+    const file = cover.querySelector('[data-cover-file]');
+    const url = cover.querySelector('[data-cover-url]');
+    const remove = cover.querySelector('[data-cover-remove]');
+    let blob = '';
+    const show = (src) => {
+      img.hidden = !src;
+      ph.hidden = !!src;
+      remove.hidden = !src;
+      if (src) img.src = src; else img.removeAttribute('src');
+    };
+    img.addEventListener('error', () => { if (img.src) { img.hidden = true; ph.hidden = false; } });
+    file.addEventListener('change', () => {
+      if (blob) URL.revokeObjectURL(blob);
+      const f = file.files[0];
+      if (!f) return show(url.value.trim());
+      if (f.size > 5 << 20) { alert('图片最大 5 MB'); file.value = ''; return; }
+      blob = URL.createObjectURL(f);
+      show(blob);
+    });
+    cover.querySelector('[data-cover-link]').addEventListener('click', () => {
+      url.hidden = false;
+      url.focus();
+    });
+    url.addEventListener('input', () => {
+      if (file.files.length) return;
+      const v = url.value.trim();
+      show(/^(https:\/\/|\/uploads\/)/.test(v) ? v : '');
+    });
+    remove.addEventListener('click', () => {
+      file.value = '';
+      url.value = '';
+      url.hidden = true;
+      show('');
+    });
+    // keep the initial letter in step with the name
+    const title = form.querySelector('input[name=title]');
+    title?.addEventListener('input', () => { ph.textContent = (title.value.trim()[0] || 'K').toUpperCase(); });
+  }
+
+  if (md) {
+    const ta = md.querySelector('[data-md-input]');
+    const pv = md.querySelector('[data-md-preview]');
+    const status = md.querySelector('[data-md-status]');
+    const picker = md.querySelector('[data-md-file]');
+    const hint = status.textContent;
+    md.setAttribute('data-tab', 'edit');
+    let timer = 0, last = null;
+    const render = async () => {
+      if (ta.value === last) return;
+      last = ta.value;
+      const body = new URLSearchParams({ text: ta.value });
+      try {
+        const r = await fetch(base + '/markdown/preview', { method: 'POST', body, credentials: 'same-origin' });
+        if (r.ok) pv.innerHTML = await r.text(); // rendered and escaped by the server
+      } catch (e) { /* keep the old preview */ }
+    };
+    const visible = () => pv.offsetParent !== null;
+    ta.addEventListener('input', () => {
+      clearTimeout(timer);
+      if (visible()) timer = setTimeout(render, 300);
+    });
+    md.querySelectorAll('[data-md-tab]').forEach((t) => t.addEventListener('click', (e) => {
+      e.preventDefault();
+      md.setAttribute('data-tab', t.getAttribute('data-md-tab'));
+      md.querySelectorAll('[data-md-tab]').forEach((x) => x.classList.toggle('on', x === t));
+      if (t.getAttribute('data-md-tab') === 'preview') render(); else ta.focus();
+    }));
+    if (visible()) render();
+    window.matchMedia('(min-width: 1100px)').addEventListener('change', () => { if (visible()) render(); });
+
+    // insert text around the selection
+    const wrap = (before, after, placeholder) => {
+      const s = ta.selectionStart, e = ta.selectionEnd;
+      const sel = ta.value.slice(s, e) || placeholder;
+      ta.setRangeText(before + sel + after, s, e, 'end');
+      ta.selectionStart = s + before.length;
+      ta.selectionEnd = s + before.length + sel.length;
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    };
+    // prefix every selected line (lists, headings, quotes)
+    const prefix = (fn) => {
+      const v = ta.value;
+      const s = v.lastIndexOf('\n', ta.selectionStart - 1) + 1;
+      let e = v.indexOf('\n', ta.selectionEnd);
+      if (e < 0) e = v.length;
+      const lines = v.slice(s, e).split('\n').map((l, i) => fn(l, i));
+      ta.setRangeText(lines.join('\n'), s, e, 'select');
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    };
+    // insert on its own line after the selection, never replacing it
+    const insertBlock = (text) => {
+      const at = ta.selectionEnd;
+      const before = ta.value.slice(0, at);
+      const pad = before && !before.endsWith('\n') ? '\n' : '';
+      ta.setRangeText(pad + text + '\n', at, at, 'end');
+      ta.focus();
+      ta.dispatchEvent(new Event('input'));
+    };
+    const strip = (l) => l.replace(/^(#{1,3} |[-*] |\d{1,3}[.、)] |> ?)/, '');
+    const cmds = {
+      h: () => prefix((l) => '## ' + strip(l)),
+      b: () => wrap('**', '**', '加粗文字'),
+      ul: () => prefix((l) => '- ' + strip(l)),
+      ol: () => prefix((l, i) => (i + 1) + '. ' + strip(l)),
+      quote: () => prefix((l) => '> ' + strip(l)),
+      code: () => wrap('`', '`', '代码'),
+      link: () => {
+        const u = prompt('链接地址（https://…）', 'https://');
+        if (u && /^https?:\/\/\S+$/.test(u)) wrap('[', '](' + u + ')', '链接文字');
+      },
+      img: () => picker.click(),
+    };
+    md.querySelectorAll('[data-md-cmd]').forEach((b) => b.addEventListener('click', () => cmds[b.getAttribute('data-md-cmd')]()));
+    ta.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') { e.preventDefault(); cmds.b(); }
+    });
+
+    // images: upload, then insert ![](url)
+    const upload = async (files) => {
+      for (const f of files) {
+        if (!/^image\/(png|jpeg|gif|webp)$/.test(f.type)) { status.textContent = '只支持 PNG / JPG / GIF / WebP 图片'; continue; }
+        if (f.size > 5 << 20) { status.textContent = '图片最大 5 MB'; continue; }
+        status.textContent = '正在上传 ' + (f.name || '图片') + '…';
+        const fd = new FormData();
+        fd.append('file', f);
+        try {
+          const r = await fetch(base + '/uploads/image', { method: 'POST', body: fd, credentials: 'same-origin' });
+          const j = await r.json();
+          if (!r.ok) throw new Error(j.error || '上传失败');
+          insertBlock('![' + (f.name || '').replace(/\.[^.]+$/, '').replace(/[\[\]]/g, '') + '](' + j.url + ')');
+          status.textContent = '已插入图片';
+        } catch (err) {
+          status.textContent = '上传失败：' + err.message;
+        }
+      }
+      setTimeout(() => { status.textContent = hint; }, 4000);
+    };
+    picker.addEventListener('change', () => { upload([...picker.files]); picker.value = ''; });
+    ta.addEventListener('paste', (e) => {
+      const files = [...(e.clipboardData?.files || [])].filter((f) => f.type.startsWith('image/'));
+      if (files.length) { e.preventDefault(); upload(files); }
+    });
+    md.addEventListener('dragover', (e) => { if ([...e.dataTransfer.types].includes('Files')) { e.preventDefault(); md.classList.add('dragging'); } });
+    md.addEventListener('dragleave', () => md.classList.remove('dragging'));
+    md.addEventListener('drop', (e) => {
+      const files = [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'));
+      md.classList.remove('dragging');
+      if (files.length) { e.preventDefault(); upload(files); }
+    });
+  }
+})();
+
 // Settings: generate a random API secret and show it (it is needed on the
 // license server too); copy a block of text.
 document.addEventListener('click', (e) => {

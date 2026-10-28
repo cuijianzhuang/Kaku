@@ -105,7 +105,7 @@ func securityHeaders(c *gin.Context) {
 	// Pages run only our own script (plus Cloudflare Turnstile when enabled);
 	// inline styles are allowed for the theme tokens.
 	h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; "+
-		"frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; "+
+		"frame-src https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' https: data: blob:; "+
 		"connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
 	c.Next()
 }

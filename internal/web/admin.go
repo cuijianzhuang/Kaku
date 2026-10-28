@@ -76,6 +76,8 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	s.polarisRoutes(a)
 	s.panelRoutes(a)
 	s.quickRoutes(a)
+	a.POST("/uploads/image", s.uploadImage)
+	a.POST("/markdown/preview", s.previewMarkdown)
 }
 
 func page(c *gin.Context) int {
