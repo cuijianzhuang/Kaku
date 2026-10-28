@@ -124,11 +124,14 @@ func (s *Server) polarisCfgFromForm(c *gin.Context) (string, error) {
 		} else {
 			cfg.Features = c.PostFormArray("pc_features")
 		}
+		// on these errors the form data is still returned, to show it again
 		if len(cfg.Features) == 0 {
-			return "", errors.New("至少选择一项功能，或勾选「全部高级功能」；不选功能的许可证不解锁任何高级功能")
+			b, _ := json.Marshal(cfg)
+			return string(b), errors.New("至少选择一项功能，或勾选「全部高级功能」；不选功能的许可证不解锁任何高级功能")
 		}
 		if cfg.MaxActivations > 1000 {
-			return "", errors.New("可激活实例数需在 1–1000 之间")
+			b, _ := json.Marshal(cfg)
+			return string(b), errors.New("可激活实例数需在 1–1000 之间")
 		}
 	}
 	b, _ := json.Marshal(cfg)

@@ -88,7 +88,12 @@ func TestCoverUploadAndShareMeta(t *testing.T) {
 	fields := map[string]string{"title": "Steam 卡", "category_id": itoa(int64(cat.ID)), "status": "on", "description": "# 说明\n**秒发** [官网](https://example.com)"}
 
 	// a script disguised as a PNG is refused
-	e.upload(c, "/manage/products", fields, "cover_file", []byte("<svg onload=alert(1)>"))
+	bad := e.upload(c, "/manage/products", fields, "cover_file", []byte("<svg onload=alert(1)>"))
+	badPage, _ := io.ReadAll(bad.Body)
+	if bad.StatusCode != http.StatusUnprocessableEntity || !strings.Contains(string(badPage), "**秒发** [官网](https://example.com)") ||
+		!strings.Contains(string(badPage), `value="Steam 卡"`) {
+		t.Fatalf("failed upload lost the form: %d", bad.StatusCode)
+	}
 	var n int64
 	e.st.DB.Model(&model.Product{}).Count(&n)
 	if n != 0 {

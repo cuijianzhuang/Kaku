@@ -188,10 +188,19 @@ func (s *Server) products(c *gin.Context) {
 func (s *Server) productForm(c *gin.Context) {
 	p := model.Product{Status: model.ProductOn}
 	if id := c.Param("id"); id != "" {
-		if err := s.st.DB.Preload("SKUs", func(db *gorm.DB) *gorm.DB { return db.Order("sort, id") }).Take(&p, id).Error; err != nil {
+		if err := s.st.DB.Take(&p, id).Error; err != nil {
 			redirectErr(c, s.cfg.AdminPath+"/products", errors.New("商品不存在"))
 			return
 		}
+	}
+	s.renderProductForm(c, &p, nil)
+}
+
+// renderProductForm draws the product page; after a failed save it keeps
+// what the owner typed (a long description is painful to lose).
+func (s *Server) renderProductForm(c *gin.Context, p *model.Product, saveErr error) {
+	if p.ID != 0 {
+		s.st.DB.Where("product_id = ?", p.ID).Order("sort, id").Find(&p.SKUs)
 	}
 	var cats []model.Category
 	s.st.DB.Order("sort, id").Find(&cats)
@@ -199,35 +208,36 @@ func (s *Server) productForm(c *gin.Context) {
 	for _, d := range s.shop.Reg.Kinds() {
 		kinds[d.Kind()] = d.Label()
 	}
-	s.render(c, 200, "admin_product", gin.H{"Product": p, "Categories": cats, "Kinds": kinds})
+	data := gin.H{"Product": *p, "Categories": cats, "Kinds": kinds}
+	code := http.StatusOK
+	if saveErr != nil {
+		data["Error"] = saveErr.Error()
+		code = http.StatusUnprocessableEntity
+	}
+	s.render(c, code, "admin_product", data)
 }
 
 func (s *Server) saveProduct(c *gin.Context) {
 	id := atoiU(c.PostForm("id"))
-	back := s.cfg.AdminPath + "/products/new"
-	if id != 0 {
-		back = fmt.Sprintf("%s/products/%d", s.cfg.AdminPath, id)
-	}
 	title := strings.TrimSpace(c.PostForm("title"))
 	catID := atoiU(c.PostForm("category_id"))
-	if title == "" || catID == 0 {
-		redirectErr(c, back, errors.New("请填写商品名称并选择分类"))
-		return
-	}
 	sort, _ := strconv.Atoi(c.PostForm("sort"))
 	status := model.ProductOff
 	if c.PostForm("status") == model.ProductOn {
 		status = model.ProductOn
 	}
-	cover := strings.TrimSpace(c.PostForm("cover"))
+	p := model.Product{ID: id, CategoryID: catID, Title: title, DescriptionMD: c.PostForm("description"),
+		Cover: strings.TrimSpace(c.PostForm("cover")), Status: status, Sort: sort}
+	if title == "" || catID == 0 {
+		s.renderProductForm(c, &p, errors.New("请填写商品名称并选择分类"))
+		return
+	}
 	if up, err := s.saveUpload(c, "cover_file"); err != nil {
-		redirectErr(c, back, err)
+		s.renderProductForm(c, &p, err)
 		return
 	} else if up != "" {
-		cover = up
+		p.Cover = up
 	}
-	p := model.Product{ID: id, CategoryID: catID, Title: title, DescriptionMD: c.PostForm("description"),
-		Cover: cover, Status: status, Sort: sort}
 	var err error
 	if id == 0 {
 		err = s.st.DB.Create(&p).Error
@@ -235,7 +245,7 @@ func (s *Server) saveProduct(c *gin.Context) {
 		err = s.st.DB.Model(&model.Product{ID: id}).Select("category_id", "title", "description_md", "cover", "status", "sort").Updates(&p).Error
 	}
 	if err != nil {
-		redirectErr(c, back, err)
+		s.renderProductForm(c, &p, err)
 		return
 	}
 	s.audit(c, "product_save", fmt.Sprint(p.ID), title)
@@ -307,28 +317,58 @@ func (s *Server) skuForm(c *gin.Context) {
 			return
 		}
 	}
+	s.renderSKUForm(c, &sku, nil)
+}
+
+// renderSKUForm draws the SKU page; after a failed save it shows the
+// error with what the owner typed, rather than a fresh form.
+func (s *Server) renderSKUForm(c *gin.Context, sku *model.SKU, saveErr error) {
 	var p model.Product
 	if err := s.st.DB.Take(&p, sku.ProductID).Error; err != nil {
 		redirectErr(c, s.cfg.AdminPath+"/products", errors.New("商品不存在"))
 		return
 	}
-	s.render(c, 200, "admin_sku", gin.H{"SKU": sku, "Product": p, "Deliverers": s.shop.Reg.Kinds(),
-		"PF": s.polarisFormData(c.Request.Context(), &sku), "PK": s.panelFormData(c.Request.Context(), &sku), "GF": s.genericFormData(&sku)})
+	data := gin.H{"SKU": *sku, "Product": p, "Deliverers": s.shop.Reg.Kinds(),
+		"PF": s.polarisFormData(c.Request.Context(), sku), "PK": s.panelFormData(c.Request.Context(), sku), "GF": s.genericFormData(sku)}
+	code := http.StatusOK
+	if saveErr != nil {
+		data["Error"] = saveErr.Error()
+		code = http.StatusUnprocessableEntity
+	}
+	s.render(c, code, "admin_sku", data)
 }
 
 func (s *Server) saveSKU(c *gin.Context) {
-	id := atoiU(c.PostForm("id"))
-	pid := atoiU(c.PostForm("product_id"))
-	back := fmt.Sprintf("%s/skus/new?product=%d", s.cfg.AdminPath, pid)
-	if id != 0 {
-		back = fmt.Sprintf("%s/skus/%d", s.cfg.AdminPath, id)
-	}
-	fail := func(err error) { redirectErr(c, back, err) }
-	name := strings.TrimSpace(c.PostForm("name"))
-	if name == "" {
-		fail(errors.New("请填写规格名称"))
+	sku, err := s.skuFromForm(c)
+	if err != nil {
+		s.renderSKUForm(c, sku, err)
 		return
 	}
+	if sku.ID == 0 {
+		err = s.st.DB.Create(sku).Error
+	} else {
+		err = s.st.DB.Model(&model.SKU{ID: sku.ID}).Select("name", "price_cny", "price_usdt", "price_stars", "deliverer_kind",
+			"deliverer_cfg", "wholesale", "limit_per_order", "low_stock", "active", "sort").Updates(sku).Error
+	}
+	if err != nil {
+		s.renderSKUForm(c, sku, err)
+		return
+	}
+	deliver.RefreshStock(s.st.DB, sku.ID)
+	s.audit(c, "sku_save", fmt.Sprint(sku.ID), sku.Name+" · "+sku.DelivererKind)
+	redirectMsg(c, fmt.Sprintf("%s/products/%d", s.cfg.AdminPath, sku.ProductID), "规格已保存")
+}
+
+// skuFromForm reads and checks the SKU form. On error the returned SKU
+// still holds as much of the input as could be read, to show it again.
+func (s *Server) skuFromForm(c *gin.Context) (*model.SKU, error) {
+	limit, _ := strconv.Atoi(c.PostForm("limit_per_order"))
+	low, _ := strconv.Atoi(c.PostForm("low_stock"))
+	sort, _ := strconv.Atoi(c.PostForm("sort"))
+	sku := &model.SKU{ID: atoiU(c.PostForm("id")), ProductID: atoiU(c.PostForm("product_id")), Name: strings.TrimSpace(c.PostForm("name")),
+		DelivererKind: c.PostForm("deliverer_kind"), DelivererCfg: strings.TrimSpace(c.PostForm("deliverer_cfg")),
+		Wholesale: strings.TrimSpace(c.PostForm("wholesale")), LimitPerOrder: max(limit, 1), LowStock: max(low, 0),
+		Active: c.PostForm("active") == "on", Sort: sort}
 	parse := func(field string, places int) (int64, error) {
 		v := strings.TrimSpace(c.PostForm(field))
 		if v == "" {
@@ -336,88 +376,71 @@ func (s *Server) saveSKU(c *gin.Context) {
 		}
 		return payment.ParseDecimal(v, places)
 	}
-	cny, err1 := parse("price_cny", 2)
-	usdt, err2 := parse("price_usdt", 6)
-	stars, err3 := parse("price_stars", 0)
-	if err := errors.Join(err1, err2, err3); err != nil {
-		fail(fmt.Errorf("价格格式不正确：%w", err))
-		return
+	var err1, err2, err3 error
+	sku.PriceCNY, err1 = parse("price_cny", 2)
+	sku.PriceUSDT, err2 = parse("price_usdt", 6)
+	sku.PriceStars, err3 = parse("price_stars", 0)
+	priceErr := errors.Join(err1, err2, err3)
+
+	// the delivery configuration first, so a later error still shows it
+	var cfgErr error
+	if v, ok := genericCfgFromForm(c, sku.DelivererKind); ok {
+		sku.DelivererCfg = v
 	}
-	if cny == 0 && usdt == 0 && stars == 0 {
-		fail(errors.New("至少填写一种币种的价格"))
-		return
+	switch {
+	case sku.DelivererKind == "panelcode" && c.PostForm("pk_target") != "":
+		var v string
+		if v, cfgErr = s.panelCfgFromForm(c); cfgErr == nil {
+			sku.DelivererCfg = v
+		}
+	case sku.DelivererKind == "polaris" && c.PostForm("pc_mode") != "":
+		var v string
+		v, cfgErr = s.polarisCfgFromForm(c)
+		if v != "" {
+			sku.DelivererCfg = v
+		}
 	}
-	kind := c.PostForm("deliverer_kind")
-	d, err := s.shop.Reg.Get(kind)
+	wholesale, wsForm, wsErr := wholesaleFromForm(c)
+	if wsForm && wsErr == nil {
+		sku.Wholesale = wholesale
+	}
+
+	switch {
+	case sku.Name == "":
+		return sku, errors.New("请填写规格名称")
+	case priceErr != nil:
+		return sku, fmt.Errorf("价格格式不正确：%w", priceErr)
+	case sku.PriceCNY == 0 && sku.PriceUSDT == 0 && sku.PriceStars == 0:
+		return sku, errors.New("至少填写一种币种的价格")
+	case cfgErr != nil:
+		return sku, cfgErr
+	case wsErr != nil:
+		return sku, wsErr
+	}
+	d, err := s.shop.Reg.Get(sku.DelivererKind)
 	if err != nil {
-		fail(err)
-		return
+		return sku, err
 	}
-	cfg := strings.TrimSpace(c.PostForm("deliverer_cfg"))
-	if v, ok := genericCfgFromForm(c, kind); ok {
-		cfg = v
+	if err := d.Validate(json.RawMessage(sku.DelivererCfg)); err != nil {
+		return sku, fmt.Errorf("发货配置：%w", err)
 	}
-	if kind == "panelcode" && c.PostForm("pk_target") != "" {
-		if cfg, err = s.panelCfgFromForm(c); err != nil {
-			fail(err)
-			return
+	if sku.DelivererKind == "polaris" {
+		if err := s.checkPolarisCfg(c.Request.Context(), sku.DelivererCfg); err != nil {
+			return sku, fmt.Errorf("发货配置：%w", err)
 		}
 	}
-	if kind == "polaris" && c.PostForm("pc_mode") != "" {
-		if cfg, err = s.polarisCfgFromForm(c); err != nil {
-			fail(err)
-			return
-		}
-	}
-	if err := d.Validate(json.RawMessage(cfg)); err != nil {
-		fail(fmt.Errorf("发货配置：%w", err))
-		return
-	}
-	if kind == "polaris" {
-		if err := s.checkPolarisCfg(c.Request.Context(), cfg); err != nil {
-			fail(fmt.Errorf("发货配置：%w", err))
-			return
-		}
-	}
-	wholesale := strings.TrimSpace(c.PostForm("wholesale"))
-	if v, ok, err := wholesaleFromForm(c); err != nil {
-		fail(err)
-		return
-	} else if ok {
-		wholesale = v
-	}
-	if wholesale != "" {
+	if sku.Wholesale != "" {
 		var tiers []model.WholesaleTier
-		if err := json.Unmarshal([]byte(wholesale), &tiers); err != nil {
-			fail(fmt.Errorf("批发价格式不正确：%w", err))
-			return
+		if err := json.Unmarshal([]byte(sku.Wholesale), &tiers); err != nil {
+			return sku, fmt.Errorf("批发价格式不正确：%w", err)
 		}
 		for _, t := range tiers {
 			if t.MinQty < 2 || t.Percent < 1 || t.Percent > 100 {
-				fail(errors.New("批发价：min_qty ≥ 2，percent 在 1–100 之间"))
-				return
+				return sku, errors.New("批发价：min_qty ≥ 2，percent 在 1–100 之间")
 			}
 		}
 	}
-	limit, _ := strconv.Atoi(c.PostForm("limit_per_order"))
-	low, _ := strconv.Atoi(c.PostForm("low_stock"))
-	sort, _ := strconv.Atoi(c.PostForm("sort"))
-	sku := model.SKU{ID: id, ProductID: pid, Name: name, PriceCNY: cny, PriceUSDT: usdt, PriceStars: stars,
-		DelivererKind: kind, DelivererCfg: cfg, Wholesale: wholesale, LimitPerOrder: max(limit, 1), LowStock: max(low, 0),
-		Active: c.PostForm("active") == "on", Sort: sort}
-	if id == 0 {
-		err = s.st.DB.Create(&sku).Error
-	} else {
-		err = s.st.DB.Model(&model.SKU{ID: id}).Select("name", "price_cny", "price_usdt", "price_stars", "deliverer_kind",
-			"deliverer_cfg", "wholesale", "limit_per_order", "low_stock", "active", "sort").Updates(&sku).Error
-	}
-	if err != nil {
-		fail(err)
-		return
-	}
-	deliver.RefreshStock(s.st.DB, sku.ID)
-	s.audit(c, "sku_save", fmt.Sprint(sku.ID), name+" · "+kind)
-	redirectMsg(c, fmt.Sprintf("%s/products/%d", s.cfg.AdminPath, pid), "规格已保存")
+	return sku, nil
 }
 
 func (s *Server) deleteSKU(c *gin.Context) {

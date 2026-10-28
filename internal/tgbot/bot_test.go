@@ -128,3 +128,53 @@ func TestStarsPurchase(t *testing.T) {
 		t.Fatalf("refund %+v", r)
 	}
 }
+
+func TestManualAskInTelegram(t *testing.T) {
+	box, _ := secure.NewBox(secure.RandomBytes(32))
+	st, err := store.Open("sqlite", filepath.Join(t.TempDir(), "k.db"), box)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	set := st.Settings()
+	set.TGToken, set.StarsEnabled = "123:abc", true
+	st.SaveSettings(set)
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	svc := shop.New(st, &notify.Notifier{Store: st, Log: log, Send: func(string, string, string) error { return nil }}, log)
+	tg := &fakeTG{}
+	srv := httptest.NewServer(tg)
+	defer srv.Close()
+	svc.Bot = func() *tgapi.Client { return &tgapi.Client{Token: "123:abc", BaseURL: srv.URL} }
+	bot := New(svc, log)
+
+	cat := model.Category{Name: "c", Visible: true}
+	st.DB.Create(&cat)
+	p := model.Product{CategoryID: cat.ID, Title: "代充", Status: model.ProductOn}
+	st.DB.Create(&p)
+	sku := model.SKU{ProductID: p.ID, Name: "月卡", PriceStars: 50, DelivererKind: "manual", DelivererCfg: `{"ask":"充值账号"}`, LimitPerOrder: 5, Active: true}
+	st.DB.Create(&sku)
+
+	ctx := context.Background()
+	user := tgapi.User{ID: 42, FirstName: "A"}
+	msg := &tgapi.Message{MessageID: 7, From: &user}
+	msg.Chat.ID, msg.Chat.Type = 42, "private"
+	bot.Handle(ctx, &tgapi.Update{CallbackQuery: &tgapi.CallbackQuery{ID: "1", From: user, Message: msg, Data: "m:1:1:stars"}})
+	if len(tg.find("sendInvoice")) != 0 {
+		t.Fatal("ordered before the buyer answered")
+	}
+	var n int64
+	if st.DB.Model(&model.Order{}).Count(&n); n != 0 {
+		t.Fatal("order created before the answer")
+	}
+	reply := &tgapi.Message{MessageID: 8, From: &user, Text: "player-8848"}
+	reply.Chat.ID, reply.Chat.Type = 42, "private"
+	bot.Handle(ctx, &tgapi.Update{Message: reply})
+	inv := tg.find("sendInvoice")
+	if len(inv) != 1 {
+		t.Fatalf("no invoice after the answer: %+v", tg.calls)
+	}
+	o, _ := svc.OrderByNo(inv[0].Params["payload"].(string))
+	if o == nil || o.Remark != "充值账号：player-8848" {
+		t.Fatalf("order %+v", o)
+	}
+}
