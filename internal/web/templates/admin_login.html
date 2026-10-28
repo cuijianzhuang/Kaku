@@ -1,13 +1,15 @@
 {{define "title"}}登录{{end}}
 {{define "content"}}
-<div class="card" style="max-width:380px;margin:40px auto">
-  <h1>管理员登录</h1>
+<div class="card auth-card">
+  <div class="brand"><span class="logo">{{initial .Site}}</span><span>{{.Site}}</span></div>
+  <h1 style="text-align:center;font-size:19px">管理员登录</h1>
+  {{template "flash" .}}
   <form method="post" action="{{.AdminPath}}/login" class="stack">
     <input type="hidden" name="next" value="{{.Next}}">
-    <label>用户名 <input name="username" required autocomplete="username"></label>
-    <label>密码 <input type="password" name="password" required autocomplete="current-password"></label>
-    <label>两步验证码（如已开启） <input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>
-    <button>登录</button>
+    <label>用户名<input name="username" required autocomplete="username" autofocus></label>
+    <label>密码<input type="password" name="password" required autocomplete="current-password"></label>
+    <label>两步验证码（如已开启）<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 位数字"></label>
+    <button class="lg block"><svg class="ic"><use href="#i-lock"/></svg>登录</button>
   </form>
 </div>
 {{end}}

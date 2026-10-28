@@ -1,7 +1,7 @@
 {{define "title"}}订单{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<h1>订单</h1>
+<div class="page-head"><h1>订单</h1><a class="btn secondary" href="{{$p}}/orders.csv?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}"><svg class="ic"><use href="#i-download"/></svg>导出 CSV</a></div>
 <form method="get" class="filters">
   <input name="q" value="{{.Q}}" placeholder="订单号 / 邮箱 / license_id / IP">
   <select name="status">
@@ -19,21 +19,20 @@
     <option value="tg" {{if eq .Channel "tg"}}selected{{end}}>Telegram</option>
   </select>
   <button class="secondary">筛选</button>
-  <a class="btn secondary" href="{{$p}}/orders.csv?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}">导出 CSV</a>
 </form>
 <div class="card table-wrap"><table>
   <tr><th>订单号</th><th>商品</th><th>金额</th><th>买家</th><th>支付</th><th>状态</th><th>下单时间</th></tr>
   {{range .Orders}}
   <tr>
     <td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{if .RenewOf}}<br><span class="badge">续费</span>{{end}}</td>
-    <td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
-    <td>{{money .Amount .Currency}}</td>
+    <td>{{.ProductTitle}}<br><span class="muted">{{.SKUName}} ×{{.Qty}}</span></td>
+    <td class="nowrap">{{money .Amount .Currency}}</td>
     <td>{{.Email}}{{if .TGUserID}}<br><span class="muted">TG {{.TGUserID}}</span>{{end}}</td>
-    <td>{{.Channel}} · {{method .PayMethod}}</td>
+    <td class="nowrap">{{if eq .Channel "tg"}}Telegram{{else}}网页{{end}} · {{method .PayMethod}}</td>
     <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .LastError}}<br><span class="muted">{{.LastError}}</span>{{end}}</td>
-    <td>{{date .CreatedAt}}</td>
+    <td class="nowrap muted">{{date .CreatedAt}}</td>
   </tr>
-  {{else}}<tr><td colspan="7" class="muted">没有订单</td></tr>{{end}}
+  {{else}}<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">没有订单</td></tr>{{end}}
 </table>
 <div class="pager">
   {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}&page={{add .Page -1}}">上一页</a>{{end}}

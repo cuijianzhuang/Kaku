@@ -3,16 +3,17 @@
 {{$p := .AdminPath}}
 <h1>优惠码</h1>
 <div class="card">
-  <form method="post" action="{{$p}}/coupons" class="filters">
+  <h2 style="margin-top:0">新建优惠码</h2>
+  <form method="post" action="{{$p}}/coupons" class="fields">
     <label>优惠码 <input name="code" placeholder="留空自动生成" maxlength="64"></label>
     <label>类型 <select name="type"><option value="percent">百分比折扣</option><option value="fixed">立减（元）</option></select></label>
-    <label>数值 <input name="value" required placeholder="10 = 9 折 / 立减 10 元" style="width:150px"></label>
-    <label>限用次数 <input type="number" name="max_uses" value="0" min="0" style="width:90px"></label>
-    <label>适用 SKU ID <input name="sku_scope" placeholder="1,2（空 = 全部）" style="width:120px"></label>
+    <label>数值 <input name="value" required placeholder="10 = 9 折或立减 10 元"></label>
+    <label>限用次数 <input type="number" name="max_uses" value="0" min="0"></label>
+    <label>适用 SKU ID <input name="sku_scope" placeholder="1,2　留空为全部"></label>
     <label>到期日 <input type="date" name="expires_at"></label>
     <button>创建</button>
   </form>
-  <p class="muted">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。限用次数 0 = 不限。</p>
+  <p class="muted" style="margin:14px 0 0;font-size:13px">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。限用次数 0 = 不限。</p>
 </div>
 <div class="card table-wrap"><table>
   <tr><th>优惠码</th><th>优惠</th><th>使用</th><th>适用</th><th>到期</th><th>状态</th><th></th></tr>
@@ -23,9 +24,9 @@
     <td>{{.Used}}{{if .MaxUses}} / {{.MaxUses}}{{end}}</td>
     <td>{{if .SKUScope}}SKU {{.SKUScope}}{{else}}全部{{end}}</td>
     <td>{{date .ExpiresAt}}</td>
-    <td>{{if .Active}}启用{{else}}停用{{end}}</td>
+    <td>{{if .Active}}<span class="badge on">启用</span>{{else}}<span class="badge">停用</span>{{end}}</td>
     <td>{{if .Active}}<form method="post" action="{{$p}}/coupons/{{.ID}}/delete" class="inline"><button class="link">停用</button></form>{{end}}</td>
   </tr>
-  {{else}}<tr><td colspan="7" class="muted">还没有优惠码</td></tr>{{end}}
+  {{else}}<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">还没有优惠码</td></tr>{{end}}
 </table></div>
 {{end}}

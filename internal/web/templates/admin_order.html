@@ -2,13 +2,13 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$o := .Order}}
-<div class="row"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a href="{{$p}}/orders">← 订单列表</a></div>
+<div class="page-head"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a class="btn secondary" href="{{$p}}/orders"><svg class="ic"><use href="#i-arrow-left"/></svg>订单列表</a></div>
 <div class="two">
   <div class="card">
     <table>
       <tr><th>商品</th><td>{{$o.ProductTitle}} {{$o.SKUName}} ×{{$o.Qty}}（SKU #{{$o.SKUID}} · {{.SKU.DelivererKind}}）</td></tr>
       <tr><th>金额</th><td>{{money $o.Amount $o.Currency}}{{if ne $o.PayAmount $o.Amount}}（应付 {{money $o.PayAmount $o.Currency}}）{{end}}{{if $o.Discount}} · 优惠 {{money $o.Discount $o.Currency}}{{if .Coupon.Code}}（{{.Coupon.Code}}）{{end}}{{end}}</td></tr>
-      <tr><th>支付方式</th><td>{{method $o.PayMethod}} · {{$o.Channel}}</td></tr>
+      <tr><th>支付方式</th><td>{{method $o.PayMethod}} · {{if eq $o.Channel "tg"}}Telegram{{else}}网页{{end}}</td></tr>
       <tr><th>邮箱</th><td>{{$o.Email}}</td></tr>
       {{if $o.TGUserID}}<tr><th>Telegram</th><td>{{$o.TGUserID}}</td></tr>{{end}}
       <tr><th>IP</th><td>{{$o.ClientIP}}</td></tr>

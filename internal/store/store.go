@@ -142,6 +142,8 @@ type Settings struct {
 	BackupTelegram bool `json:"backup_telegram"` // also send each backup to the admin chat
 
 	RemindEnabled bool `json:"remind_enabled"` // license expiry reminders (7 days and 1 day before)
+
+	Accent string `json:"accent"` // theme colour preset: "" (ink), indigo, emerald, amber, rose, blue
 }
 
 func defaults() *Settings {

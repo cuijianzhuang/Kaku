@@ -1,23 +1,28 @@
 {{define "title"}}查询订单 · {{.Site}}{{end}}
 {{define "content"}}
-<div class="card">
-  <h1>查询订单</h1>
-  <form method="post" action="/query" class="stack">
-    <label>订单号 <input name="order_no" maxlength="40" placeholder="订单号或邮箱填一项即可"></label>
-    <label>或 邮箱 <input type="email" name="email" maxlength="200"></label>
-    <label>查询密码 <input type="password" name="password" required autocomplete="current-password"></label>
-    <button>查询</button>
-  </form>
+<div class="narrow">
+  <div class="card">
+    <h1>查询订单</h1>
+    <p class="muted">填写订单号或下单邮箱，以及下单时设置的查询密码。</p>
+    <form method="post" action="/query" class="stack" style="margin-top:8px">
+      <div class="two">
+        <label>订单号<input name="order_no" maxlength="40" placeholder="K…"></label>
+        <label>或 邮箱<input type="email" name="email" maxlength="200" placeholder="you@example.com"></label>
+      </div>
+      <label>查询密码<input type="password" name="password" required autocomplete="current-password"></label>
+      <button class="lg block"><svg class="ic"><use href="#i-search"/></svg>查询</button>
+    </form>
+  </div>
+  {{if .Orders}}
+  <div class="card table-wrap">
+    <table>
+      <tr><th>订单号</th><th>商品</th><th>金额</th><th>状态</th></tr>
+      {{range .Orders}}
+      <tr><td><a href="/order/{{.OrderNo}}">{{.OrderNo}}</a><br><span class="muted">{{date .CreatedAt}}</span></td><td>{{.ProductTitle}} · {{.SKUName}} ×{{.Qty}}</td>
+        <td>{{money .Amount .Currency}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td></tr>
+      {{end}}
+    </table>
+  </div>
+  {{end}}
 </div>
-{{if .Orders}}
-<div class="card table-wrap">
-  <table>
-    <tr><th>订单号</th><th>商品</th><th>金额</th><th>状态</th><th>时间</th></tr>
-    {{range .Orders}}
-    <tr><td><a href="/order/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
-      <td>{{money .Amount .Currency}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td><td>{{date .CreatedAt}}</td></tr>
-    {{end}}
-  </table>
-</div>
-{{end}}
 {{end}}

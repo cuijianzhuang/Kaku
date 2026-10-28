@@ -1,41 +1,54 @@
 {{define "title"}}仪表盘{{end}}
 {{define "content"}}
 {{$p := .AdminPath}}
-<h1>仪表盘</h1>
+<div class="page-head">
+  <h1>仪表盘</h1>
+  <div class="row" style="gap:8px">
+    <a class="btn secondary" href="{{$p}}/stats"><svg class="ic"><use href="#i-chart"/></svg>销售统计</a>
+    <a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-box"/></svg>新增商品</a>
+  </div>
+</div>
 <div class="stats">
-  {{range .Today}}<div class="stat"><span class="muted">今日 {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{else}}<div class="stat"><span class="muted">今日销售</span><b>0</b></div>{{end}}
-  {{range .Month}}<div class="stat"><span class="muted">近 30 天 {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{end}}
-  <div class="stat"><span class="muted">待支付</span><b>{{index .Counts "pending"}}</b></div>
-  <div class="stat"><span class="muted">待发货</span><b>{{index .Counts "paid"}}</b></div>
-  <div class="stat"><span class="muted">发货失败</span><b>{{index .Counts "failed"}}</b></div>
-  <div class="stat"><span class="muted">待回复工单</span><b><a href="{{$p}}/tickets">{{.OpenTickets}}</a></b></div>
+  {{range .Today}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>
+  {{else}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入</span><b>0</b><span class="muted">还没有付款订单</span></div>{{end}}
+  {{range .Month}}<div class="stat"><span class="stat-ic"><svg class="ic"><use href="#i-chart"/></svg></span><span class="muted">近 30 天 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{end}}
+  <div class="stat warn"><span class="stat-ic"><svg class="ic"><use href="#i-clock"/></svg></span><span class="muted">待支付</span><b>{{index .Counts "pending"}}</b><a class="muted" href="{{$p}}/orders?status=pending">查看订单 →</a></div>
+  <div class="stat"><span class="stat-ic"><svg class="ic"><use href="#i-refresh"/></svg></span><span class="muted">待发货</span><b>{{index .Counts "paid"}}</b><a class="muted" href="{{$p}}/orders?status=paid">查看订单 →</a></div>
+  <div class="stat err"><span class="stat-ic"><svg class="ic"><use href="#i-alert"/></svg></span><span class="muted">发货失败</span><b>{{index .Counts "failed"}}</b><a class="muted" href="{{$p}}/orders?status=failed">查看订单 →</a></div>
+  <div class="stat"><span class="stat-ic"><svg class="ic"><use href="#i-message"/></svg></span><span class="muted">待回复工单</span><b>{{.OpenTickets}}</b><a class="muted" href="{{$p}}/tickets">查看工单 →</a></div>
 </div>
 
 {{if .Attention}}
-<h2>需要处理</h2>
-<div class="card table-wrap"><table>
-  <tr><th>订单号</th><th>商品</th><th>状态</th><th>原因</th><th>时间</th></tr>
-  {{range .Attention}}
-  <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
-    <td><span class="badge {{.Status}}">{{status .Status}}</span></td><td class="muted">{{.LastError}}</td><td>{{date .PaidAt}}</td></tr>
-  {{end}}
-</table></div>
+<div class="card table-wrap" style="margin-top:16px">
+  <h2>需要处理</h2>
+  <table>
+    <tr><th>订单号</th><th>商品</th><th>状态</th><th>原因</th><th>支付时间</th></tr>
+    {{range .Attention}}
+    <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} · {{.SKUName}} ×{{.Qty}}</td>
+      <td><span class="badge {{.Status}}">{{status .Status}}</span></td><td class="muted">{{.LastError}}</td><td>{{date .PaidAt}}</td></tr>
+    {{end}}
+  </table>
+</div>
 {{end}}
 
 {{if .Low}}
-<h2>库存预警</h2>
-<div class="card table-wrap"><table>
-  <tr><th>规格</th><th>剩余</th><th>预警线</th><th></th></tr>
-  {{range .Low}}<tr><td>{{.Name}} (#{{.ID}})</td><td>{{.StockCache}}</td><td>{{.LowStock}}</td><td><a href="{{$p}}/cards?sku={{.ID}}">补货</a></td></tr>{{end}}
-</table></div>
+<div class="card table-wrap">
+  <h2>库存预警</h2>
+  <table>
+    <tr><th>规格</th><th>剩余</th><th>预警线</th><th></th></tr>
+    {{range .Low}}<tr><td>{{.Name}} <span class="muted">#{{.ID}}</span></td><td><span class="badge failed">{{.StockCache}}</span></td><td>{{.LowStock}}</td><td><a href="{{$p}}/cards?sku={{.ID}}">补货 →</a></td></tr>{{end}}
+  </table>
+</div>
 {{end}}
 
-<h2>最近订单</h2>
-<div class="card table-wrap"><table>
-  <tr><th>订单号</th><th>商品</th><th>金额</th><th>渠道</th><th>状态</th><th>时间</th></tr>
-  {{range .Recent}}
-  <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} {{.SKUName}} ×{{.Qty}}</td>
-    <td>{{money .Amount .Currency}}</td><td>{{.Channel}} · {{method .PayMethod}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td><td>{{date .CreatedAt}}</td></tr>
-  {{else}}<tr><td colspan="6" class="muted">还没有订单</td></tr>{{end}}
-</table></div>
+<div class="card table-wrap" style="margin-top:16px">
+  <h2>最近订单</h2>
+  <table>
+    <tr><th>订单号</th><th>商品</th><th>金额</th><th>渠道</th><th>状态</th><th>时间</th></tr>
+    {{range .Recent}}
+    <tr><td><a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a></td><td>{{.ProductTitle}} · {{.SKUName}} ×{{.Qty}}</td>
+      <td>{{money .Amount .Currency}}</td><td>{{if eq .Channel "tg"}}Telegram{{else}}网页{{end}} · {{method .PayMethod}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td><td class="muted">{{date .CreatedAt}}</td></tr>
+    {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">还没有订单</td></tr>{{end}}
+  </table>
+</div>
 {{end}}

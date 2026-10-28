@@ -5,7 +5,9 @@
 #
 # Commands (after installing, this script is available as `kaku-ctl`):
 #   install [--domain NAME] [--port N] [--version TAG] [--no-caddy]
-#                         install the latest (or given) release; with --domain, Caddy serves HTTPS
+#                         install the latest (or given) release; with --domain, Caddy serves HTTPS.
+#                         Default port 8090, or the next free one when it is taken
+#   port N                move the service to port N (updates Caddy and the firewall)
 #   update [--version TAG]  upgrade the binary (data and keys kept; rolls back if it does not start)
 #   status | log | restart | stop | start
 #   info                  show the shop and admin URLs and where the configuration is
@@ -28,14 +30,15 @@ UNIT=/etc/systemd/system/kaku.service
 SVC_USER=kaku
 GH_PROXY="${GH_PROXY:-}"
 
-ACTION="" DOMAIN="" PORT=8080 VERSION="" CADDY=1 PURGE=0
+DEFAULT_PORT=8090
+ACTION="" DOMAIN="" PORT="" VERSION="" CADDY=1 PURGE=0 NEW_PORT=""
 
 if [ -t 1 ]; then C_R=$'\e[31m' C_G=$'\e[32m' C_Y=$'\e[33m' C_B=$'\e[1m' C_0=$'\e[0m'; else C_R="" C_G="" C_Y="" C_B="" C_0=""; fi
 ok() { printf '  %s✓%s %s\n' "$C_G" "$C_0" "$*"; }
 warn() { printf '  %s!%s %s\n' "$C_Y" "$C_0" "$*"; }
 step() { printf '%s==>%s %s\n' "$C_B" "$C_0" "$*"; }
 die() { printf '  %s✗ %s%s\n' "$C_R" "$*" "$C_0" >&2; exit 1; }
-usage() { sed -n '2,19p' "$0" 2>/dev/null || echo "用法：install | update | status | log | restart | stop | start | info | backup | reset-password | uninstall"; }
+usage() { sed -n '2,21p' "$0" 2>/dev/null || echo "用法：install | update | port | status | log | restart | stop | start | info | backup | reset-password | uninstall"; }
 
 need_root() { [ "$(id -u)" = 0 ] || die "请用 root 运行"; }
 installed() { [ -x "$BIN" ] && [ -f "$ENV_FILE" ]; }
@@ -120,7 +123,7 @@ EOF
 }
 
 listen_addr() { env_get LISTEN; }
-health_url() { local l; l="$(listen_addr)"; l="${l:-:8080}"; [ "${l%%:*}" = "" ] && l="127.0.0.1$l"; echo "http://$l/healthz"; }
+health_url() { local l; l="$(listen_addr)"; l="${l:-:$DEFAULT_PORT}"; [ "${l%%:*}" = "" ] && l="127.0.0.1$l"; echo "http://$l/healthz"; }
 
 wait_healthy() {
   for _ in $(seq 1 20); do
@@ -128,6 +131,38 @@ wait_healthy() {
     sleep 1
   done
   return 1
+}
+
+valid_port() { [[ "$1" =~ ^[0-9]+$ ]] && [ "$1" -ge 1 ] && [ "$1" -le 65535 ]; }
+
+# port_in_use N: something already listens on TCP port N.
+port_in_use() {
+  if command -v ss >/dev/null 2>&1; then
+    ss -Hltn 2>/dev/null | awk '{print $4}' | grep -Eq "[:.]$1\$"
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1
+  else
+    (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null
+  fi
+}
+
+# pick_port sets PORT: the one given (which must be free), else the
+# default or the next free port after it.
+pick_port() {
+  local p
+  if [ -n "$PORT" ]; then
+    valid_port "$PORT" || die "端口不正确：$PORT"
+    port_in_use "$PORT" && die "端口 $PORT 已被占用（ss -ltnp 查看占用的程序），换一个：--port N"
+    return 0
+  fi
+  for p in $(seq "$DEFAULT_PORT" $((DEFAULT_PORT + 50))); do
+    if ! port_in_use "$p"; then
+      PORT="$p"
+      [ "$p" = "$DEFAULT_PORT" ] || warn "默认端口 $DEFAULT_PORT 已被占用，改用 $p"
+      return 0
+    fi
+  done
+  die "$DEFAULT_PORT–$((DEFAULT_PORT + 50)) 都被占用，请用 --port 指定一个空闲端口"
 }
 
 as_service() { # run the binary as the service user with the service environment
@@ -196,7 +231,7 @@ do_install() {
   command -v curl >/dev/null 2>&1 || die "需要 curl"
   installed && die "已经安装：升级用 update，重装请先 uninstall"
   [ -z "$DOMAIN" ] || [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+\.[A-Za-z]{2,}$ ]] || die "域名格式不正确：$DOMAIN"
-  [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || die "端口不正确：$PORT"
+  pick_port
 
   fetch_release
   step "安装"
@@ -208,6 +243,7 @@ do_install() {
   local pass="" key listen proxy=0 admin_path
   if [ -f "$ENV_FILE" ]; then
     ok "沿用已有配置 $ENV_FILE（主密钥和管理员不变）"
+    PORT="$(listen_addr | sed 's/.*://')"; PORT="${PORT:-$DEFAULT_PORT}"
   else
     key="$("$BIN" keygen)"
     [ -n "$key" ] || die "生成主密钥失败"
@@ -262,7 +298,7 @@ print_info() {
   printf '下一步：登录后台 → 设置，填写站点地址（%s）、支付和邮件；对接 Polaris 时在 polaris-license 设置\n' "$url"
   printf '  KAKU_HOOK_URL=%s/hooks/polaris\n  KAKU_RENEW_URL=%s/renew?lid={license_id}\n\n' "$url" "$url"
   [ -z "$(env_get KAKU_DOMAIN)" ] && warn "没有使用域名：商店和后台走 HTTP 明文，支付回调和 Telegram 也需要 HTTPS，正式使用请加 --domain"
-  printf '管理：kaku-ctl status | log | update | backup | info | reset-password\n'
+  printf '管理：kaku-ctl status | log | update | port | backup | info | reset-password\n'
 }
 
 do_update() {
@@ -284,6 +320,34 @@ do_update() {
     systemctl restart kaku
     die "升级失败（已回滚）：journalctl -u kaku -n 50"
   fi
+}
+
+# do_port moves the service to another port: the configuration, the
+# Caddy site (when installed with --domain) and the firewall follow.
+do_port() {
+  need_root; need_installed
+  local old host listen domain f=/etc/caddy/Caddyfile
+  valid_port "$NEW_PORT" || die "用法：kaku-ctl port 端口号（1–65535）"
+  listen="$(listen_addr)"; old="${listen##*:}"; host="${listen%:*}"
+  [ "$old" = "$NEW_PORT" ] && { ok "已经是端口 $NEW_PORT"; return 0; }
+  port_in_use "$NEW_PORT" && die "端口 $NEW_PORT 已被占用（ss -ltnp 查看占用的程序）"
+  step "端口 $old → $NEW_PORT"
+  sed -i "s/^LISTEN=.*/LISTEN=$host:$NEW_PORT/" "$ENV_FILE"
+  systemctl restart kaku
+  wait_healthy || {
+    sed -i "s/^LISTEN=.*/LISTEN=$listen/" "$ENV_FILE"; systemctl restart kaku
+    die "新端口上未能启动，已改回 $old：journalctl -u kaku -n 50"
+  }
+  domain="$(env_get KAKU_DOMAIN)"
+  if [ -n "$domain" ] && [ -f "$f" ] && grep -q "reverse_proxy 127.0.0.1:$old\b" "$f"; then
+    sed -i "s/reverse_proxy 127\.0\.0\.1:$old\b/reverse_proxy 127.0.0.1:$NEW_PORT/" "$f"
+    systemctl reload caddy 2>/dev/null || systemctl restart caddy
+    ok "Caddy 已改为转发到 127.0.0.1:$NEW_PORT"
+  elif [ -n "$domain" ]; then
+    warn "请把反向代理（$domain）改为转发到 127.0.0.1:$NEW_PORT"
+  fi
+  [ -z "$host" ] && open_firewall "$NEW_PORT"
+  ok "已改为端口 $NEW_PORT"
 }
 
 do_backup() {
@@ -335,6 +399,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     run) ACTION=run; shift; RUN_ARGS=("$@"); break ;;
     install | update | status | log | restart | stop | start | info | backup | reset-password | uninstall) ACTION="$1"; shift ;;
+    port) ACTION=port; NEW_PORT="${2:-}"; shift; [ $# -gt 0 ] && shift ;;
     --domain) DOMAIN="${2:-}"; shift 2 ;;
     --port) PORT="${2:-}"; shift 2 ;;
     --version) VERSION="${2:-}"; shift 2 ;;
@@ -348,6 +413,7 @@ done
 case "$ACTION" in
   install) do_install ;;
   update) do_update ;;
+  port) do_port ;;
   status) need_installed; systemctl status kaku --no-pager -l ;;
   log) need_installed; journalctl -u kaku -f -n 100 ;;
   restart | stop | start)
