@@ -3,8 +3,14 @@
 <div class="crumbs"><a href="/">商品</a><span>/</span><span>{{.Product.Title}}</span></div>
 <div class="product-layout">
   <div class="card info">
-    {{if .Product.Cover}}<img class="cover" src="{{.Product.Cover}}" alt="">{{else}}<div class="cover ph" style="--h: {{hue .Product.ID}}; border-radius: 12px; margin-bottom: 16px">{{initial .Product.Title}}</div>{{end}}
-    <h1>{{.Product.Title}}</h1>
+    {{if .Product.Cover}}<img class="cover" src="{{.Product.Cover}}" alt="">{{else}}<div class="cover ph" style="--h: {{hue .Product.ID}}">{{initial .Product.Title}}</div>{{end}}
+    <div class="info-text">
+      <h1>{{.Product.Title}}</h1>
+      <div class="price info-price">{{fromPrice .Product}}</div>
+    </div>
+  </div>
+  <div class="card desc">
+    <h2 class="desc-title">商品详情</h2>
     {{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">付款成功后自动发货，可在本页或订单查询中查看。</p>{{end}}
   </div>
 
@@ -61,11 +67,13 @@
       <div class="cf-turnstile" data-sitekey="{{.Settings.TurnstileSite}}"></div>
       <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
       {{end}}
-      <div class="total-line">
-        <span class="muted">应付（参考）</span>
-        <span class="price big" data-total>—</span>
+      <div class="buy-bar">
+        <div class="total-line">
+          <span class="muted">应付（参考）</span>
+          <span class="price big" data-total>—</span>
+        </div>
+        <button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>
       </div>
-      <button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>
       <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。批发价和优惠码在下单时计算。</p>
     </form>
   </div>
