@@ -100,9 +100,18 @@ func (s *Service) remindJob(ctx context.Context, j *model.Job) error {
 	if strings.HasPrefix(base, "https://") || strings.HasPrefix(base, "http://") {
 		renewURL = base + "/renew?lid=" + url.QueryEscape(b.LicenseID)
 	}
-	when := "7 天后"
-	if r.Days == 1 {
-		when = "明天"
+	when := "即将"
+	if exp, err := time.Parse("2006-01-02", b.ExpiresAt); err == nil {
+		now := s.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		switch days := int(exp.Sub(today).Hours() / 24); {
+		case days <= 0:
+			when = "今天"
+		case days == 1:
+			when = "明天"
+		default:
+			when = fmt.Sprintf("%d 天后", days)
+		}
 	}
 	var errs []string
 	if b.Email != "" && s.Notify.MailReady() && renewURL != "" {

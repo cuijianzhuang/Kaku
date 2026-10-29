@@ -4,7 +4,10 @@ package web
 
 import (
 	"bytes"
+	"crypto/hmac"
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"fmt"
 	"html/template"
 	"io/fs"
@@ -20,6 +23,7 @@ import (
 
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/polaris"
+	"github.com/cuijianzhuang/kaku/internal/secure"
 	"github.com/cuijianzhuang/kaku/internal/shop"
 	"github.com/cuijianzhuang/kaku/internal/store"
 )
@@ -357,11 +361,13 @@ func (s *Server) render(c *gin.Context, code int, page string, data gin.H) {
 		}
 		data["ShowLicenses"] = st.PolarisURL != "" || n > 0
 	}
+	// only messages this site put in the URL are shown, so a crafted link
+	// can't make the shop display arbitrary text
 	if _, ok := data["Flash"]; !ok {
-		data["Flash"] = c.Query("msg")
+		data["Flash"] = flashFrom(c, "msg")
 	}
 	if _, ok := data["Error"]; !ok {
-		data["Error"] = c.Query("err")
+		data["Error"] = flashFrom(c, "err")
 	}
 	layout := "public"
 	if strings.HasPrefix(page, "admin_") {
@@ -468,6 +474,9 @@ func withQuery(to, k, v string) string {
 		sep = "&"
 	}
 	path += sep + k + "=" + url.QueryEscape(v)
+	if k == "msg" || k == "err" {
+		path += "&" + k + "_sig=" + flashSig(k, v)
+	}
 	if hasFrag {
 		path += "#" + frag
 	}
@@ -550,4 +559,22 @@ func auditLabel(code string) string {
 		return v
 	}
 	return code
+}
+
+// flashKey signs the msg/err texts the site adds to redirect URLs. It only
+// has to outlive one redirect, so a new one per process is fine.
+var flashKey = secure.RandomBytes(32)
+
+func flashSig(k, v string) string {
+	m := hmac.New(sha256.New, flashKey)
+	m.Write([]byte(k + "\x00" + v))
+	return hex.EncodeToString(m.Sum(nil))[:24]
+}
+
+func flashFrom(c *gin.Context, k string) string {
+	v := c.Query(k)
+	if v == "" || !hmac.Equal([]byte(c.Query(k+"_sig")), []byte(flashSig(k, v))) {
+		return ""
+	}
+	return v
 }

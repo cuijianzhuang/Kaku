@@ -87,7 +87,17 @@ func TestOAuthLinkAndLogin(t *testing.T) {
 
 	// Link it while signed in with the password.
 	admin := e.login()
-	e.oauthRoundTrip(admin, "/manage/oauth/github/start?mode=link")
+	// without the password step, linking is refused
+	if l := location(mustGet(t, admin, e.ts.URL+"/manage/oauth/github/start?mode=link")); strings.Contains(l, "authorize") {
+		t.Fatalf("link started without the password: %s", l)
+	}
+	if e.st.DB.Where("provider = ?", "github").Take(&model.AdminIdentity{}).Error == nil {
+		t.Fatal("linked without confirming the password")
+	}
+	if l := location(e.post(admin, "/manage/security/oauth/link", url.Values{"provider": {"github"}, "confirm_password": {"wrong"}})); !strings.Contains(l, "err=") {
+		t.Fatalf("wrong password: %s", l)
+	}
+	e.oauthRoundTrip(admin, location(e.post(admin, "/manage/security/oauth/link", url.Values{"provider": {"github"}, "confirm_password": {adminPW}})))
 	var ident model.AdminIdentity
 	if e.st.DB.Where("provider = ? AND subject = ?", "github", "4242").Take(&ident).Error != nil || ident.Name != "octo" {
 		t.Fatal("identity not linked")
@@ -144,4 +154,13 @@ func TestOAuthLinkAndLogin(t *testing.T) {
 	if n != 0 {
 		t.Fatal("identity not removed")
 	}
+}
+
+func mustGet(t *testing.T, c *http.Client, u string) *http.Response {
+	t.Helper()
+	resp, err := c.Get(u)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resp
 }

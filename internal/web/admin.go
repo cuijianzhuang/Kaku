@@ -72,6 +72,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.POST("/security/totp/enable", s.totpEnable)
 	a.POST("/security/totp/disable", s.totpDisable)
 	a.POST("/security/oauth/unlink", s.oauthUnlink)
+	a.POST("/security/oauth/link", s.oauthLinkStart)
 	a.GET("/audit", s.auditPage)
 	s.extraRoutes(a)
 	s.updateRoutes(a)

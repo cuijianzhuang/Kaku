@@ -182,8 +182,20 @@ func ImportCards(env *Env, skuID uint, text string) (ImportResult, error) {
 // ReleaseExpired frees cards whose reservation lapsed without an order to
 // hold them (belt and braces next to order expiry).
 func ReleaseExpired(tx *gorm.DB, now time.Time) error {
-	return tx.Model(&model.Card{}).
+	var skus []uint
+	q := tx.Model(&model.Card{}).
 		Where("status = ? AND reserved_until < ? AND order_id IN (?)", model.CardReserved, now,
-			tx.Model(&model.Order{}).Select("id").Where("status IN ?", []string{model.OrderExpired, model.OrderRefunded})).
-		Updates(map[string]any{"status": model.CardAvailable, "order_id": nil, "reserved_until": nil}).Error
+			tx.Model(&model.Order{}).Select("id").Where("status IN ?", []string{model.OrderExpired, model.OrderRefunded}))
+	if err := q.Session(&gorm.Session{}).Distinct().Pluck("sku_id", &skus).Error; err != nil || len(skus) == 0 {
+		return err
+	}
+	if err := q.Updates(map[string]any{"status": model.CardAvailable, "order_id": nil, "reserved_until": nil}).Error; err != nil {
+		return err
+	}
+	for _, id := range skus {
+		if err := refreshStock(tx, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }

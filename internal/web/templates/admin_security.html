@@ -49,9 +49,15 @@
   </table></div>
   {{end}}
   {{if .Providers}}
-  <div class="actions" style="margin-top:14px">
-    {{range .Providers}}<a class="btn secondary sso" href="{{$p}}/oauth/{{.Name}}/start?mode=link">{{template "brand-icon" .Name}}绑定 {{.Label}}</a>{{end}}
-  </div>
+  <form method="post" action="{{$p}}/security/oauth/link" class="stack" style="margin-top:14px">
+    <div class="fields">
+      <label>当前密码（绑定前确认身份） <input type="password" name="confirm_password" required autocomplete="current-password"></label>
+      {{if .Admin.TOTPEnabled}}<label>两步验证码 <input name="confirm_code" required inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>{{end}}
+    </div>
+    <div class="actions">
+      {{range .Providers}}<button class="secondary sso" name="provider" value="{{.Name}}">{{template "brand-icon" .Name}}绑定 {{.Label}}</button>{{end}}
+    </div>
+  </form>
   {{else}}
   <p class="muted" style="margin:0">还没有配置第三方登录。到 <a href="{{$p}}/settings/login">设置 → 登录方式</a> 填写 GitHub 或 Google 的 OAuth 应用信息。</p>
   {{end}}

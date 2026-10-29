@@ -40,6 +40,13 @@ func (s *Service) MarkPaid(ctx context.Context, in PaidInput) (*model.Order, err
 		extra     bool
 	)
 	tradeNo := in.Channel + ":" + in.TradeNo
+	keys := []string{tradeNo}
+	if in.Channel == model.PayEPayAlipay || in.Channel == model.PayEPayWxpay {
+		// the notification and the active query can report different
+		// methods for one gateway transaction; it is one payment
+		tradeNo = "epay:" + in.TradeNo
+		keys = []string{tradeNo, model.PayEPayAlipay + ":" + in.TradeNo, model.PayEPayWxpay + ":" + in.TradeNo}
+	}
 	err := s.Store.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("order_no = ?", in.OrderNo).Take(&o).Error; err != nil {
 			return userErr("订单不存在")
@@ -50,7 +57,7 @@ func (s *Service) MarkPaid(ctx context.Context, in PaidInput) (*model.Order, err
 			}
 		}
 		var n int64
-		tx.Model(&model.Payment{}).Where("trade_no = ?", tradeNo).Count(&n)
+		tx.Model(&model.Payment{}).Where("trade_no IN ?", keys).Count(&n)
 		if n > 0 {
 			duplicate = true
 			return nil
@@ -120,7 +127,10 @@ func (s *Service) JobHandlers() map[string]store.JobFunc {
 func (s *Service) deliverJob(ctx context.Context, j *model.Job) error {
 	var o model.Order
 	if err := s.Store.DB.Where("id = ?", strings.TrimSpace(j.Payload)).Take(&o).Error; err != nil {
-		return err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return err
+		}
+		return &store.RetryError{Err: err, After: time.Minute}
 	}
 	if o.Status != model.OrderPaid {
 		return nil
@@ -153,7 +163,10 @@ func (s *Service) deliverJob(ctx context.Context, j *model.Job) error {
 		}
 		return s.failOrder(&o, err.Error())
 	}
-	return s.complete(&o, items)
+	if err := s.complete(&o, items); err != nil {
+		return s.failOrder(&o, "已取得发货内容，但保存失败："+err.Error())
+	}
+	return nil
 }
 
 // complete stores delivered items and marks the order delivered, once.
@@ -222,7 +235,17 @@ func (s *Service) ManualDeliver(orderID uint, content string, perLine bool) erro
 	} else {
 		items = []deliver.Item{{Content: content, Source: model.SourceManual}}
 	}
-	return s.complete(&o, items)
+	if err := s.complete(&o, items); err != nil {
+		return err
+	}
+	// cards reserved for the order go back to stock
+	var sku model.SKU
+	if s.Store.DB.Where("id = ?", o.SKUID).Take(&sku).Error == nil {
+		if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
+			s.Store.DB.Transaction(func(tx *gorm.DB) error { return d.Release(tx, &o) })
+		}
+	}
+	return nil
 }
 
 // Redeliver retries a failed order's delivery now.
@@ -266,6 +289,19 @@ func (s *Service) Refund(ctx context.Context, orderID uint, reason string) ([]st
 	if o.Status != model.OrderPaid && o.Status != model.OrderDelivered && o.Status != model.OrderFailed {
 		return nil, userErr("该订单状态不能退款")
 	}
+	now := s.Now()
+	claim := s.Store.DB.Model(&model.Order{}).Where("id = ? AND status = ?", o.ID, o.Status).
+		Updates(map[string]any{"status": model.OrderRefunded, "refunded_at": now, "last_error": trim("退款："+reason, 500)})
+	if claim.Error != nil {
+		return nil, claim.Error
+	}
+	if claim.RowsAffected == 0 {
+		return nil, userErr("订单状态刚刚发生变化（可能正在发货或已退款），请刷新后重试")
+	}
+	undo := func() {
+		s.Store.DB.Model(&model.Order{}).Where("id = ? AND status = ?", o.ID, model.OrderRefunded).
+			Updates(map[string]any{"status": o.Status, "refunded_at": nil, "last_error": o.LastError})
+	}
 	var warnings []string
 	var sku model.SKU
 	// Polaris orders can hold issued licenses even when delivery failed
@@ -274,6 +310,7 @@ func (s *Service) Refund(ctx context.Context, orderID uint, reason string) ([]st
 		if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
 			if err := d.Revoke(ctx, &o, &sku); err != nil {
 				if !errors.Is(err, deliver.ErrRevokeUnsupported) {
+					undo()
 					return nil, fmt.Errorf("回收失败，未退款：%w", err)
 				}
 				warnings = append(warnings, err.Error())
@@ -296,12 +333,7 @@ func (s *Service) Refund(ctx context.Context, orderID uint, reason string) ([]st
 		}
 		s.Store.DB.Model(&model.Payment{}).Where("id = ?", p.ID).Update("status", model.PaymentRefunded)
 	}
-	now := s.Now()
 	err := s.Store.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Model(&model.Order{}).Where("id = ?", o.ID).
-			Updates(map[string]any{"status": model.OrderRefunded, "refunded_at": now, "last_error": trim("退款："+reason, 500)}).Error; err != nil {
-			return err
-		}
 		if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
 			return d.Release(tx, &o)
 		}
@@ -345,7 +377,8 @@ func (s *Service) PollUSDT(ctx context.Context) error {
 		return nil
 	}
 	var oldest model.Order
-	err := s.Store.DB.Where("pay_method = ? AND status = ?", model.PayUSDT, model.OrderPending).Order("created_at").Take(&oldest).Error
+	err := s.Store.DB.Where("pay_method = ? AND (status = ? OR (status = ? AND expires_at > ?))", model.PayUSDT,
+		model.OrderPending, model.OrderExpired, s.Now().Add(-time.Hour)).Order("created_at").Take(&oldest).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil
 	}

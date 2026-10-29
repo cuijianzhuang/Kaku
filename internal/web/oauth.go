@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
@@ -170,6 +171,12 @@ func (s *Server) oauthStart(c *gin.Context) {
 		a := s.currentAdmin(c)
 		if a == nil {
 			c.Redirect(http.StatusSeeOther, s.cfg.AdminPath+"/login")
+			return
+		}
+		if !s.checkLinkTicket(c.Query("ticket"), a, p.Name) {
+			// linking needs the password first (oauthLink), so a stolen
+			// session can't add its own sign-in
+			s.bounce(c, withQuery(s.cfg.AdminPath+"/security", "err", "绑定已过期，请重新输入密码后绑定"))
 			return
 		}
 		st.Mode, st.AdminID, st.Epoch, st.Next = "link", a.ID, a.Epoch, s.cfg.AdminPath+"/security"
@@ -402,4 +409,31 @@ func trimTo(v string, n int) string {
 		return string(r[:n])
 	}
 	return v
+}
+
+// oauthLinkStart checks the password, then starts linking a provider account.
+func (s *Server) oauthLinkStart(c *gin.Context) {
+	a := admin(c)
+	back := s.cfg.AdminPath + "/security"
+	if err := s.reauth(c); err != nil {
+		redirectErr(c, back, err)
+		return
+	}
+	p := c.PostForm("provider")
+	exp := s.now().Add(5 * time.Minute).Unix()
+	ticket := fmt.Sprintf("%d.%s", exp, linkSig(a, p, exp))
+	c.Redirect(http.StatusSeeOther, s.cfg.AdminPath+"/oauth/"+url.PathEscape(p)+"/start?mode=link&ticket="+url.QueryEscape(ticket))
+}
+
+func linkSig(a *model.Admin, provider string, exp int64) string {
+	return flashSig("link", fmt.Sprintf("%d:%d:%s:%d", a.ID, a.Epoch, provider, exp))
+}
+
+func (s *Server) checkLinkTicket(ticket string, a *model.Admin, provider string) bool {
+	expStr, sig, ok := strings.Cut(ticket, ".")
+	exp, err := strconv.ParseInt(expStr, 10, 64)
+	if !ok || err != nil || s.now().Unix() > exp {
+		return false
+	}
+	return hmac.Equal([]byte(sig), []byte(linkSig(a, provider, exp)))
 }

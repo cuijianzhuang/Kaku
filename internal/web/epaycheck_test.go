@@ -53,7 +53,7 @@ func TestEPayLostNotify(t *testing.T) {
 	}
 	var pays []model.Payment
 	e.st.DB.Where("order_id = ?", o.ID).Find(&pays)
-	if len(pays) != 1 || pays[0].TradeNo != "alipay:GW123" {
+	if len(pays) != 1 || pays[0].TradeNo != "epay:GW123" {
 		t.Fatalf("payments %+v", pays)
 	}
 	// the notification arriving late does not count twice
