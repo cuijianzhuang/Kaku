@@ -2,6 +2,7 @@ package web
 
 import (
 	"io"
+	"net/http"
 	"net/url"
 	"strings"
 	"testing"
@@ -76,5 +77,51 @@ func TestCardPreview(t *testing.T) {
 	}
 	if got := cardPreview("abc"); got != "ab••••" {
 		t.Fatal(got)
+	}
+}
+
+func TestProductListAndPage(t *testing.T) {
+	e := setup(t)
+	c := e.login()
+	o := e.stockOrder(500) // on-sale product "P" with a stock spec "S" (2 cards, one reserved)
+	var sku model.SKU
+	e.st.DB.Take(&sku, o.SKUID)
+	get := func(cl interface {
+		Get(string) (*http.Response, error)
+	}, path string) string {
+		resp, _ := cl.Get(e.ts.URL + path)
+		b, _ := io.ReadAll(resp.Body)
+		return string(b)
+	}
+	list := get(c, "/manage/products")
+	if !strings.Contains(list, "toggle on") || !strings.Contains(list, "1 个规格") {
+		t.Fatal("product list lacks the toggle / summary")
+	}
+	if !strings.Contains(get(c, "/manage/products?q=nothing"), "没有符合条件的商品") {
+		t.Fatal("search filter")
+	}
+	// toggle off, then on again
+	e.post(c, "/manage/products/"+itoa(int64(sku.ProductID))+"/toggle", url.Values{})
+	var p model.Product
+	e.st.DB.Take(&p, sku.ProductID)
+	if p.Status != model.ProductOff {
+		t.Fatal("not taken off sale")
+	}
+	e.post(c, "/manage/products/"+itoa(int64(sku.ProductID))+"/toggle", url.Values{})
+	e.st.DB.Take(&p, sku.ProductID)
+	if p.Status != model.ProductOn {
+		t.Fatal("not put on sale")
+	}
+	// a product with nothing to sell cannot be switched on
+	bare := model.Product{CategoryID: p.CategoryID, Title: "空商品", Status: model.ProductOff}
+	e.st.DB.Create(&bare)
+	l := location(e.post(c, "/manage/products/"+itoa(int64(bare.ID))+"/toggle", url.Values{}))
+	if !strings.Contains(l, "err=") {
+		t.Fatalf("empty product went on sale: %s", l)
+	}
+	// buyer page shows the delivery tag and stock
+	page := get(e.client(), "/p/"+itoa(int64(sku.ProductID)))
+	if !strings.Contains(page, "自动发货") || !strings.Contains(page, "库存 1") {
+		t.Fatal("product page tags")
 	}
 }

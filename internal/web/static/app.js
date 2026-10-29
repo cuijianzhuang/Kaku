@@ -518,6 +518,19 @@ document.querySelectorAll('[data-cat-picker]').forEach((box) => {
   });
 })();
 
+// Product page: long descriptions fold on phones, with 展开全部.
+(function () {
+  const desc = document.querySelector('[data-desc]');
+  if (!desc) return;
+  const body = desc.querySelector('[data-desc-body]');
+  const more = desc.querySelector('[data-desc-more]');
+  if (window.matchMedia('(max-width: 900px)').matches && body.scrollHeight > 260) {
+    body.classList.add('clamped');
+    more.hidden = false;
+    more.addEventListener('click', () => { body.classList.remove('clamped'); more.hidden = true; });
+  }
+})();
+
 // Styled file buttons: show the picked file's name.
 document.addEventListener('change', (e) => {
   const inp = e.target;
