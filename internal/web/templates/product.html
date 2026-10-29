@@ -42,12 +42,13 @@
           <label class="option sku {{if eq $k.Stock 0}}disabled{{end}}">
             <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{if and (gt $k.Stock 0) (lt $k.Stock $k.LimitPerOrder)}}{{$k.Stock}}{{else}}{{$k.LimitPerOrder}}{{end}}"
               data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}"
-              data-ask="{{$k.Ask}}" data-note="{{$k.Note}}"
+              data-ask="{{$k.Ask}}" data-note="{{$k.Note}}" data-tiers="{{$k.Tiers}}"
               data-cny="{{$k.PriceCNY}}" data-usdt="{{$k.PriceUSDT}}" data-xtr="{{$k.PriceStars}}"
               {{if eq $k.Stock 0}}disabled{{else if $.Form.sku_id}}{{if eq (printf "%d" $k.ID) $.Form.sku_id}}checked{{end}}{{else if eq $i 0}}checked{{end}} required>
             <span class="sku-body">
               <span class="sku-top"><span class="name">{{$k.Name}}</span>{{if eq $k.Stock 0}}<span class="stock out">缺货</span>{{else if gt $k.Stock 0}}<span class="stock">剩 {{$k.Stock}}</span>{{end}}</span>
               <span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}}{{if and $k.PriceCNY $k.PriceUSDT}} / {{end}}{{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}{{if and (not $k.PriceCNY) (not $k.PriceUSDT) $k.PriceStars}}{{money $k.PriceStars "XTR"}}{{end}}</span>
+              {{if $k.TierTip}}<span class="sku-tiers">{{$k.TierTip}}</span>{{end}}
             </span>
           </label>
           {{end}}
@@ -92,7 +93,7 @@
         {{if not .InStock}}<button class="lg block" disabled>暂时缺货</button>{{else}}<button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>{{end}}
       </div>
       {{if not .InStock}}<p class="muted" style="margin:0">全部规格都已售罄，可以<a href="/ticket">提交工单</a>询问补货时间。</p>{{end}}
-      <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。批发价和优惠码在下单时计算。</p>
+      <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。优惠码在下单时计算。</p>
     </form>
   </div>
 </div>

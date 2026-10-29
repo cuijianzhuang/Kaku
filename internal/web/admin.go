@@ -311,7 +311,7 @@ func (s *Server) toggleProduct(c *gin.Context) {
 }
 
 func (s *Server) productForm(c *gin.Context) {
-	p := model.Product{Status: model.ProductOn}
+	p := model.Product{Status: model.ProductOff} // a new product has nothing to sell yet
 	if id := c.Param("id"); id != "" {
 		if err := s.st.DB.Take(&p, id).Error; err != nil {
 			redirectErr(c, s.cfg.AdminPath+"/products", errors.New("商品不存在"))
@@ -629,6 +629,16 @@ func (s *Server) cards(c *gin.Context) {
 	skus, titles := s.stockSKUs()
 	data := gin.H{"SKUs": skus, "Titles": titles, "Status": c.Query("status"), "TOTP": a != nil && a.TOTPEnabled}
 	skuID := atoiU(c.Query("sku"))
+	if skuID != 0 {
+		found := false
+		for _, k := range skus {
+			found = found || k.ID == skuID
+		}
+		if !found {
+			data["Error"] = "规格不存在或不是卡密库存，已显示第一个规格"
+			skuID = 0
+		}
+	}
 	if skuID == 0 && len(skus) > 0 {
 		skuID = skus[0].ID
 	}
@@ -1076,7 +1086,11 @@ func (s *Server) saveCoupon(c *gin.Context) {
 		redirectErr(c, back, errors.New("保存失败（优惠码是否重复？）"))
 		return
 	}
-	s.audit(c, "coupon_create", code, fmt.Sprintf("%s %d", typ, value))
+	desc := fmt.Sprintf("减 %d%%", value)
+	if typ != "percent" {
+		desc = "立减 " + shop.FormatMoney(value, model.CNY)
+	}
+	s.audit(c, "coupon_create", code, desc)
 	redirectMsg(c, back, "已创建优惠码 "+code)
 }
 

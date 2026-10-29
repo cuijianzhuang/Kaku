@@ -82,8 +82,8 @@ document.addEventListener('submit', (e) => {
     }
     total();
   };
-  // Reference total: unit price × quantity in the chosen method's currency.
-  // Wholesale tiers and coupons are applied by the server.
+  // Reference total: unit price × quantity in the chosen method's currency,
+  // with the wholesale tier the server will apply. Coupons are applied by the server.
   const places = { CNY: 2, USDT: 6, XTR: 0 };
   const fmt = (v, cur) => {
     const n = v / Math.pow(10, places[cur]);
@@ -100,7 +100,12 @@ document.addEventListener('submit', (e) => {
     if (!sku || !m) { out.textContent = '—'; return; }
     const cur = m.getAttribute('data-currency') || 'CNY';
     const unit = parseInt(sku.getAttribute('data-' + cur.toLowerCase()) || '0', 10);
-    out.textContent = unit > 0 ? fmt(unit * qty, cur) : '—';
+    let pct = 100, best = 0;
+    (sku.getAttribute('data-tiers') || '').split(',').forEach((t) => {
+      const [q, p] = t.split(':').map(Number);
+      if (q && p && q <= qty && q > best) { best = q; pct = p; }
+    });
+    out.textContent = unit > 0 ? fmt(Math.round(unit * qty * pct / 100), cur) + (pct < 100 ? '（已享批发价）' : '') : '—';
   };
   form.addEventListener('change', update);
   form.addEventListener('input', total);

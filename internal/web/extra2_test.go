@@ -85,7 +85,7 @@ func TestCoverUploadAndShareMeta(t *testing.T) {
 	c := e.login()
 	cat := model.Category{Name: "c", Visible: true}
 	e.st.DB.Create(&cat)
-	fields := map[string]string{"title": "Steam 卡", "category_id": itoa(int64(cat.ID)), "status": "on", "description": "# 说明\n**秒发** [官网](https://example.com)"}
+	fields := map[string]string{"title": "Steam 卡", "category_id": itoa(int64(cat.ID)), "status": "off", "description": "# 说明\n**秒发** [官网](https://example.com)"}
 
 	// a script disguised as a PNG is refused
 	bad := e.upload(c, "/manage/products", fields, "cover_file", []byte("<svg onload=alert(1)>"))
@@ -104,6 +104,7 @@ func TestCoverUploadAndShareMeta(t *testing.T) {
 	if e.st.DB.Take(&p).Error != nil || !strings.HasPrefix(p.Cover, "/uploads/") || !strings.HasSuffix(p.Cover, ".png") {
 		t.Fatalf("cover = %q", p.Cover)
 	}
+	e.st.DB.Model(&p).Update("status", model.ProductOn)
 	resp, _ := http.Get(e.ts.URL + p.Cover)
 	if b, _ := io.ReadAll(resp.Body); resp.StatusCode != 200 || !bytes.Equal(b, tinyPNG) || resp.Header.Get("Content-Type") != "image/png" {
 		t.Fatalf("serve upload: %d %s", resp.StatusCode, resp.Header.Get("Content-Type"))

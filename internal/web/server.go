@@ -56,9 +56,10 @@ type Server struct {
 	oauth     map[string]*oauthProvider // admin sign-in providers
 	oauthHTTP *http.Client
 
-	queryLimit *limiter // failed order lookups per address
-	loginLimit *limiter // failed admin logins per address
-	orderLimit *limiter // orders created per address
+	queryLimit  *limiter // failed order lookups per address
+	loginLimit  *limiter // failed admin logins per address
+	orderLimit  *limiter // orders created per address
+	ticketLimit *limiter // tickets submitted per address
 }
 
 //go:embed templates static
@@ -72,7 +73,8 @@ func New(cfg Config, s *shop.Service, bot TGHandler, log *slog.Logger) *Server {
 	cfg.AdminPath = "/" + strings.Trim(cfg.AdminPath, "/")
 	srv := &Server{cfg: cfg, shop: s, st: s.Store, log: log, bot: bot, now: time.Now,
 		oauth: defaultProviders(), oauthHTTP: &http.Client{Timeout: 20 * time.Second},
-		queryLimit: newLimiter(10, 15*time.Minute), loginLimit: newLimiter(10, 15*time.Minute), orderLimit: newLimiter(20, 10*time.Minute)}
+		queryLimit: newLimiter(10, 15*time.Minute), loginLimit: newLimiter(10, 15*time.Minute), orderLimit: newLimiter(20, 10*time.Minute),
+		ticketLimit: newLimiter(10, 10*time.Minute)}
 	srv.assets = loadAssets()
 	srv.pages = srv.parsePages()
 	return srv
@@ -177,6 +179,7 @@ var funcs = template.FuncMap{
 	"settingsTabs": func() []settingsTab { return settingsTabs },
 	"hue":          func(id uint) int { return int(id*67+220) % 360 },
 	"fromPrice":    fromPrice,
+	"expired":      func(t *time.Time) bool { return t != nil && time.Now().After(*t) },
 	"plain":        plainText,
 	"months":       monthsLabel,
 	"days":         daysLabel,
@@ -297,10 +300,20 @@ func fromPrice(v any) string {
 	default:
 		return ""
 	}
+	skus := p.SKUs
+	var buyable []model.SKU
+	for _, k := range p.SKUs {
+		if k.DelivererKind != "stock" || k.StockCache > 0 {
+			buyable = append(buyable, k)
+		}
+	}
+	if len(buyable) > 0 {
+		skus = buyable
+	}
 	for _, cur := range []string{model.CNY, model.USDT, model.XTR} {
 		var low int64
 		n := 0
-		for _, k := range p.SKUs {
+		for _, k := range skus {
 			if v := k.Price(cur); v > 0 {
 				if n == 0 || v < low {
 					low = v
