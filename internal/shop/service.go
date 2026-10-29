@@ -221,6 +221,20 @@ type Quote struct {
 	Coupon                           *model.Coupon
 }
 
+// Preview prices qty of a SKU in a currency (wholesale tiers, no coupon).
+func (s *Service) Preview(sku *model.SKU, qty int, currency string) (*Quote, error) {
+	return s.quote(s.Store.DB, sku, qty, currency, "")
+}
+
+// Sold counts delivered units of the given SKUs.
+func (s *Service) Sold(skuIDs []uint) int64 {
+	var n int64
+	if len(skuIDs) > 0 {
+		s.Store.DB.Model(&model.Order{}).Where("sku_id IN ? AND status = ?", skuIDs, model.OrderDelivered).Select("COALESCE(SUM(qty), 0)").Scan(&n)
+	}
+	return n
+}
+
 func (s *Service) quote(tx *gorm.DB, sku *model.SKU, qty int, currency, code string) (*Quote, error) {
 	unit := sku.Price(currency)
 	if unit <= 0 {

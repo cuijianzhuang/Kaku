@@ -348,25 +348,51 @@ func (s *Service) ExpireOrders(ctx context.Context) {
 	now := s.Now()
 	var orders []model.Order
 	s.Store.DB.Where("status = ? AND expires_at < ?", model.OrderPending, now).Limit(200).Find(&orders)
-	for _, o := range orders {
-		s.Store.DB.Transaction(func(tx *gorm.DB) error {
-			res := tx.Model(&model.Order{}).Where("id = ? AND status = ?", o.ID, model.OrderPending).Update("status", model.OrderExpired)
-			if res.Error != nil || res.RowsAffected == 0 {
-				return res.Error
-			}
-			if o.CouponID != nil {
-				tx.Model(&model.Coupon{}).Where("id = ? AND used > 0", *o.CouponID).Update("used", gorm.Expr("used - 1"))
-			}
-			var sku model.SKU
-			if tx.Where("id = ?", o.SKUID).Take(&sku).Error == nil {
-				if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
-					return d.Release(tx, &o)
-				}
-			}
-			return nil
-		})
+	for i := range orders {
+		s.closeUnpaid(&orders[i])
 	}
 	deliver.ReleaseExpired(s.Store.DB, now)
+}
+
+// closeUnpaid moves an unpaid order to expired and gives back its stock and
+// coupon use. It reports whether this call closed it.
+func (s *Service) closeUnpaid(o *model.Order) bool {
+	closed := false
+	s.Store.DB.Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&model.Order{}).Where("id = ? AND status = ?", o.ID, model.OrderPending).Update("status", model.OrderExpired)
+		if res.Error != nil || res.RowsAffected == 0 {
+			return res.Error
+		}
+		closed = true
+		if o.CouponID != nil {
+			tx.Model(&model.Coupon{}).Where("id = ? AND used > 0", *o.CouponID).Update("used", gorm.Expr("used - 1"))
+		}
+		var sku model.SKU
+		if tx.Where("id = ?", o.SKUID).Take(&sku).Error == nil {
+			if d, err := s.Reg.Get(sku.DelivererKind); err == nil {
+				return d.Release(tx, o)
+			}
+		}
+		return nil
+	})
+	return closed
+}
+
+// CancelUnpaid lets a buyer close their own unpaid order (stock goes back
+// at once instead of when it times out).
+func (s *Service) CancelUnpaid(orderNo string, tgUserID int64) error {
+	o, err := s.OrderByNo(orderNo)
+	if err != nil || o.TGUserID != tgUserID {
+		return userErr("订单不存在")
+	}
+	if o.Status != model.OrderPending {
+		return userErr("订单已付款或已关闭，不能取消")
+	}
+	if !s.closeUnpaid(o) {
+		return userErr("订单状态刚刚发生变化，请刷新")
+	}
+	s.Store.DB.Model(&model.Order{}).Where("id = ?", o.ID).Update("last_error", "买家取消")
+	return nil
 }
 
 // PollUSDT scans the receiving address for new USDT transfers and matches

@@ -1318,10 +1318,18 @@ func (s *Server) setWebhook(c *gin.Context) {
 		done(fmt.Errorf("设置 Webhook 失败：%w", err), "")
 		return
 	}
-	bot.Call(ctx, "setMyCommands", map[string]any{"commands": []map[string]string{
-		{"command": "shop", "description": "选购商品"}, {"command": "orders", "description": "我的订单"},
-		{"command": "help", "description": "帮助"},
-	}}, nil)
+	commands := []map[string]string{
+		{"command": "start", "description": "🏠 主菜单"}, {"command": "shop", "description": "🛒 选购商品"},
+		{"command": "orders", "description": "📦 我的订单"}, {"command": "help", "description": "❓ 帮助"},
+		{"command": "cancel", "description": "❌ 取消当前操作"},
+	}
+	bot.Call(ctx, "setMyCommands", map[string]any{"commands": commands}, nil)
+	if st.TGAdminChat != 0 {
+		// the admin also sees today's sales
+		bot.Call(ctx, "setMyCommands", map[string]any{"commands": append(commands, map[string]string{"command": "stats", "description": "📊 今日销售"}),
+			"scope": map[string]any{"type": "chat", "chat_id": st.TGAdminChat}}, nil)
+	}
+	bot.Call(ctx, "setChatMenuButton", map[string]any{"menu_button": map[string]string{"type": "commands"}}, nil)
 	st.TGBotUsername = me.Username
 	s.st.SaveSettings(st)
 	s.audit(c, "telegram_webhook", me.Username, "")
