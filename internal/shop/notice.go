@@ -128,6 +128,10 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 		}
 	}
 	text := b.String()
+	if o.TGUserID != 0 {
+		kb.InlineKeyboard = append(kb.InlineKeyboard, []tgapi.InlineButton{
+			{Text: "📦 我的订单", CallbackData: "orders:0"}, {Text: "🛒 继续购物", CallbackData: "cats"}})
+	}
 	var markup *tgapi.Keyboard
 	if len(kb.InlineKeyboard) > 0 {
 		markup = &kb
