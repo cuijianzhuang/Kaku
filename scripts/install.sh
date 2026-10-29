@@ -69,7 +69,9 @@ arch() {
 
 # --- GitHub Releases (public repository, no token needed) ---
 
-gh_url() { printf '%s%s' "$GH_PROXY" "$1"; }
+gh_url() { # a plain http:// mirror could swap the download, so only https mirrors are used
+  if [[ "$GH_PROXY" =~ ^https:// ]]; then printf '%s%s' "$GH_PROXY" "$1"; else printf '%s' "$1"; fi
+}
 
 # latest_tag prints the tag the "latest release" page redirects to.
 latest_tag() {
@@ -95,7 +97,15 @@ fetch_release() { # sets VERSION and TMP/kaku
   trap 'rm -rf "$TMP"' EXIT
   step "下载 kaku $VERSION ($a)"
   download "kaku-linux-$a" "$TMP/kaku" || die "下载失败：$VERSION 中没有 kaku-linux-$a？"
-  download checksums.txt "$TMP/checksums.txt" || die "下载 checksums.txt 失败"
+  # The checksum list is tiny: fetch it straight from github.com when that
+  # works, so a download mirror can't swap the binary and its checksum.
+  if [ -n "$GH_PROXY" ] && curl -fsSL --retry 1 --connect-timeout 10 -o "$TMP/checksums.txt" \
+      "https://github.com/$REPO/releases/download/$VERSION/checksums.txt" 2>/dev/null; then
+    :
+  else
+    [ -n "$GH_PROXY" ] && warn "无法直连 github.com 获取 checksums.txt，改用 GH_PROXY 下载（校验强度降低）"
+    download checksums.txt "$TMP/checksums.txt" || die "下载 checksums.txt 失败"
+  fi
   want="$(awk -v f="kaku-linux-$a" '$2 == f || $2 == "*"f {print $1}' "$TMP/checksums.txt")"
   got="$(sha256sum "$TMP/kaku" | awk '{print $1}')"
   [ -n "$want" ] && [ "$want" = "$got" ] || die "SHA-256 校验失败（期望 ${want:-无}，实际 $got）"
@@ -163,7 +173,7 @@ EOF
 # remember_proxy stores GH_PROXY in the configuration for later upgrades.
 remember_proxy() {
   [ -n "$GH_PROXY" ] || return 0
-  [[ "$GH_PROXY" =~ ^https?://[A-Za-z0-9._:/-]+$ ]] || die "GH_PROXY 格式不正确：$GH_PROXY"
+  [[ "$GH_PROXY" =~ ^https://[A-Za-z0-9._:/-]+$ ]] || die "GH_PROXY 必须是 https:// 开头的地址：$GH_PROXY"
   if grep -q '^GH_PROXY=' "$ENV_FILE"; then
     sed -i "s|^GH_PROXY=.*|GH_PROXY=$GH_PROXY|" "$ENV_FILE"
   else

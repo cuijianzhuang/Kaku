@@ -125,13 +125,14 @@ func (s *Server) login(c *gin.Context) {
 	var a model.Admin
 	if s.st.DB.Where("username = ?", strings.TrimSpace(c.PostForm("username"))).Take(&a).Error != nil ||
 		!secure.CheckPassword(a.PasswordHash, c.PostForm("password")) {
-		fail("用户名或密码不正确")
+		fail("用户名、密码或两步验证码不正确")
 		return
 	}
 	if a.TOTPEnabled {
 		secret, err := s.st.Box.Open(a.TOTPSecret)
 		if err != nil || !totp.Validate(strings.TrimSpace(c.PostForm("code")), secret) {
-			fail("两步验证码不正确")
+			// same message as a wrong password: don't confirm the password was right
+			fail("用户名、密码或两步验证码不正确")
 			return
 		}
 	}
@@ -197,6 +198,11 @@ func (s *Server) changePassword(c *gin.Context) {
 
 func (s *Server) totpSetup(c *gin.Context) {
 	a := admin(c)
+	if a.TOTPEnabled {
+		// replacing the secret would switch 2FA off without the password
+		redirectErr(c, s.cfg.AdminPath+"/security", errors.New("两步验证已开启。要更换验证器，请先输入密码关闭，再重新设置"))
+		return
+	}
 	key, err := totp.Generate(totp.GenerateOpts{Issuer: s.st.Settings().SiteName, AccountName: a.Username})
 	if err != nil {
 		redirectErr(c, s.cfg.AdminPath+"/security", err)

@@ -193,6 +193,7 @@ tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--bg-s
 .badge.paid, .badge.reserved, .badge.issued, .badge.replied { background: var(--blue-soft); color: var(--blue); }
 .badge.delivered, .badge.available, .badge.activated, .badge.on { background: var(--ok-soft); color: var(--ok); }
 .badge.failed, .badge.refunded, .badge.revoked, .badge.void { background: var(--err-soft); color: var(--err); }
+.badge.warn { background: var(--warn-soft); color: var(--warn); }
 .badge.expired, .badge.sold, .badge.closed { background: var(--bg-soft); color: var(--muted); }
 
 /* ---------- stats ---------- */
@@ -212,7 +213,7 @@ tbody tr:hover td, table tr:hover td { background: color-mix(in srgb, var(--bg-s
 .pager { display: flex; gap: 16px; justify-content: center; align-items: center; padding: 12px; font-size: 14px; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-bottom: 14px; }
 .filters input, .filters select { width: auto; }
-.two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px 16px; align-items: end; }
 .fields .wide { grid-column: span 2; }
 .fields > label.check, .fields > button, .filters > label.check { min-height: 40px; }
@@ -252,7 +253,7 @@ table.mid td { vertical-align: middle; }
 .seg a { padding: 5px 12px; border-radius: 7px; font-size: 13px; color: var(--text-2); text-decoration: none; }
 .seg a:hover { color: var(--text); text-decoration: none; }
 .seg a.on { background: var(--card); color: var(--text); font-weight: 600; box-shadow: var(--shadow-sm); }
-.md { color: var(--text-2); }
+.md { color: var(--text-2); overflow-wrap: anywhere; }
 .md p { margin: 0 0 10px; }
 .md ul { padding-left: 20px; margin: 0 0 10px; }
 .md h3, .md h4, .md h5 { color: var(--text); }
@@ -333,7 +334,10 @@ details summary { cursor: pointer; color: var(--text-2); font-size: 14px; font-w
 .product-layout .info { display: grid; grid-template-columns: minmax(160px, 40%) minmax(0, 1fr); gap: 22px; align-items: start; }
 .product-layout .info .cover { border-radius: var(--radius-sm); aspect-ratio: 1; margin: 0; }
 .info-text { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
-.info-text h1 { margin: 0; font-size: 24px; line-height: 1.3; }
+.info-text h1 { margin: 0; font-size: 24px; line-height: 1.3; overflow-wrap: anywhere; }
+.info-text { min-width: 0; }
+.sku-tiers { display: block; font-size: 12px; color: var(--ok); margin-top: 2px; }
+.sku-top .name { min-width: 0; overflow-wrap: anywhere; }
 .info-price { font-size: 24px; }
 .info-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 999px; font-size: 12.5px; background: var(--bg-soft); border: 1px solid var(--line); color: var(--text-2); }
@@ -754,3 +758,8 @@ button.chip:hover { background: var(--card); color: var(--text); }
 .secret-input { display: flex; gap: 8px; }
 .secret-input input { flex: 1; min-width: 0; }
 .secret-input button { flex: none; }
+
+/* long unbroken text (URLs, titles without spaces) wraps instead of widening the page */
+.kv dd, .kv dt, .crumbs, .product-card h3, .page-head h1, .card h1, .card h2, table.detail td { overflow-wrap: anywhere; }
+td { overflow-wrap: break-word; }
+.md pre { white-space: pre-wrap; }

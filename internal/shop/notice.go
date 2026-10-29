@@ -27,7 +27,9 @@ func (s *Service) deliveredJob(ctx context.Context, j *model.Job) error {
 		return err
 	}
 	var errs []string
-	if o.Email != "" && s.Notify.MailReady() {
+	// when one channel failed, the retry only repeats that one
+	mailSent := fmt.Sprintf("notice:%d:mail", j.ID)
+	if o.Email != "" && s.Notify.MailReady() && s.Store.Value(mailSent) == "" {
 		if err := s.Notify.Mail(o.Email, fmt.Sprintf("【%s】订单 %s 已发货", s.Store.Settings().SiteName, o.OrderNo), s.mailBody(&o, items)); err != nil {
 			errs = append(errs, "邮件："+err.Error())
 		}
@@ -37,12 +39,18 @@ func (s *Service) deliveredJob(ctx context.Context, j *model.Job) error {
 			errs = append(errs, "Telegram："+err.Error())
 		}
 	}
+	if len(errs) > 0 && !strings.HasPrefix(errs[0], "邮件：") && o.Email != "" && s.Notify.MailReady() {
+		s.Store.SetValue(mailSent, "1")
+	}
 	if len(errs) > 0 {
 		err := fmt.Errorf("%s", strings.Join(errs, "；"))
 		if j.Attempts < 3 {
 			return &store.RetryError{Err: err, After: time.Duration(j.Attempts+1) * 2 * time.Minute}
 		}
 		return err
+	}
+	if s.Store.Value(mailSent) != "" {
+		s.Store.SetValue(mailSent, "")
 	}
 	return nil
 }
@@ -92,12 +100,23 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 	fmt.Fprintf(&b, "✅ <b>订单已发货</b>\n%s · %s ×%d\n订单号 <code>%s</code>\n", html.EscapeString(o.ProductTitle), html.EscapeString(o.SKUName), o.Qty, o.OrderNo)
 	var kb tgapi.Keyboard
 	var files []ItemView
+	cut := false
 	for i, it := range items {
 		if it.FileName != "" {
 			files = append(files, it)
 			continue
 		}
-		fmt.Fprintf(&b, "\n%d. <code>%s</code>", i+1, html.EscapeString(it.Content))
+		if cut {
+			continue
+		}
+		line := fmt.Sprintf("\n%d. <code>%s</code>", i+1, html.EscapeString(trimEllipsis(it.Content, 1500)))
+		if b.Len()+len(line) > 3600 {
+			// Telegram caps a message at 4096 characters; cut between items so the HTML stays valid
+			b.WriteString("\n…（内容过长，其余请在订单页查看）")
+			cut = true
+			continue
+		}
+		b.WriteString(line)
 		if len(it.Content) <= 256 && len(kb.InlineKeyboard) < 10 {
 			kb.InlineKeyboard = append(kb.InlineKeyboard, []tgapi.InlineButton{tgapi.CopyButton(fmt.Sprintf("复制 %d", i+1), it.Content)})
 		}
@@ -109,9 +128,6 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 		}
 	}
 	text := b.String()
-	if len(text) > 4000 {
-		text = text[:4000] + "…\n（内容过长，请在订单页查看）"
-	}
 	var markup *tgapi.Keyboard
 	if len(kb.InlineKeyboard) > 0 {
 		markup = &kb
@@ -125,4 +141,12 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 		}
 	}
 	return nil
+}
+
+// trimEllipsis shortens v to n runes, marking the cut.
+func trimEllipsis(v string, n int) string {
+	if r := []rune(v); len(r) > n {
+		return string(r[:n]) + "…"
+	}
+	return v
 }

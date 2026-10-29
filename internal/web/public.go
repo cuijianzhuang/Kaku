@@ -70,6 +70,22 @@ type skuView struct {
 	Methods []shop.Method
 	Ask     string // manual SKUs: what the buyer must fill in
 	Note    string // manual SKUs: when and how it is delivered
+	Tiers   string // "3:80,10:50" for the reference total
+	TierTip string // "满 3 件 8 折 · 满 10 件 5 折"
+}
+
+// tierText describes wholesale tiers for buyers.
+func tierText(tiers []model.WholesaleTier) (attr, tip string) {
+	var a, t []string
+	for _, x := range tiers {
+		if x.MinQty < 2 || x.Percent <= 0 || x.Percent >= 100 {
+			continue
+		}
+		a = append(a, fmt.Sprintf("%d:%d", x.MinQty, x.Percent))
+		zhe := strconv.FormatFloat(float64(x.Percent)/10, 'f', -1, 64)
+		t = append(t, fmt.Sprintf("满 %d 件 %s 折", x.MinQty, zhe))
+	}
+	return strings.Join(a, ","), strings.Join(t, " · ")
 }
 
 func (s *Server) productPage(c *gin.Context) {
@@ -89,6 +105,7 @@ func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, 
 	for i := range p.SKUs {
 		k := &p.SKUs[i]
 		v := skuView{SKU: *k, Stock: s.shop.Stock(k), Methods: s.shop.MethodsFor(model.ChannelWeb, k)}
+		v.Tiers, v.TierTip = tierText(k.Tiers())
 		if k.DelivererKind == "manual" {
 			if cfg, err := deliver.ParseManualCfg(k.DelivererCfg); err == nil {
 				v.Ask, v.Note = cfg.Ask, cfg.Note
@@ -445,28 +462,34 @@ func (s *Server) ticketPage(c *gin.Context) {
 	s.render(c, 200, "ticket", gin.H{"OrderNo": c.Query("no")})
 }
 
+// ticketFail shows the form again with the error and what was typed.
+func (s *Server) ticketFail(c *gin.Context, code int, msg string) {
+	s.render(c, code, "ticket", gin.H{"OrderNo": c.PostForm("order_no"), "Email": c.PostForm("email"),
+		"Content": c.PostForm("content"), "Error": msg})
+}
+
 func (s *Server) createTicket(c *gin.Context) {
 	ip, now := c.ClientIP(), s.now()
-	if s.orderLimit.blocked(ip, now) {
-		redirectErr(c, "/ticket", errors.New("提交过于频繁，请稍后再试"))
+	if s.ticketLimit.blocked(ip, now) {
+		s.ticketFail(c, http.StatusTooManyRequests, "提交过于频繁，请稍后再试")
 		return
 	}
 	no, email := strings.TrimSpace(c.PostForm("order_no")), strings.TrimSpace(c.PostForm("email"))
 	content := strings.TrimSpace(c.PostForm("content"))
 	if content == "" || len([]rune(content)) > 2000 || email == "" || len(email) > 200 {
-		redirectErr(c, "/ticket?no="+url.QueryEscape(no), errors.New("请填写邮箱和问题描述（最多 2000 字）"))
+		s.ticketFail(c, http.StatusUnprocessableEntity, "请填写邮箱和问题描述（最多 2000 字）")
 		return
 	}
 	// Only the buyer can open a ticket about an order.
 	if no != "" {
 		found, _ := s.shop.FindOrders(no, "", c.PostForm("password"))
 		if len(found) == 0 {
-			s.orderLimit.hit(ip, now)
-			redirectErr(c, "/ticket?no="+url.QueryEscape(no), errors.New("订单号或查询密码不正确"))
+			s.ticketLimit.hit(ip, now)
+			s.ticketFail(c, http.StatusUnprocessableEntity, "订单号或查询密码不正确")
 			return
 		}
 	}
-	s.orderLimit.hit(ip, now)
+	s.ticketLimit.hit(ip, now)
 	t := model.Ticket{OrderNo: no, Email: strings.ToLower(email), Content: content, Status: model.TicketOpen, ClientIP: ip}
 	if err := s.st.DB.Create(&t).Error; err != nil {
 		s.fail(c, err)

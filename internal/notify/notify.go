@@ -58,20 +58,32 @@ func (n *Notifier) Mail(to, subject, body string) error {
 	if st.SMTPUser != "" {
 		auth = smtp.PlainAuth("", st.SMTPUser, st.SMTPPass, st.SMTPHost)
 	}
-	if port != 465 {
-		// STARTTLS (smtp.SendMail upgrades when offered).
-		return smtp.SendMail(addr, auth, from.Address, []string{to}, []byte(msg))
+	// Every step has a deadline: a mail server that never answers must not
+	// hold up the job queue (deliveries wait behind notification jobs).
+	dialer := &net.Dialer{Timeout: 15 * time.Second}
+	var conn net.Conn
+	if port == 465 {
+		conn, err = tls.DialWithDialer(dialer, "tcp", addr, &tls.Config{ServerName: st.SMTPHost})
+	} else {
+		conn, err = dialer.Dial("tcp", addr)
 	}
-	conn, err := tls.DialWithDialer(&net.Dialer{Timeout: 15 * time.Second}, "tcp", addr, &tls.Config{ServerName: st.SMTPHost})
 	if err != nil {
 		return err
 	}
+	conn.SetDeadline(time.Now().Add(60 * time.Second))
 	c, err := smtp.NewClient(conn, st.SMTPHost)
 	if err != nil {
 		conn.Close()
 		return err
 	}
 	defer c.Close()
+	if port != 465 {
+		if ok, _ := c.Extension("STARTTLS"); ok {
+			if err := c.StartTLS(&tls.Config{ServerName: st.SMTPHost}); err != nil {
+				return err
+			}
+		}
+	}
 	if auth != nil {
 		if err := c.Auth(auth); err != nil {
 			return err

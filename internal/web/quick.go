@@ -155,6 +155,7 @@ func (s *Server) productTodo(p *model.Product) (blocking, warnings []string) {
 		blocking = append(blocking, "商品详情里还有「"+deliver.Placeholder+"…】」，请换成实际说明")
 	}
 	if p.ID == 0 {
+		blocking = append(blocking, "新商品还没有规格：先保存（保持下架），再添加至少一个规格和发货方式")
 		return
 	}
 	var skus []model.SKU

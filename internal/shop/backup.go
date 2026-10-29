@@ -171,14 +171,28 @@ func (s *Service) maybeBackup(ctx context.Context) {
 		return
 	}
 	day := now.Format("2006-01-02")
-	if s.Store.Value("backup_day") == day {
+	last := s.Store.Value("backup_day")
+	retry := last == day+"!"
+	if last == day {
 		return
+	}
+	if retry {
+		// one more try 30 minutes after a failure
+		if at, err := time.Parse(time.RFC3339, s.Store.Value("backup_retry_at")); err == nil && now.Before(at) {
+			return
+		}
 	}
 	s.Store.SetValue("backup_day", day)
 	name, err := s.Backup(ctx)
 	if err != nil {
 		s.Log.Error("daily backup failed", "err", err)
-		s.Notify.Admin("❌ 每日备份失败：" + err.Error())
+		if !retry {
+			s.Store.SetValue("backup_day", day+"!")
+			s.Store.SetValue("backup_retry_at", now.Add(30*time.Minute).Format(time.RFC3339))
+			s.Notify.Admin("❌ 每日备份失败，30 分钟后重试一次：" + err.Error())
+			return
+		}
+		s.Notify.Admin("❌ 每日备份重试仍然失败，今天不再自动备份：" + err.Error())
 		return
 	}
 	if st.BackupTelegram {

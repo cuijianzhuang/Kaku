@@ -20,7 +20,7 @@
     {{end}}
     <div><button>创建</button></div>
   </form>
-  <p class="muted" style="margin:14px 0 0;font-size:13px">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。</p>
+  <p class="muted" style="margin:14px 0 0;font-size:13px">立减优惠用于 USDT / Stars 订单时，按该规格的人民币价格比例折算。立减金额大于等于商品价格时，订单为 0 元，买家下单后直接发货。</p>
 </div>
 <div class="card table-wrap"><table>
   <tr><th>优惠码</th><th>优惠</th><th>使用</th><th>适用</th><th>到期</th><th>状态</th><th></th></tr>
@@ -31,7 +31,7 @@
     <td>{{.Used}}{{if .MaxUses}} / {{.MaxUses}}{{else}} 次 · 不限{{end}}</td>
     <td>{{with index $.Scope .ID}}{{.}}{{else}}全部商品{{end}}</td>
     <td>{{if .ExpiresAt}}{{date .ExpiresAt}}{{else}}不过期{{end}}</td>
-    <td>{{if .Active}}<span class="badge on">启用</span>{{else}}<span class="badge">停用</span>{{end}}</td>
+    <td>{{if not .Active}}<span class="badge">停用</span>{{else if and .ExpiresAt (expired .ExpiresAt)}}<span class="badge warn">已过期</span>{{else if and .MaxUses (ge .Used .MaxUses)}}<span class="badge warn">已用完</span>{{else}}<span class="badge on">启用</span>{{end}}</td>
     <td>{{if .Active}}<form method="post" action="{{$p}}/coupons/{{.ID}}/delete" class="inline" data-confirm="停用优惠码 {{.Code}}？停用后买家无法再使用，可随时重新启用。"><button class="link">停用</button></form>
       {{else}}<form method="post" action="{{$p}}/coupons/{{.ID}}/enable" class="inline"><button class="link">启用</button></form>{{end}}</td>
   </tr>
