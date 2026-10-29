@@ -29,7 +29,9 @@ const (
 
 // ---- keyboard helpers ----
 
-func btn(text, data string) tgapi.InlineButton { return tgapi.InlineButton{Text: text, CallbackData: data} }
+func btn(text, data string) tgapi.InlineButton {
+	return tgapi.InlineButton{Text: text, CallbackData: data}
+}
 
 func btnRow(bs ...tgapi.InlineButton) []tgapi.InlineButton { return bs }
 
