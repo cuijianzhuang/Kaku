@@ -391,6 +391,8 @@ func (s *Service) Run(ctx context.Context) {
 	go s.Store.RunJobs(ctx, s.JobHandlers(), 2*time.Second)
 	expire := time.NewTicker(30 * time.Second)
 	usdt := time.NewTicker(20 * time.Second)
+	epay := time.NewTicker(30 * time.Second)
+	defer epay.Stop()
 	daily := time.NewTicker(time.Minute)
 	defer expire.Stop()
 	defer usdt.Stop()
@@ -405,6 +407,8 @@ func (s *Service) Run(ctx context.Context) {
 			if err := s.PollUSDT(ctx); err != nil {
 				s.Log.Warn("usdt poll failed", "err", err)
 			}
+		case <-epay.C:
+			s.CheckOpenEPay(ctx)
 		case <-daily.C:
 			s.maybeBackup(ctx)
 			s.maybeRemind()

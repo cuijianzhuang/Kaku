@@ -4,6 +4,7 @@
 package payment
 
 import (
+	"bytes"
 	"context"
 	"crypto/md5"
 	"crypto/subtle"
@@ -137,19 +138,33 @@ func (e *EPay) ParseNotify(values url.Values) (*Notification, error) {
 	return n, nil
 }
 
-// QueryPaid asks the gateway whether an order was paid (api.php?act=order),
-// the second confirmation against forged notifications. It returns the
-// paid amount in fen.
-func (e *EPay) QueryPaid(ctx context.Context, orderNo string) (bool, int64, error) {
+// QueryResult is the gateway's answer about one order.
+type QueryResult struct {
+	Paid    bool
+	Amount  int64 // fen
+	TradeNo string
+	Type    string // alipay / wxpay / …
+}
+
+// ErrQuery means the gateway could not answer (unreachable, wrong key,
+// query API disabled, unexpected response): it says nothing about whether
+// the order was paid.
+var ErrQuery = errors.New("易支付查单失败")
+
+// Query asks the gateway about an order (api.php?act=order). Gateways
+// differ in how they type the fields, so numbers and strings are both
+// accepted. An order the gateway knows but has not been paid returns
+// Paid false and no error.
+func (e *EPay) Query(ctx context.Context, orderNo string) (*QueryResult, error) {
 	u, err := e.base()
 	if err != nil {
-		return false, 0, err
+		return nil, err
 	}
 	u.Path += "/api.php"
 	u.RawQuery = url.Values{"act": {"order"}, "pid": {e.PID}, "key": {e.Key}, "out_trade_no": {orderNo}}.Encode()
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
 	if err != nil {
-		return false, 0, err
+		return nil, err
 	}
 	c := e.Client
 	if c == nil {
@@ -157,27 +172,76 @@ func (e *EPay) QueryPaid(ctx context.Context, orderNo string) (bool, int64, erro
 	}
 	resp, err := c.Do(req)
 	if err != nil {
-		return false, 0, fmt.Errorf("查询易支付订单：%w", err)
+		return nil, fmt.Errorf("%w：连不上支付平台（%v）", ErrQuery, err)
 	}
 	defer resp.Body.Close()
-	var r struct {
-		Code   json.Number `json:"code"`
-		Status json.Number `json:"status"`
-		Money  json.RawMessage
-	}
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if err := json.Unmarshal(body, &r); err != nil {
-		return false, 0, errors.New("易支付查单响应格式不正确")
+	var raw map[string]any
+	dec := json.NewDecoder(bytes.NewReader(bytes.TrimPrefix(bytes.TrimSpace(body), []byte("\xef\xbb\xbf"))))
+	dec.UseNumber()
+	if err := dec.Decode(&raw); err != nil {
+		return nil, fmt.Errorf("%w：返回的不是 JSON（HTTP %d）：%s", ErrQuery, resp.StatusCode, snippet(body))
 	}
-	if r.Code.String() != "1" {
-		return false, 0, nil
+	field := func(k string) string {
+		switch v := raw[k].(type) {
+		case string:
+			return strings.TrimSpace(v)
+		case json.Number:
+			return v.String()
+		case bool:
+			if v {
+				return "1"
+			}
+			return "0"
+		}
+		return ""
 	}
-	money := strings.Trim(string(r.Money), `"`)
-	amount, err := ParseDecimal(money, 2)
+	if field("code") != "1" {
+		msg := field("msg")
+		if msg == "" {
+			msg = snippet(body)
+		}
+		return nil, fmt.Errorf("%w：%s", ErrQuery, msg)
+	}
+	r := &QueryResult{TradeNo: field("trade_no"), Type: field("type")}
+	st := field("status")
+	r.Paid = st == "1" || strings.EqualFold(st, "TRADE_SUCCESS")
+	if m := field("money"); m != "" {
+		if r.Amount, err = ParseDecimal(trimMoney(m), 2); err != nil {
+			return nil, fmt.Errorf("%w：金额 %q 无法识别", ErrQuery, m)
+		}
+	}
+	return r, nil
+}
+
+// QueryPaid reports whether the gateway has the order as paid, and the
+// paid amount in fen.
+func (e *EPay) QueryPaid(ctx context.Context, orderNo string) (bool, int64, error) {
+	r, err := e.Query(ctx, orderNo)
 	if err != nil {
 		return false, 0, err
 	}
-	return r.Status.String() == "1", amount, nil
+	return r.Paid, r.Amount, nil
+}
+
+// trimMoney drops zero decimals past the cent ("1.000" → "1.00").
+func trimMoney(m string) string {
+	whole, frac, ok := strings.Cut(m, ".")
+	if ok && len(frac) > 2 && strings.Trim(frac[2:], "0") == "" {
+		return whole + "." + frac[:2]
+	}
+	return m
+}
+
+func snippet(b []byte) string {
+	s := strings.TrimSpace(string(b))
+	if r := []rune(s); len(r) > 80 {
+		return string(r[:80]) + "…"
+	}
+	if s == "" {
+		return "空响应"
+	}
+	return s
 }
 
 // Decimal formats an integer amount with places decimals.

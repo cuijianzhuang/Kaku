@@ -40,6 +40,7 @@ type env struct {
 	// fake EPay gateway state
 	gwPaid  atomic.Bool
 	gwMoney atomic.Value
+	gwRaw   atomic.Value // when set, the whole api.php response
 }
 
 type fakeBot struct{ n atomic.Int32 }
@@ -65,11 +66,15 @@ func setup(t *testing.T) *env {
 			w.WriteHeader(404)
 			return
 		}
+		if raw, _ := e.gwRaw.Load().(string); raw != "" {
+			fmt.Fprint(w, raw)
+			return
+		}
 		status := "0"
 		if e.gwPaid.Load() {
 			status = "1"
 		}
-		fmt.Fprintf(w, `{"code":1,"status":%s,"money":"%s"}`, status, e.gwMoney.Load())
+		fmt.Fprintf(w, `{"code":1,"status":%s,"money":"%s","trade_no":"GW123","type":"alipay"}`, status, e.gwMoney.Load())
 	}))
 	t.Cleanup(gw.Close)
 	svc.EPayClient = &payment.EPay{BaseURL: gw.URL, PID: "1000", Key: epayKey, AllowHTTP: true}

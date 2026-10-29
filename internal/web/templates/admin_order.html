@@ -36,6 +36,12 @@
   </div>
   <div class="card stack">
     <h2 style="margin-top:0">操作</h2>
+    {{if and (or (eq $o.Status "pending") (eq $o.Status "expired")) (or (eq $o.PayMethod "alipay") (eq $o.PayMethod "wxpay"))}}
+    <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/epay-check" class="stack">
+      <p class="muted" style="margin:0">买家说已付款？先向支付平台查一下，确认付款后会自动发货。</p>
+      <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>向支付平台查询</button>
+    </form>
+    {{end}}
     {{if or (eq $o.Status "pending") (eq $o.Status "expired")}}
     <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/paid" class="stack" data-confirm="确认已收到款项并补单发货？">
       <label>补单依据（支付流水号 / 备注） <input name="note" required maxlength="200"></label>

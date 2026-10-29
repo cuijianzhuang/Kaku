@@ -47,3 +47,11 @@ func TestDecimal(t *testing.T) {
 		t.Fatal("format")
 	}
 }
+
+func TestTrimMoney(t *testing.T) {
+	for in, want := range map[string]string{"1.000": "1.00", "1.00": "1.00", "1": "1", "1.005": "1.005", "9.9": "9.9"} {
+		if got := trimMoney(in); got != want {
+			t.Fatalf("%s → %s", in, got)
+		}
+	}
+}

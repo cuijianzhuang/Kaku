@@ -96,7 +96,8 @@
     <input type="hidden" name="section" value="payment">
     <div class="section">
       <h3>易支付（支付宝 / 微信）</h3>
-      <p class="muted">异步通知地址 <code>{{.Base}}/notify/epay</code>。收到通知后验签、比对金额，并调用网关 api.php 二次查单确认。</p>
+      <p class="muted">异步通知地址 <code>{{.Base}}/notify/epay</code>。收到通知后验签、比对金额，并调用网关 api.php 二次查单确认。没收到通知时，Kaku 也会主动向网关查询未付款的订单（买家停留在支付页时每 5 秒，后台每 30 秒）。</p>
+      {{with .EPayLast}}<div class="action-result {{if .OK}}ok{{else}}err{{end}}"><svg class="ic"><use href="#i-{{if .OK}}check{{else}}alert{{end}}"/></svg><div><b>最近一次支付确认</b><span>{{.Msg}}</span><small class="muted">{{date .At}}</small></div></div>{{end}}
       <div class="fields">
         <label class="wide">网关地址 <input name="epay_url" value="{{$s.EPayURL}}" placeholder="https://pay.example.com"></label>
         <label>商户 ID <input name="epay_pid" value="{{$s.EPayPID}}"></label>
