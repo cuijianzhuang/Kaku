@@ -2,7 +2,7 @@
 {{define "content"}}
 {{$p := .AdminPath}}
 {{$prod := .Product}}
-<div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>
+<div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}{{if $prod.ID}} <span class="badge {{if eq $prod.Status "on"}}on{{end}}">{{if eq $prod.Status "on"}}在售{{else}}下架{{end}}</span>{{end}}</h1>{{if $prod.ID}}<div class="actions">{{if eq $prod.Status "on"}}<a class="btn secondary" href="/p/{{$prod.ID}}" target="_blank" rel="noopener">在商店查看 ↗</a>{{end}}<form method="post" action="{{$p}}/products/{{$prod.ID}}/toggle" class="inline"{{if eq $prod.Status "on"}} data-confirm="下架这个商品？"{{end}}><input type="hidden" name="back" value="{{$p}}/products/{{$prod.ID}}"><button class="{{if eq $prod.Status "on"}}secondary{{end}}">{{if eq $prod.Status "on"}}下架{{else}}上架{{end}}</button></form><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>{{else}}<div class="actions"><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>{{end}}</div>
 {{if or .Todo .Warn}}
 <div class="card todo-card">
   <h2 style="margin-top:0">{{if .Todo}}上架前还需要完成{{else}}请留意{{end}}</h2>

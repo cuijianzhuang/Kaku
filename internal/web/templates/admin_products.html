@@ -5,23 +5,38 @@
   <h1>商品</h1>
   <div class="actions"><a class="btn secondary" href="{{$p}}/products/quick"><svg class="ic"><use href="#i-box"/></svg>从模板创建</a><a class="btn secondary" href="{{$p}}/categories"><svg class="ic"><use href="#i-tag"/></svg>管理分类</a><a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-plus"/></svg>新增商品</a></div>
 </div>
-<div class="card table-wrap"><table>
-  <tr><th>商品</th><th>分类</th><th>规格</th><th>状态</th></tr>
-  {{range .Products}}
+<form method="get" class="filters list-tools">
+  <input name="q" value="{{.Q}}" placeholder="搜索商品名称" aria-label="搜索商品">
+  <select name="category" data-autosubmit aria-label="分类"><option value="">全部分类</option>{{range .Categories}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Cat}}selected{{end}}>{{.Name}}</option>{{end}}</select>
+  <div class="seg">
+    <a href="?q={{.Q}}&category={{.Cat}}" {{if not .Status}}class="on"{{end}}>全部</a>
+    <a href="?q={{.Q}}&category={{.Cat}}&status=on" {{if eq .Status "on"}}class="on"{{end}}>在售</a>
+    <a href="?q={{.Q}}&category={{.Cat}}&status=off" {{if eq .Status "off"}}class="on"{{end}}>下架</a>
+    <a href="?q={{.Q}}&category={{.Cat}}&status=soldout" {{if eq .Status "soldout"}}class="on"{{end}}>缺货</a>
+  </div>
+  <input type="hidden" name="status" value="{{.Status}}">
+</form>
+<div class="card table-wrap"><table class="product-list">
+  <tr><th>商品</th><th>价格</th><th>库存</th><th>近 30 天售出</th><th>状态</th><th></th></tr>
+  {{range .Rows}}
   <tr>
-    <td><a href="{{$p}}/products/{{.ID}}">{{.Title}}</a>{{if eq .Status "on"}} <a class="muted" href="/p/{{.ID}}" target="_blank" rel="noopener" title="在商店查看">↗</a>{{end}}</td>
-    <td>{{index $.CategoryNames .CategoryID}}</td>
     <td>
-      {{range .SKUs}}
-      <div>{{.Name}} · {{index $.Kinds .DelivererKind}} ·
-        {{if .PriceCNY}}{{money .PriceCNY "CNY"}} {{end}}{{if .PriceUSDT}}{{money .PriceUSDT "USDT"}} {{end}}{{if .PriceStars}}{{money .PriceStars "XTR"}}{{end}}
-        {{if eq .DelivererKind "stock"}} · {{if eq .StockCache 0}}<a class="badge failed" href="{{$p}}/cards?sku={{.ID}}">缺货 · 去导入</a>{{else}}库存 <a href="{{$p}}/cards?sku={{.ID}}">{{.StockCache}}</a>{{end}}{{end}}
-        {{if not .Active}} · <span class="badge">停用</span>{{end}}
-      </div>
-      {{else}}<span class="muted">未添加规格</span>{{end}}
+      <a class="prod-cell" href="{{$p}}/products/{{.ID}}">
+        {{if .Cover}}<img class="thumb" src="{{.Cover}}" alt="" loading="lazy">{{else}}<span class="thumb ph" style="--h: {{hue .ID}}">{{initial .Title}}</span>{{end}}
+        <span class="prod-text"><b>{{.Title}}</b><small class="muted">{{index $.CategoryNames .CategoryID}} · {{len .SKUs}} 个规格{{range $i, $k := .SKUs}}{{if lt $i 3}} · {{$k.Name}}{{end}}{{end}}{{if gt (len .SKUs) 3}} …{{end}}</small></span>
+      </a>
     </td>
-    <td>{{if eq .Status "on"}}<span class="badge delivered">在售</span>{{else}}<span class="badge">下架</span>{{end}}</td>
+    <td class="nowrap">{{if .MinCNY}}{{money .MinCNY "CNY"}}{{if gt .MaxCNY .MinCNY}} 起{{end}}{{else}}<span class="muted">—</span>{{end}}</td>
+    <td class="nowrap">{{if lt .Stock 0}}<span class="muted">不限</span>{{else if eq .Stock 0}}<a class="badge failed" href="{{$p}}/products/{{.ID}}">缺货</a>{{else}}{{.Stock}}{{if .SoldOut}} <span class="badge failed">{{.SoldOut}} 个规格缺货</span>{{end}}{{end}}</td>
+    <td>{{if .Sold30}}{{.Sold30}}{{else}}<span class="muted">0</span>{{end}}</td>
+    <td>
+      <form method="post" action="{{$p}}/products/{{.ID}}/toggle" class="inline" {{if eq .Status "on"}}data-confirm="下架「{{.Title}}」？买家将看不到这个商品。"{{end}}>
+        <input type="hidden" name="back" value="{{$p}}/products?q={{$.Q}}&category={{$.Cat}}&status={{$.Status}}">
+        <button class="toggle {{if eq .Status "on"}}on{{end}}" title="点击{{if eq .Status "on"}}下架{{else}}上架{{end}}"><span class="knob"></span>{{if eq .Status "on"}}在售{{else}}下架{{end}}</button>
+      </form>
+    </td>
+    <td class="nowrap list-actions"><a href="{{$p}}/products/{{.ID}}">编辑</a>{{if eq .Status "on"}} · <a href="/p/{{.ID}}" target="_blank" rel="noopener">查看</a>{{end}}</td>
   </tr>
-  {{else}}<tr><td colspan="4" class="muted" style="text-align:center;padding:28px">还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充、Polaris 授权、面板套餐都能一键建好。</td></tr>{{end}}
+  {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">{{if or .Q .Cat .Status}}没有符合条件的商品。<a href="{{$p}}/products">清除筛选</a>{{else}}还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充、Polaris 授权、面板套餐都能一键建好。{{end}}</td></tr>{{end}}
 </table></div>
 {{end}}

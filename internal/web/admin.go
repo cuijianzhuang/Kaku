@@ -39,6 +39,7 @@ func (s *Server) adminRoutes(g *gin.RouterGroup) {
 	a.GET("/products/:id", s.productForm)
 	a.POST("/products", s.saveProduct)
 	a.POST("/products/:id/delete", s.deleteProduct)
+	a.POST("/products/:id/toggle", s.toggleProduct)
 	a.POST("/products/:id/announce", s.announceProduct)
 	a.GET("/skus/new", s.skuForm)
 	a.GET("/skus/:id", s.skuForm)
@@ -218,6 +219,13 @@ func (s *Server) products(c *gin.Context) {
 	if cat := c.Query("category"); cat != "" {
 		q = q.Where("category_id = ?", cat)
 	}
+	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
+		q = q.Where("title LIKE ?", "%"+kw+"%")
+	}
+	switch c.Query("status") {
+	case model.ProductOn, model.ProductOff:
+		q = q.Where("status = ?", c.Query("status"))
+	}
 	q.Find(&prods)
 	var cats []model.Category
 	s.st.DB.Order("sort, id").Find(&cats)
@@ -229,7 +237,76 @@ func (s *Server) products(c *gin.Context) {
 	for _, d := range s.shop.Reg.Kinds() {
 		kinds[d.Kind()] = d.Label()
 	}
-	s.render(c, 200, "admin_products", gin.H{"Products": prods, "CategoryNames": names, "Categories": cats, "Kinds": kinds})
+	// per product: price range, stock, sales in the last 30 days
+	since := s.now().AddDate(0, 0, -30)
+	rows := make([]productRow, 0, len(prods))
+	for _, p := range prods {
+		r := productRow{Product: p, Stock: -1}
+		var ids []uint
+		for _, k := range p.SKUs {
+			ids = append(ids, k.ID)
+			if k.Active && k.PriceCNY > 0 && (r.MinCNY == 0 || k.PriceCNY < r.MinCNY) {
+				r.MinCNY = k.PriceCNY
+			}
+			if k.PriceCNY > r.MaxCNY {
+				r.MaxCNY = k.PriceCNY
+			}
+			if k.DelivererKind == "stock" && k.Active {
+				if r.Stock < 0 {
+					r.Stock = 0
+				}
+				r.Stock += k.StockCache
+				if k.StockCache == 0 {
+					r.SoldOut++
+				}
+			}
+		}
+		if len(ids) > 0 {
+			s.st.DB.Model(&model.Order{}).Where("sku_id IN ? AND status = ? AND created_at >= ?", ids, model.OrderDelivered, since).
+				Select("COALESCE(SUM(qty), 0)").Scan(&r.Sold30)
+		}
+		if c.Query("status") == "soldout" && r.SoldOut == 0 {
+			continue
+		}
+		rows = append(rows, r)
+	}
+	s.render(c, 200, "admin_products", gin.H{"Products": prods, "Rows": rows, "CategoryNames": names, "Categories": cats, "Kinds": kinds,
+		"Q": c.Query("q"), "Cat": c.Query("category"), "Status": c.Query("status")})
+}
+
+// productRow is a product with the figures the product list shows.
+type productRow struct {
+	model.Product
+	MinCNY, MaxCNY int64
+	Stock          int // card stock of active stock specs, -1 = none
+	SoldOut        int // stock specs with nothing left
+	Sold30         int64
+}
+
+// toggleProduct puts a product on or off sale from the list.
+func (s *Server) toggleProduct(c *gin.Context) {
+	back := s.cfg.AdminPath + "/products"
+	if r := c.PostForm("back"); strings.HasPrefix(r, s.cfg.AdminPath+"/products") {
+		back = r
+	}
+	var p model.Product
+	if err := s.st.DB.Take(&p, c.Param("id")).Error; err != nil {
+		redirectErr(c, back, errors.New("商品不存在"))
+		return
+	}
+	next := model.ProductOn
+	if p.Status == model.ProductOn {
+		next = model.ProductOff
+	}
+	if next == model.ProductOn {
+		if blocking, _ := s.productTodo(&p); len(blocking) > 0 {
+			redirectErr(c, back, fmt.Errorf("「%s」还不能上架：%s", p.Title, strings.Join(blocking, "；")))
+			return
+		}
+	}
+	s.st.DB.Model(&model.Product{ID: p.ID}).Update("status", next)
+	s.audit(c, "product_save", fmt.Sprint(p.ID), p.Title+" · "+map[string]string{model.ProductOn: "上架", model.ProductOff: "下架"}[next])
+	redirectMsg(c, back, fmt.Sprintf("「%s」已%s", p.Title, map[string]string{model.ProductOn: "上架", model.ProductOff: "下架"}[next]))
 }
 
 func (s *Server) productForm(c *gin.Context) {

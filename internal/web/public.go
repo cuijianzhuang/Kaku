@@ -105,7 +105,23 @@ func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, 
 	if form == nil {
 		form = map[string]string{}
 	}
-	data := gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb), "InStock": inStock, "Form": form}
+	// sold count and remaining stock for the badges under the title
+	var sold int64
+	ids := make([]uint, 0, len(p.SKUs))
+	stockLeft, unlimited := 0, false
+	for _, k := range skus {
+		ids = append(ids, k.ID)
+		if k.Stock < 0 {
+			unlimited = true
+		} else {
+			stockLeft += k.Stock
+		}
+	}
+	if len(ids) > 0 {
+		s.st.DB.Model(&model.Order{}).Where("sku_id IN ? AND status = ?", ids, model.OrderDelivered).Select("COALESCE(SUM(qty), 0)").Scan(&sold)
+	}
+	data := gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb), "InStock": inStock, "Form": form,
+		"Sold": sold, "StockLeft": stockLeft, "Unlimited": unlimited}
 	code := http.StatusOK
 	if orderErr != nil {
 		data["Error"] = orderErr.Error()
