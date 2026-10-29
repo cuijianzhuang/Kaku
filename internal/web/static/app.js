@@ -221,8 +221,17 @@ document.addEventListener('change', (e) => {
       const all = pc.querySelector('[data-pc-all]');
       pc.querySelectorAll('[data-pc-features] input').forEach((f) => { f.disabled = !isPolaris || (all && all.checked); });
     }
+    // fixed content: show the fields of the chosen format (网盘 / 链接 / 文章 / 纯文本)
+    const tx = sections.text;
+    if (tx) {
+      const fmt = (tx.querySelector('input[name=tx_format]:checked') || {}).value || '';
+      tx.querySelectorAll('[data-tx-pane]').forEach((p) => {
+        p.hidden = !p.getAttribute('data-tx-pane').split(' ').includes(fmt);
+      });
+    }
   };
   kind.addEventListener('change', sync);
+  if (sections.text) sections.text.addEventListener('change', sync);
   if (pc) {
     pc.addEventListener('change', sync);
     pc.querySelectorAll('[data-set-days]').forEach((b) => b.addEventListener('click', () => {

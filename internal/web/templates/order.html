@@ -38,6 +38,7 @@
       {{range $i, $it := .Items}}
         {{if $it.FileName}}
           <div class="secret-row"><span class="secret">{{$it.FileName}}</span><a class="btn secondary" href="/order/{{$o.OrderNo}}/item/{{$it.ID}}"><svg class="ic"><use href="#i-download"/></svg>下载</a></div>
+        {{else if $it.Rich}}{{template "rich-item" $it.Rich}}
         {{else}}
           <div class="secret-row"><span class="secret">{{$it.Content}}</span><button type="button" class="secondary" data-copy="{{$it.Content}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div>
         {{end}}
@@ -61,4 +62,33 @@
     {{end}}
   {{end}}
 </div>
+{{end}}
+
+{{define "rich-item"}}
+{{if eq .Kind "netdisk"}}
+<div class="rich netdisk">
+  <div class="rich-head"><span class="rich-icon">☁️</span><div><b>{{or .Provider "网盘资源"}}</b><small class="muted">打开链接后输入提取码即可保存或下载</small></div></div>
+  <div class="rich-actions">
+    <a class="btn" href="{{.URL}}" target="_blank" rel="noopener noreferrer"><svg class="ic"><use href="#i-download"/></svg>打开网盘</a>
+    <button type="button" class="secondary" data-copy="{{.ShareText}}"><svg class="ic"><use href="#i-copy"/></svg>复制链接{{if .Code}}和提取码{{end}}</button>
+  </div>
+  <dl class="rich-kv">
+    <dt>分享链接</dt><dd><span class="secret">{{.URL}}</span><button type="button" class="link" data-copy="{{.URL}}">复制</button></dd>
+    {{if .Code}}<dt>提取码</dt><dd><span class="secret code">{{.Code}}</span><button type="button" class="link" data-copy="{{.Code}}">复制</button></dd>{{end}}
+    {{if .Unzip}}<dt>解压密码</dt><dd><span class="secret code">{{.Unzip}}</span><button type="button" class="link" data-copy="{{.Unzip}}">复制</button></dd>{{end}}
+  </dl>
+  {{if .Body}}<div class="md rich-note">{{markdown .Body}}</div>{{end}}
+</div>
+{{else if eq .Kind "link"}}
+<div class="rich link">
+  <div class="rich-head"><span class="rich-icon">🔗</span><div><b>{{or .Button "打开链接"}}</b><small class="muted rich-url">{{.URL}}</small></div></div>
+  <div class="rich-actions">
+    <a class="btn" href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{or .Button "打开链接"}} ↗</a>
+    <button type="button" class="secondary" data-copy="{{.URL}}"><svg class="ic"><use href="#i-copy"/></svg>复制链接</button>
+  </div>
+  {{if .Body}}<div class="md rich-note">{{markdown .Body}}</div>{{end}}
+</div>
+{{else if eq .Kind "article"}}
+<article class="rich article md">{{markdown .Body}}</article>
+{{end}}
 {{end}}

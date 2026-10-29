@@ -216,6 +216,9 @@ const (
 	SourcePolaris = "polaris"
 	SourcePanel   = "panel" // a Polaris panel redeem code
 	SourceText    = "text"
+	SourceNetdisk = "netdisk" // content is deliver.Rich JSON
+	SourceLink    = "link"
+	SourceArticle = "article"
 	SourceWebhook = "webhook"
 	SourceManual  = "manual"
 )

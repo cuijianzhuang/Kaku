@@ -125,13 +125,20 @@ const Placeholder = "【请填写"
 // {order_no}, {email} and {qty} in the text are filled in per order.
 type Text struct{}
 
-// TextCfg is a fixed-text SKU's configuration.
+// TextCfg is a fixed-content SKU's configuration. Format picks how the
+// buyer receives it (see the Format constants); Text is the plain text,
+// the article, or a note under a link or net-disk share.
 type TextCfg struct {
+	Format  string `json:"format,omitempty"`
 	Text    string `json:"text"`
+	URL     string `json:"url,omitempty"`
+	Code    string `json:"code,omitempty"`
+	Unzip   string `json:"unzip,omitempty"`
+	Button  string `json:"button,omitempty"`
 	PerUnit bool   `json:"per_unit"` // repeat once per unit bought
 }
 
-// ParseTextCfg reads a fixed-text configuration.
+// ParseTextCfg reads a fixed-content configuration.
 func ParseTextCfg(raw string) (*TextCfg, error) {
 	var c TextCfg
 	if err := json.Unmarshal(orEmpty(json.RawMessage(raw)), &c); err != nil {
@@ -141,20 +148,42 @@ func ParseTextCfg(raw string) (*TextCfg, error) {
 }
 
 func (Text) Kind() string  { return "text" }
-func (Text) Label() string { return "固定文本" }
+func (Text) Label() string { return "固定内容（网盘 / 链接 / 文章）" }
 func (Text) Validate(cfg json.RawMessage) error {
 	c, err := ParseTextCfg(string(cfg))
 	if err != nil {
 		return err
 	}
-	if strings.TrimSpace(c.Text) == "" {
-		return errors.New("请填写发货内容")
+	for _, v := range []string{c.Text, c.URL, c.Code, c.Unzip, c.Button} {
+		if strings.Contains(v, Placeholder) {
+			return errors.New("发货内容里还有「" + Placeholder + "…】」，请换成实际内容")
+		}
 	}
-	if strings.Contains(c.Text, Placeholder) {
-		return errors.New("发货内容里还有「" + Placeholder + "…】」，请换成实际内容")
+	switch c.Format {
+	case FormatNetdisk:
+		if !validLink(c.URL) {
+			return errors.New("请填写网盘分享链接（https:// 开头）")
+		}
+	case FormatLink:
+		if !validLink(c.URL) {
+			return errors.New("请填写链接地址（https:// 开头）")
+		}
+	case FormatArticle:
+		if strings.TrimSpace(c.Text) == "" {
+			return errors.New("请填写文章正文")
+		}
+	case FormatText:
+		if strings.TrimSpace(c.Text) == "" {
+			return errors.New("请填写发货内容")
+		}
+	default:
+		return errors.New("未知的内容格式")
 	}
-	if len(c.Text) > 20000 {
-		return errors.New("发货内容最多 20000 字节")
+	if len(c.Text) > 50000 {
+		return errors.New("发货内容最多 50000 字节")
+	}
+	if len(c.Code) > 32 || len(c.Unzip) > 64 || len(c.Button) > 30 {
+		return errors.New("提取码、解压密码或按钮文字太长")
 	}
 	return nil
 }
@@ -162,17 +191,22 @@ func (Text) Reserve(context.Context, *gorm.DB, *model.Order, *model.SKU) error {
 func (Text) Release(*gorm.DB, *model.Order) error                              { return nil }
 func (Text) Deliver(_ context.Context, o *model.Order, sku *model.SKU) ([]Item, error) {
 	c, err := ParseTextCfg(sku.DelivererCfg)
-	if err != nil || c.Text == "" {
-		return nil, Permanent(errors.New("固定文本配置无效"))
+	if err != nil || (c.Text == "" && c.URL == "") {
+		return nil, Permanent(errors.New("固定内容配置无效"))
 	}
-	text := strings.NewReplacer("{order_no}", o.OrderNo, "{email}", o.Email, "{qty}", strconv.Itoa(o.Qty)).Replace(c.Text)
+	fill := strings.NewReplacer("{order_no}", o.OrderNo, "{email}", o.Email, "{qty}", strconv.Itoa(o.Qty)).Replace
+	it := Item{Content: fill(c.Text), Source: model.SourceText}
+	if c.Format != FormatText {
+		b, _ := json.Marshal(Rich{Kind: c.Format, URL: fill(c.URL), Code: c.Code, Unzip: c.Unzip, Button: c.Button, Body: fill(c.Text)})
+		it = Item{Content: string(b), Source: c.Format}
+	}
 	n := 1
 	if c.PerUnit {
 		n = o.Qty
 	}
 	out := make([]Item, n)
 	for i := range out {
-		out[i] = Item{Content: text, Source: model.SourceText}
+		out[i] = it
 	}
 	return out, nil
 }

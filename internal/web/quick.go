@@ -36,14 +36,30 @@ var quickTemplates = []quickTemplate{
 		Title:   "成品账号", SKU: "普通账号",
 		Desc: "付款后自动发货，格式为「账号----密码」。\n\n- 登录后请立即修改密码\n- 售后时效：【请填写，例如 24 小时内包换】",
 		Next: "导入账号"},
-	{ID: "download", Name: "资源下载 / 教程", Icon: "i-download", Kind: "text",
-		Summary: "网盘链接、软件下载、教程文档：所有买家收到同样的内容。",
+	{ID: "download", Name: "网盘资源", Icon: "i-download", Kind: "text",
+		Summary: "百度、阿里、夸克等网盘分享：买家看到「打开网盘」按钮，提取码一键复制。",
 		Title:   "资源合集", SKU: "永久版",
-		Desc: "付款后自动发送下载地址和提取码。",
+		Desc: "付款后自动发货，在订单页打开网盘链接，提取码一键复制。",
 		Cfg: func() any {
-			return deliver.TextCfg{Text: "下载地址：【请填写网盘链接】\n提取码：【请填写】\n\n订单号 {order_no}，如链接失效请提交工单。"}
+			return deliver.TextCfg{Format: deliver.FormatNetdisk, URL: "【请填写网盘分享链接，可直接粘贴整段分享文字】", Text: "如链接失效请提交工单，订单号 {order_no}。"}
 		},
-		Next: "填写下载地址"},
+		Next: "填写网盘链接"},
+	{ID: "article", Name: "付费文章 / 教程", Icon: "i-list", Kind: "text",
+		Summary: "教程、攻略、资料：付款后在订单页阅读全文，支持图片和排版。",
+		Title:   "进阶教程", SKU: "全文",
+		Desc: "付款后立即解锁全文，在订单页阅读（Telegram 下单直接发到聊天里）。",
+		Cfg: func() any {
+			return deliver.TextCfg{Format: deliver.FormatArticle, Text: "# 【请填写标题】\n\n【请填写正文，支持 **加粗**、列表、链接和图片】"}
+		},
+		Next: "填写文章正文"},
+	{ID: "link", Name: "链接 / 邀请", Icon: "i-users", Kind: "text",
+		Summary: "会员群、在线文档、激活页：买家点按钮直接打开。",
+		Title:   "会员群", SKU: "永久",
+		Desc: "付款后自动发送入群链接。",
+		Cfg: func() any {
+			return deliver.TextCfg{Format: deliver.FormatLink, URL: "【请填写链接】", Button: "加入会员群", Text: "入群后请修改群昵称为订单号后 4 位。"}
+		},
+		Next: "填写链接"},
 	{ID: "recharge", Name: "人工代充", Icon: "i-wallet", Kind: "manual",
 		Summary: "话费、游戏、会员代充：下单时买家填写充值账号，你在后台处理后发货。",
 		Title:   "会员代充", SKU: "1 个月",

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cuijianzhuang/kaku/internal/deliver"
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/store"
 	"github.com/cuijianzhuang/kaku/internal/tgapi"
@@ -100,10 +101,21 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 	fmt.Fprintf(&b, "✅ <b>订单已发货</b>\n%s · %s ×%d\n订单号 <code>%s</code>\n", html.EscapeString(o.ProductTitle), html.EscapeString(o.SKUName), o.Qty, o.OrderNo)
 	var kb tgapi.Keyboard
 	var files []ItemView
+	var articles []string
 	cut := false
 	for i, it := range items {
 		if it.FileName != "" {
 			files = append(files, it)
+			continue
+		}
+		if it.Rich != nil && it.Rich.Kind == deliver.FormatArticle {
+			// articles go out in full as their own messages below
+			if len(articles) == 0 || articles[len(articles)-1] != it.Content {
+				articles = append(articles, it.Content)
+			}
+			if len(articles) == 1 {
+				fmt.Fprintf(&b, "\n%d. 📄 文章全文见下方消息", i+1)
+			}
 			continue
 		}
 		if cut {
@@ -117,6 +129,23 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 			continue
 		}
 		b.WriteString(line)
+		if r := it.Rich; r != nil && len(kb.InlineKeyboard) < 10 {
+			// links and shares get a button that opens them (and copies the code)
+			var row []tgapi.InlineButton
+			switch r.Kind {
+			case deliver.FormatNetdisk:
+				row = append(row, tgapi.InlineButton{Text: "☁️ 打开" + orDefault(r.Provider(), "网盘"), URL: r.URL})
+				if r.Code != "" {
+					row = append(row, tgapi.CopyButton("📋 复制提取码", r.Code))
+				}
+			case deliver.FormatLink:
+				row = append(row, tgapi.InlineButton{Text: "🔗 " + orDefault(r.Button, "打开链接"), URL: r.URL})
+			}
+			if len(row) > 0 && strings.HasPrefix(r.URL, "https://") {
+				kb.InlineKeyboard = append(kb.InlineKeyboard, row)
+				continue
+			}
+		}
 		if len(it.Content) <= 256 && len(kb.InlineKeyboard) < 10 {
 			kb.InlineKeyboard = append(kb.InlineKeyboard, []tgapi.InlineButton{tgapi.CopyButton(fmt.Sprintf("复制 %d", i+1), it.Content)})
 		}
@@ -144,13 +173,49 @@ func (s *Service) SendItemsTG(ctx context.Context, chatID int64, o *model.Order,
 			return err
 		}
 	}
+	for _, art := range articles {
+		for _, part := range chunkRunes(art, 3500) {
+			if err := bot.SendMessage(ctx, chatID, html.EscapeString(part), true, nil); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+// chunkRunes splits text into pieces of at most n characters, preferring
+// to break at a blank line or line end.
+func chunkRunes(text string, n int) []string {
+	var out []string
+	r := []rune(strings.TrimSpace(text))
+	for len(r) > n {
+		cut := n
+		for i := n; i > n/2; i-- {
+			if r[i] == '\n' {
+				cut = i
+				break
+			}
+		}
+		out = append(out, strings.TrimSpace(string(r[:cut])))
+		r = []rune(strings.TrimSpace(string(r[cut:])))
+	}
+	if len(r) > 0 {
+		out = append(out, string(r))
+	}
+	return out
 }
 
 // trimEllipsis shortens v to n runes, marking the cut.
 func trimEllipsis(v string, n int) string {
 	if r := []rune(v); len(r) > n {
 		return string(r[:n]) + "…"
+	}
+	return v
+}
+
+func orDefault(v, d string) string {
+	if v == "" {
+		return d
 	}
 	return v
 }
