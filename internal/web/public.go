@@ -230,6 +230,12 @@ func (s *Server) payPage(c *gin.Context) {
 		s.fail(c, err)
 		return
 	}
+	if o.Status == model.OrderPending && s.now().Sub(o.CreatedAt) > 20*time.Second {
+		// paid in another tab or the notification was lost: don't offer to pay again
+		if paid, _ := s.shop.CheckEPay(c.Request.Context(), o, 5*time.Second); paid {
+			o.Status = model.OrderPaid
+		}
+	}
 	if o.Status != model.OrderPending {
 		c.Redirect(http.StatusSeeOther, "/order/"+o.OrderNo)
 		return
@@ -316,6 +322,11 @@ func (s *Server) orderStatus(c *gin.Context) {
 	if err != nil {
 		c.JSON(404, gin.H{"error": "not found"})
 		return
+	}
+	if o.Status == model.OrderPending {
+		if paid, _ := s.shop.CheckEPay(c.Request.Context(), o, 5*time.Second); paid {
+			o, _ = s.shop.OrderByNo(o.OrderNo)
+		}
 	}
 	c.Header("Cache-Control", "no-store")
 	c.JSON(200, gin.H{"status": o.Status, "label": statusLabel(o.Status)})
@@ -484,41 +495,56 @@ func (s *Server) epayNotify(c *gin.Context) {
 	n, err := ep.ParseNotify(values)
 	if err != nil {
 		s.log.Warn("epay notify rejected", "err", err, "ip", c.ClientIP())
+		s.shop.RecordEPay(false, fmt.Sprintf("收到一条支付回调（来自 %s），但%v，已拒绝。请检查易支付的商户号和密钥", c.ClientIP(), err))
 		c.String(400, "fail")
 		return
 	}
 	ctx, cancel := context.WithTimeout(c.Request.Context(), 15*time.Second)
 	defer cancel()
-	paid, amount, err := ep.QueryPaid(ctx, n.OrderNo)
-	if err != nil || !paid || amount != n.Amount {
-		s.log.Warn("epay query did not confirm", "order", n.OrderNo, "paid", paid, "amount", amount, "err", err)
-		c.String(400, "fail")
-		return
-	}
 	o, err := s.shop.OrderByNo(n.OrderNo)
 	if err != nil {
+		s.shop.RecordEPay(false, "收到回调，但订单 "+n.OrderNo+" 不存在")
 		c.String(404, "fail")
 		return
 	}
-	channel := o.PayMethod
-	if n.Method == model.PayEPayAlipay || n.Method == model.PayEPayWxpay {
-		channel = n.Method
-	}
-	if _, err := s.shop.MarkPaid(ctx, shop.PaidInput{OrderNo: n.OrderNo, Channel: channel, TradeNo: n.TradeNo,
-		Amount: n.Amount, Currency: model.CNY, Raw: values.Encode()}); err != nil {
-		s.log.Warn("epay mark paid failed", "order", n.OrderNo, "err", err)
+	// Second confirmation against the gateway. The signature already proves
+	// the notification came from someone holding the merchant key, so if the
+	// gateway's query API cannot answer (many gateways restrict or change
+	// it) the signed notification is accepted; only an explicit "not paid"
+	// or a different amount rejects it.
+	r, qerr := ep.Query(ctx, n.OrderNo)
+	switch {
+	case qerr != nil && errors.Is(qerr, payment.ErrQuery):
+		s.log.Warn("epay query unavailable, trusting signed notify", "order", n.OrderNo, "err", qerr)
+	case qerr != nil:
+		s.log.Warn("epay query failed", "order", n.OrderNo, "err", qerr)
+	case !r.Paid || r.Amount != n.Amount:
+		s.log.Warn("epay query did not confirm", "order", n.OrderNo, "paid", r.Paid, "amount", r.Amount)
+		s.shop.RecordEPay(false, fmt.Sprintf("收到订单 %s 的回调，但向支付平台查询显示未付款或金额不符，已拒绝", n.OrderNo))
 		c.String(400, "fail")
 		return
 	}
+	if _, err := s.shop.MarkPaid(ctx, shop.PaidInput{OrderNo: n.OrderNo, Channel: shop.EPayChannel(o, n.Method), TradeNo: n.TradeNo,
+		Amount: n.Amount, Currency: model.CNY, Raw: values.Encode()}); err != nil {
+		s.log.Warn("epay mark paid failed", "order", n.OrderNo, "err", err)
+		s.shop.RecordEPay(false, fmt.Sprintf("收到订单 %s 的回调，但无法确认付款：%v", n.OrderNo, err))
+		c.String(400, "fail")
+		return
+	}
+	s.shop.RecordEPay(true, "收到订单 "+n.OrderNo+" 的支付回调，已确认付款")
 	c.String(200, "success")
 }
 
-// epayReturn is where the cashier sends the buyer back. It shows the
-// order; payment is only trusted from the notification.
+// epayReturn is where the cashier sends the buyer back. The return URL is
+// not signed, so it only triggers a query to the gateway before showing
+// the order.
 func (s *Server) epayReturn(c *gin.Context) {
 	no := c.Query("no")
 	if no == "" {
 		no = c.Query("out_trade_no")
+	}
+	if o, err := s.shop.OrderByNo(no); err == nil {
+		s.shop.CheckEPay(c.Request.Context(), o, 0)
 	}
 	c.Redirect(http.StatusSeeOther, "/order/"+url.PathEscape(no))
 }

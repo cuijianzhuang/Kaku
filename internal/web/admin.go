@@ -864,6 +864,17 @@ func (s *Server) orderAction(c *gin.Context) {
 		_, err = s.shop.MarkPaid(c.Request.Context(), shop.PaidInput{OrderNo: o.OrderNo, Channel: model.PayManual,
 			TradeNo: o.OrderNo + ":" + secure.RandomToken(6), Raw: "admin " + admin(c).Username + ": " + note, Trusted: true})
 		msg = "已补单，正在发货"
+	case "epay-check":
+		var paid bool
+		paid, err = s.shop.CheckEPay(c.Request.Context(), o, 0)
+		switch {
+		case err != nil:
+			err = fmt.Errorf("向支付平台查询失败：%w", err)
+		case paid:
+			msg = "支付平台确认已付款，正在发货"
+		default:
+			msg = "支付平台显示这笔订单还没有付款"
+		}
 	case "redeliver":
 		err, msg = s.shop.Redeliver(o.ID), "已重新加入发货队列"
 	case "manual":
@@ -1154,7 +1165,7 @@ func (s *Server) settingsPage(c *gin.Context) {
 		"TurnstileSecret":    st.TurnstileSecret != "",
 		"GitHubClientSecret": st.GitHubClientSecret != "", "PanelToken": st.PanelToken != "", "GoogleClientSecret": st.GoogleClientSecret != ""}
 	base := s.publicURL(c)
-	s.render(c, 200, "admin_settings", gin.H{"Tab": tab, "Last": s.lastActions(), "S": st, "Secrets": secrets, "Base": base,
+	s.render(c, 200, "admin_settings", gin.H{"Tab": tab, "Last": s.lastActions(), "EPayLast": s.shop.LastEPay(), "S": st, "Secrets": secrets, "Base": base,
 		"HookURL": base + "/hooks/polaris", "RenewURL": base + "/renew?lid={license_id}",
 		"RenewBot": renewBotTemplate(st.TGBotUsername), "OAuthBase": base + s.cfg.AdminPath + "/oauth/"})
 }
