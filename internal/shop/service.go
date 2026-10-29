@@ -521,10 +521,11 @@ func (s *Service) CheckAccess(orderNo, token string) bool {
 // ItemView is a decrypted delivered item.
 type ItemView struct {
 	ID       uint
-	Content  string
+	Content  string // plain text (structured content flattened)
 	Source   string
 	RefID    string
 	FileName string
+	Rich     *deliver.Rich // net-disk share, link or article
 }
 
 // Items returns an order's delivered content, decrypted.
@@ -536,6 +537,9 @@ func (s *Service) Items(orderID uint) ([]ItemView, error) {
 	out := make([]ItemView, len(items))
 	for i, it := range items {
 		out[i] = ItemView{ID: it.ID, Content: s.Store.Box.MustOpen(it.ContentEnc), Source: it.Source, RefID: it.RefID, FileName: it.FileName}
+		if r, ok := deliver.ParseRich(it.Source, out[i].Content); ok {
+			out[i].Rich, out[i].Content = r, r.Plain()
+		}
 	}
 	return out, nil
 }

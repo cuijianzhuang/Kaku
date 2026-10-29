@@ -64,7 +64,17 @@ func genericCfgFromForm(c *gin.Context, kind string) (cfg string, ok bool) {
 		if _, ok := c.GetPostForm("tx_text"); !ok {
 			return "", false
 		}
-		v = deliver.TextCfg{Text: strings.ReplaceAll(c.PostForm("tx_text"), "\r\n", "\n"), PerUnit: c.PostForm("tx_per_unit") == "on"}
+		t := deliver.TextCfg{Format: c.PostForm("tx_format"), Text: strings.ReplaceAll(c.PostForm("tx_text"), "\r\n", "\n"),
+			PerUnit: c.PostForm("tx_per_unit") == "on"}
+		switch t.Format {
+		case deliver.FormatNetdisk:
+			// a pasted share text gives both the link and the code
+			t.URL, t.Code = deliver.SplitShare(c.PostForm("tx_url"), c.PostForm("tx_code"))
+			t.Unzip = strings.TrimSpace(c.PostForm("tx_unzip"))
+		case deliver.FormatLink:
+			t.URL, t.Button = strings.TrimSpace(c.PostForm("tx_url")), strings.TrimSpace(c.PostForm("tx_button"))
+		}
+		v = t
 	case "webhook":
 		if _, ok := c.GetPostForm("wh_url"); !ok {
 			return "", false

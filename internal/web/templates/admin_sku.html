@@ -126,9 +126,30 @@
     </div>
 
     <div class="pc" data-cfg-text>
-      <div class="field-label" style="margin:0">发货内容</div>
-      <textarea name="tx_text" rows="6" placeholder="下载地址：https://…&#10;提取码：…&#10;使用教程：…">{{$g.Text.Text}}</textarea>
-      <p class="muted pc-help">每个买家收到同样的内容，适合下载链接、教程、群邀请等。可以写 <code>{order_no}</code>（订单号）、<code>{email}</code>（买家邮箱）、<code>{qty}</code>（数量），发货时自动替换。</p>
+      {{$fmt := $g.Text.Format}}
+      <div class="pc-head">
+        <div class="field-label" style="margin:0">发货内容</div>
+        <div class="seg pc-modes" data-tx-modes>
+          <label><input type="radio" name="tx_format" value="netdisk" {{if eq $fmt "netdisk"}}checked{{end}}><span>☁️ 网盘</span></label>
+          <label><input type="radio" name="tx_format" value="link" {{if eq $fmt "link"}}checked{{end}}><span>🔗 链接</span></label>
+          <label><input type="radio" name="tx_format" value="article" {{if eq $fmt "article"}}checked{{end}}><span>📄 文章</span></label>
+          <label><input type="radio" name="tx_format" value="" {{if eq $fmt ""}}checked{{end}}><span>📝 纯文本</span></label>
+        </div>
+      </div>
+      <p class="muted pc-help" data-tx-pane="netdisk">买家在订单页看到网盘名称、「打开网盘」按钮，提取码和解压密码可一键复制。<b>可以直接粘贴网盘 App 里复制的整段分享文字</b>，会自动识别链接和提取码。</p>
+      <p class="muted pc-help" data-tx-pane="link">适合群邀请、会员激活页、在线文档等：买家在订单页点按钮直接打开。</p>
+      <p class="muted pc-help" data-tx-pane="article">付费文章、教程：买家付款后在订单页阅读全文，支持标题、列表、链接和图片（Markdown）。</p>
+      <p class="muted pc-help" data-tx-pane="">每个买家收到同样的一段文字，原样显示。</p>
+      <label data-tx-pane="netdisk link"><span data-tx-pane="netdisk">分享链接</span><span data-tx-pane="link">链接地址</span>
+        <input name="tx_url" value="{{$g.Text.URL}}" placeholder="https://pan.baidu.com/s/…" inputmode="url" autocomplete="off"></label>
+      <div class="fields" data-tx-pane="netdisk">
+        <label><span>提取码 <span class="hint">· 没有就留空</span></span><input name="tx_code" value="{{$g.Text.Code}}" maxlength="32" autocomplete="off"></label>
+        <label><span>解压密码 <span class="hint">· 可选</span></span><input name="tx_unzip" value="{{$g.Text.Unzip}}" maxlength="64" autocomplete="off"></label>
+      </div>
+      <label data-tx-pane="link"><span>按钮文字 <span class="hint">· 可选，默认「打开链接」</span></span><input name="tx_button" value="{{$g.Text.Button}}" maxlength="30" placeholder="加入会员群"></label>
+      <label><span data-tx-pane="netdisk link">附加说明 <span class="hint">· 可选，显示在链接下方</span></span><span data-tx-pane="article">文章正文</span><span data-tx-pane="">发货内容</span>
+        <textarea name="tx_text" rows="6" placeholder="使用说明、注意事项…">{{$g.Text.Text}}</textarea></label>
+      <p class="muted pc-help">可以写 <code>{order_no}</code>（订单号）、<code>{email}</code>（买家邮箱）、<code>{qty}</code>（数量），发货时自动替换。</p>
       <label class="check"><input type="checkbox" name="tx_per_unit" {{if $g.Text.PerUnit}}checked{{end}}> 买几件发几份（默认整单只发一份）</label>
     </div>
 

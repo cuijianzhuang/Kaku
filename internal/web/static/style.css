@@ -763,3 +763,21 @@ button.chip:hover { background: var(--card); color: var(--text); }
 .kv dd, .kv dt, .crumbs, .product-card h3, .page-head h1, .card h1, .card h2, table.detail td { overflow-wrap: anywhere; }
 td { overflow-wrap: break-word; }
 .md pre { white-space: pre-wrap; }
+
+/* delivered net-disk shares, links and articles */
+.rich { border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; margin-top: 12px; background: var(--card); }
+.rich-head { display: flex; gap: 12px; align-items: center; }
+.rich-head > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rich-head b { font-size: 16px; }
+.rich-icon { width: 42px; height: 42px; flex: none; border-radius: 12px; display: grid; place-items: center; font-size: 22px; background: var(--bg-soft); }
+.rich-url { overflow-wrap: anywhere; }
+.rich-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 0; }
+.rich-actions > * { margin: 0; }
+.rich-kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 14px; margin: 14px 0 0; font-size: 14px; align-items: center; }
+.rich-kv dt { color: var(--muted); }
+.rich-kv dd { margin: 0; display: flex; gap: 10px; align-items: center; min-width: 0; }
+.rich-kv .secret { overflow-wrap: anywhere; min-width: 0; }
+.rich-kv .code { font-size: 16px; font-weight: 700; letter-spacing: .08em; }
+.rich-note { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line); font-size: 14px; }
+.rich.article { padding: 20px; font-size: 15px; line-height: 1.75; }
+.rich.article img { max-width: 100%; border-radius: var(--radius-sm); }
