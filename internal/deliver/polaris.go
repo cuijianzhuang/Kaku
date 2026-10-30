@@ -220,10 +220,15 @@ func (p *Polaris) Revoke(ctx context.Context, o *model.Order, _ *model.SKU) erro
 		if b.Status == model.LicenseRevoked {
 			continue
 		}
-		if _, err := c.Revoke(ctx, b.LicenseID, o.OrderNo, "订单退款"); err != nil {
+		// A purchase may issue several licenses. Each revocation needs its own
+		// stable idempotency key, including after a partial refund retry.
+		refundNo := fmt.Sprintf("%s-r%d", o.OrderNo, b.ID)
+		if _, err := c.Revoke(ctx, b.LicenseID, refundNo, "订单退款"); err != nil {
 			return err
 		}
-		p.env.Store.DB.Model(&model.LicenseBinding{}).Where("id = ?", b.ID).Update("status", model.LicenseRevoked)
+		if err := p.env.Store.DB.Model(&model.LicenseBinding{}).Where("id = ?", b.ID).Update("status", model.LicenseRevoked).Error; err != nil {
+			return err
+		}
 	}
 	if len(bs) > 0 && bs[0].Offline {
 		return fmt.Errorf("%w：离线许可证已在授权服务吊销，但已下发的 .lic 文件仍可离线使用", ErrRevokeUnsupported)
