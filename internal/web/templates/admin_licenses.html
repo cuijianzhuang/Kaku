@@ -3,15 +3,15 @@
 {{$p := .AdminPath}}
 <div class="page-head"><h1>许可证</h1></div>
 {{if not .PolarisReady}}<div class="notice" style="margin-bottom:16px"><svg class="ic"><use href="#i-info"/></svg><span>这里管理卖出的 Polaris 许可证。还没有连接授权服务，续期 / 吊销 / 同步暂不可用：<a href="{{$p}}/settings/polaris">去设置授权服务</a>。</span></div>{{end}}
-<form method="get" class="filters">
-  <input name="q" value="{{.Q}}" placeholder="license_id / 邮箱 / 实例 ID">
-  <select name="status">
-    <option value="">全部</option>
+<form method="get" class="filter-bar" aria-label="许可证筛选">
+  <label class="filter-search">搜索许可证 <input name="q" value="{{.Q}}" placeholder="许可证 ID / 邮箱 / 实例 ID"></label>
+  <label>许可证状态 <select name="status" aria-label="许可证状态">
+    <option value="">全部状态</option>
     <option value="issued" {{if eq .Status "issued"}}selected{{end}}>未激活</option>
     <option value="activated" {{if eq .Status "activated"}}selected{{end}}>已激活</option>
     <option value="revoked" {{if eq .Status "revoked"}}selected{{end}}>已吊销</option>
-  </select>
-  <button class="secondary">筛选</button>
+  </select></label>
+  <div class="filter-actions"><button class="secondary">筛选</button>{{if or .Q .Status}}<a href="{{$p}}/licenses">清除筛选</a>{{end}}</div>
 </form>
 <div class="card table-wrap"><table>
   <tr><th>License ID</th><th>订单</th><th>买家</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th><th>操作</th></tr>
@@ -34,7 +34,7 @@
       {{end}}
     </td>
   </tr>
-  {{else}}<tr><td colspan="8" class="muted" style="text-align:center;padding:28px">没有授权记录</td></tr>{{end}}
+  {{else}}<tr><td colspan="8" class="muted" style="text-align:center;padding:28px">{{if or .Q .Status}}没有符合条件的授权记录。<a href="{{$p}}/licenses">清除筛选</a>{{else}}还没有授权记录，许可证发货后会显示在这里。{{end}}</td></tr>{{end}}
 </table>
 <div class="pager">
   {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}

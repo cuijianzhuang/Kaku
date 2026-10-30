@@ -266,11 +266,6 @@ document.addEventListener('submit', (e) => {
   sync();
 })();
 
-// Selects that apply a filter as soon as they change.
-document.addEventListener('change', (e) => {
-  if (e.target.matches('select[data-autosubmit]') && e.target.form) e.target.form.submit();
-});
-
 // SKU form: each delivery method has its own section; the raw JSON box is
 // only for Polaris "JSON" mode.
 (function () {

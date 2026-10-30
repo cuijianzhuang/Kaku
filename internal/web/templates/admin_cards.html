@@ -5,39 +5,44 @@
 {{if not .SKUs}}
   <div class="card"><p>还没有「卡密库存」类型的规格。请先在商品里新增规格并选择发货方式「卡密库存」。</p></div>
 {{else}}
-<form method="get" class="filters">
-  <label>规格
-    <select name="sku" data-autosubmit>
+<form method="get" class="filter-bar" aria-label="卡密筛选">
+  <label class="filter-search">规格
+    <select name="sku" aria-label="规格">
       {{range .SKUs}}<option value="{{.ID}}" {{if eq .ID $.SKUID}}selected{{end}}>{{index $.Titles .ProductID}} · {{.Name}}（可售 {{.StockCache}}）</option>{{end}}
     </select>
   </label>
   <label>状态
-    <select name="status" data-autosubmit>
-      <option value="">全部</option>
+    <select name="status" aria-label="卡密状态">
+      <option value="">全部状态</option>
       <option value="available" {{if eq $.Status "available"}}selected{{end}}>可售</option>
       <option value="reserved" {{if eq $.Status "reserved"}}selected{{end}}>已预占</option>
       <option value="sold" {{if eq $.Status "sold"}}selected{{end}}>已售</option>
       <option value="void" {{if eq $.Status "void"}}selected{{end}}>已作废</option>
     </select>
   </label>
+  <div class="filter-actions"><button class="secondary">筛选</button>{{if .Status}}<a href="{{$p}}/cards?sku={{.SKUID}}">清除筛选</a>{{end}}</div>
 </form>
 
-<div class="stats">
-  <div class="stat"><span class="muted">可售</span><b>{{index .Counts "available"}}</b></div>
-  <div class="stat"><span class="muted">已预占</span><b>{{index .Counts "reserved"}}</b></div>
-  <div class="stat"><span class="muted">已售</span><b>{{index .Counts "sold"}}</b></div>
-  <div class="stat"><span class="muted">已作废</span><b>{{index .Counts "void"}}</b></div>
+<div class="card stock-summary">
+  <div class="stock-context"><h2>当前规格库存</h2><p>{{index .Titles .SKU.ProductID}} · {{.SKU.Name}}</p><span class="muted">包含全部状态；下方列表按筛选条件显示。</span></div>
+  <dl class="stock-counts">
+    <div><dt>可售</dt><dd>{{index .Counts "available"}}</dd></div>
+    <div><dt>已预占</dt><dd>{{index .Counts "reserved"}}</dd></div>
+    <div><dt>已售</dt><dd>{{index .Counts "sold"}}</dd></div>
+    <div><dt>已作废</dt><dd>{{index .Counts "void"}}</dd></div>
+  </dl>
 </div>
 
 <div style="margin-top:16px">
   <div class="card">
     <h2 style="margin-top:0">导入卡密</h2>
-    <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack">
+    <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack" data-edit-form>
+      <p class="muted import-target">导入到：{{index .Titles .SKU.ProductID}} · {{.SKU.Name}}</p>
       <input type="hidden" name="sku_id" value="{{.SKUID}}">
       <label><span>每行一条 <span class="hint">· 自动去重，跨规格也不会重复</span></span><textarea name="cards" placeholder="每行一条，例如：&#10;CARD-0001&#10;账号----密码"></textarea></label>
       <div><span class="field-label">或上传文件 <span class="hint">· TXT / CSV，取第一列</span></span>
         <label class="btn secondary file-btn"><svg class="ic"><use href="#i-download"/></svg><span data-file-name>选择文件</span><input type="file" name="file" accept=".txt,.csv,text/plain,text/csv"></label></div>
-      <button>导入</button>
+      <div class="form-foot"><button>导入</button><span class="edit-status" data-edit-status hidden>尚未导入</span></div>
     </form>
   </div>
   <div class="card">
@@ -63,7 +68,7 @@
       <td>{{if .OrderNo}}<a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{else}}—{{end}}</td><td class="nowrap muted">{{date .CreatedAt}}</td>
       <td>{{if eq .Status "available"}}<form method="post" action="{{$p}}/cards/{{.ID}}/void" class="inline" data-confirm="作废这条卡密？"><button class="link">作废</button></form>{{end}}</td>
     </tr>
-    {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">没有卡密</td></tr>{{end}}
+    {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">{{if .Status}}没有符合条件的卡密。<a href="{{$p}}/cards?sku={{.SKUID}}">清除筛选</a>{{else}}当前规格还没有卡密，可在上方粘贴或上传文件导入。{{end}}</td></tr>{{end}}
   </table>
   <div class="pager">
     {{if gt .Page 1}}<a href="?sku={{.SKUID}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}

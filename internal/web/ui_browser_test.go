@@ -24,7 +24,25 @@ func TestLiveUIBrowser(t *testing.T) {
 	if err := e.st.SaveSettings(st); err != nil {
 		t.Fatal(err)
 	}
-	e.stockOrder(1900)
+	order := e.stockOrder(1900)
+	// Long filter options and reserved URL characters must not widen the page
+	// or change the search after toggling a product.
+	var stockSKU model.SKU
+	if err := e.st.DB.Take(&stockSKU, order.SKUID).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.DB.Model(&model.Product{}).Where("id = ?", stockSKU.ProductID).Update("title", "卡密服务 · Pro & Team + 2026").Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.DB.Model(&model.SKU{}).Where("id = ?", order.SKUID).Update("name", "长规格名称 / "+strings.Repeat("StockSubscriptionWithoutSpaces", 4)).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, status := range []string{model.LicenseIssued, model.LicenseActivated, model.LicenseRevoked} {
+		binding := model.LicenseBinding{OrderID: order.ID, LicenseID: "lic_ui_" + status, Email: "filters+ui@example.com", Plan: "pro", Status: status}
+		if err := e.st.DB.Create(&binding).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
 	cat := model.Category{Name: "数字服务与订阅", Visible: true}
 	if err := e.st.DB.Create(&cat).Error; err != nil {
 		t.Fatal(err)

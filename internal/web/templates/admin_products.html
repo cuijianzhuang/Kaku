@@ -5,17 +5,18 @@
   <h1>商品</h1>
   <div class="actions"><a class="btn secondary" href="{{$p}}/products/quick"><svg class="ic"><use href="#i-box"/></svg>从模板创建</a><a class="btn secondary" href="{{$p}}/categories"><svg class="ic"><use href="#i-tag"/></svg>管理分类</a><a class="btn" href="{{$p}}/products/new"><svg class="ic"><use href="#i-plus"/></svg>新增商品</a></div>
 </div>
-<form method="get" class="filters list-tools">
-  <input name="q" value="{{.Q}}" placeholder="搜索商品名称" aria-label="搜索商品">
-  <select name="category" data-autosubmit aria-label="分类"><option value="">全部分类</option>{{range .Categories}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Cat}}selected{{end}}>{{.Name}}</option>{{end}}</select>
-  <div class="seg">
-    <a href="?q={{.Q}}&category={{.Cat}}" {{if not .Status}}class="on"{{end}}>全部</a>
-    <a href="?q={{.Q}}&category={{.Cat}}&status=on" {{if eq .Status "on"}}class="on"{{end}}>在售</a>
-    <a href="?q={{.Q}}&category={{.Cat}}&status=off" {{if eq .Status "off"}}class="on"{{end}}>下架</a>
-    <a href="?q={{.Q}}&category={{.Cat}}&status=soldout" {{if eq .Status "soldout"}}class="on"{{end}}>缺货</a>
-  </div>
-  <input type="hidden" name="status" value="{{.Status}}">
+<form method="get" class="filter-bar" aria-label="商品筛选">
+  <label class="filter-search">搜索商品 <input name="q" value="{{.Q}}" placeholder="输入商品名称"></label>
+  <label>分类 <select name="category" aria-label="分类"><option value="">全部分类</option>{{range .Categories}}<option value="{{.ID}}" {{if eq (printf "%d" .ID) $.Cat}}selected{{end}}>{{.Name}}</option>{{end}}</select></label>
+  <fieldset class="filter-status"><legend>商品状态</legend><div class="seg-picker">
+    <label><input type="radio" name="status" value="" {{if not .Status}}checked{{end}}><span>全部</span></label>
+    <label><input type="radio" name="status" value="on" {{if eq .Status "on"}}checked{{end}}><span>在售</span></label>
+    <label><input type="radio" name="status" value="off" {{if eq .Status "off"}}checked{{end}}><span>下架</span></label>
+    <label><input type="radio" name="status" value="soldout" {{if eq .Status "soldout"}}checked{{end}}><span>缺货</span></label>
+  </div></fieldset>
+  <div class="filter-actions"><button class="secondary">筛选</button>{{if or .Q .Cat .Status}}<a href="{{$p}}/products">清除筛选</a>{{end}}</div>
 </form>
+<p class="list-summary muted">{{if or .Q .Cat .Status}}筛选结果：{{end}}共 {{len .Rows}} 件商品</p>
 <div class="card table-wrap"><table class="product-list">
   <tr><th>商品</th><th>价格</th><th>库存</th><th>近 30 天售出</th><th>状态</th><th></th></tr>
   {{range .Rows}}
@@ -31,7 +32,7 @@
     <td>{{if .Sold30}}{{.Sold30}}{{else}}<span class="muted">0</span>{{end}}</td>
     <td>
       <form method="post" action="{{$p}}/products/{{.ID}}/toggle" class="inline" {{if eq .Status "on"}}data-confirm="下架「{{.Title}}」？买家将看不到这个商品。"{{end}}>
-        <input type="hidden" name="back" value="{{$p}}/products?q={{$.Q}}&category={{$.Cat}}&status={{$.Status}}">
+        <input type="hidden" name="back" value="{{$p}}/products?q={{query $.Q}}&category={{query $.Cat}}&status={{query $.Status}}">
         <button class="toggle {{if eq .Status "on"}}on{{end}}" title="点击{{if eq .Status "on"}}下架{{else}}上架{{end}}"><span class="knob"></span>{{if eq .Status "on"}}在售{{else}}下架{{end}}</button>
       </form>
     </td>
