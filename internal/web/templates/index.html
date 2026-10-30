@@ -2,10 +2,12 @@
 <section class="hero">
   <h1>{{.Site}}</h1>
   <p>{{if .Settings.Notice}}{{.Settings.Notice}}{{else}}在线支付 · 发货内容在订单页查看 · 凭邮箱和查询密码随时查单{{end}}</p>
-  <label class="search" aria-label="搜索商品">
+  <div class="search">
     <svg class="ic"><use href="#i-search"/></svg>
-    <input type="search" placeholder="搜索商品" data-filter=".product-card" autocomplete="off">
-  </label>
+    <input type="search" placeholder="搜索商品或规格" aria-label="搜索商品或规格" data-filter=".product-card" autocomplete="off">
+    <button type="button" class="search-clear" data-filter-clear aria-label="清除搜索" hidden><svg class="ic"><use href="#i-x"/></svg></button>
+  </div>
+  <p class="search-feedback muted" data-filter-status role="status" aria-live="polite" hidden></p>
 </section>
 
 {{if not .Categories}}
@@ -15,14 +17,14 @@
 </div>
 {{else}}
   {{if gt (len .Categories) 1}}
-  <div class="chips">{{range .Categories}}<a class="chip" href="#cat-{{.ID}}">{{.Name}}</a>{{end}}</div>
+  <nav class="chips" aria-label="商品分类">{{range .Categories}}<a class="chip" href="#cat-{{.ID}}">{{.Name}}</a>{{end}}</nav>
   {{end}}
   {{range .Categories}}
   <section id="cat-{{.ID}}" data-section>
     <h2 class="section-title">{{.Name}} <span class="count">{{len .Products}} 件商品</span></h2>
     <div class="grid">
       {{range .Products}}
-      <a class="product-card" href="/p/{{.ID}}" data-title="{{.Title}}">
+      <a class="product-card" href="/p/{{.ID}}" data-title="{{.Title}} {{range .SKUs}}{{.Name}} {{end}}">
         {{if .Cover}}<img class="cover" src="{{.Cover}}" alt="" loading="lazy">{{else}}<div class="cover ph" style="--h: {{hue .ID}}">{{initial .Title}}</div>{{end}}
         <div class="body">
           <div class="title">{{.Title}}</div>
@@ -41,6 +43,7 @@
   <div class="card empty" data-filter-empty hidden>
     <svg class="ic"><use href="#i-search"/></svg>
     <p>没有找到匹配的商品</p>
+    <button type="button" class="secondary" data-filter-clear hidden>清除搜索，查看全部商品</button>
   </div>
 {{end}}
 {{end}}

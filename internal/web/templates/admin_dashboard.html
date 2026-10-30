@@ -10,13 +10,14 @@
 </div>
 {{with .NewRelease}}<a class="flash info update-banner" href="{{$p}}/update"><svg class="ic"><use href="#i-upgrade"/></svg><span>Kaku 有新版本 <b>{{.Tag}}</b>，点击查看并升级</span></a>{{end}}
 {{with .Setup}}
-<div class="card setup-card">
-  <h2 style="margin-top:0">开店检查</h2>
+{{$done := 0}}{{range .}}{{if .Done}}{{$done = add $done 1}}{{end}}{{end}}
+<details class="card setup-card">
+  <summary class="setup-summary"><span class="setup-heading"><svg class="ic"><use href="#i-bag"/></svg><b>开店检查</b></span><span class="setup-progress">{{$done}} / {{len .}} 已完成</span><span class="disclosure-arrow" aria-hidden="true"></span></summary>
   <ul class="setup-list">
     {{range .}}<li class="{{if .Done}}done{{end}}"><svg class="ic"><use href="#i-{{if .Done}}check{{else}}alert{{end}}"/></svg>
       <div><b>{{.Text}}</b><small class="muted">{{.Hint}}</small></div>{{if not .Done}}<a class="btn secondary sm" href="{{.Link}}">去设置</a>{{end}}</li>{{end}}
   </ul>
-</div>
+</details>
 {{end}}
 <div class="stats">
   {{range .Today}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>

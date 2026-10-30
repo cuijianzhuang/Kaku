@@ -118,25 +118,44 @@ document.addEventListener('submit', (e) => {
   update();
 })();
 
-// Storefront search: filter product cards by title, hide empty sections.
+// Catalog search updates results and category anchors together. Clear restores
+// every category and returns keyboard focus to the search field.
 (function () {
   const input = document.querySelector('input[data-filter]');
   if (!input) return;
-  const cards = document.querySelectorAll(input.getAttribute('data-filter'));
+  const cards = [...document.querySelectorAll(input.getAttribute('data-filter'))];
   const empty = document.querySelector('[data-filter-empty]');
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
+  const status = document.querySelector('[data-filter-status]');
+  const clears = document.querySelectorAll('[data-filter-clear]');
+  const update = () => {
+    const q = input.value.trim().toLocaleLowerCase();
     let shown = 0;
-    cards.forEach((c) => {
-      const hit = !q || (c.getAttribute('data-title') || '').toLowerCase().includes(q);
-      c.hidden = !hit;
-      if (hit) shown++;
+    cards.forEach((card) => {
+      card.hidden = !!q && !(card.getAttribute('data-title') || '').toLocaleLowerCase().includes(q);
+      if (!card.hidden) shown++;
     });
-    document.querySelectorAll('[data-section]').forEach((s) => {
-      s.hidden = !s.querySelector('.product-card:not([hidden])');
+    document.querySelectorAll('[data-section]').forEach((section) => {
+      section.hidden = !section.querySelector('.product-card:not([hidden])');
+      document.querySelectorAll('.chips a').forEach((link) => {
+        if (link.hash === '#' + section.id) link.hidden = section.hidden;
+      });
     });
     if (empty) empty.hidden = shown > 0;
-  });
+    clears.forEach((button) => { button.hidden = !input.value; });
+    if (status) {
+      status.hidden = !q;
+      status.textContent = q ? '找到 ' + shown + ' 件商品' : '';
+    }
+  };
+  input.addEventListener('input', update);
+  input.addEventListener('search', update);
+  clears.forEach((button) => button.addEventListener('click', () => {
+    input.value = '';
+    update();
+    input.focus();
+  }));
+  update(); // also restore consistency after a browser restores form values
+  window.addEventListener('pageshow', update);
 })();
 
 // Phones show list tables as cards: copy each column's header onto its
@@ -178,8 +197,59 @@ document.addEventListener('submit', (e) => {
   }
 })();
 
-// Close the admin menu after picking a page (back/forward cache keeps it open otherwise).
-window.addEventListener('pageshow', () => { const t = document.getElementById('nav-toggle'); if (t) t.checked = false; });
+// The mobile drawer has one focus boundary. Desktop navigation and the
+// checkbox/label fallback keep working without depending on this controller.
+(function () {
+  const toggle = document.getElementById('nav-toggle');
+  const sidebar = document.getElementById('admin-navigation');
+  const opener = document.querySelector('[data-nav-open]');
+  if (!toggle || !sidebar || !opener) return;
+  const close = sidebar.querySelector('[data-nav-close]');
+  const fallback = document.querySelector('label[for="nav-toggle"].mbar-btn');
+  const content = document.querySelector('.shell > .content');
+  const bar = document.querySelector('.mbar');
+  const media = window.matchMedia('(max-width: 900px)');
+  const focusable = () => [...sidebar.querySelectorAll('a[href], button:not([disabled]), input:not([disabled])')].filter((el) => el.getClientRects().length && !el.hidden);
+  const sync = (restoreFocus = false) => {
+    const open = media.matches && toggle.checked;
+    opener.setAttribute('aria-expanded', String(open));
+    document.body.classList.toggle('nav-open', open);
+    sidebar.inert = media.matches && !open;
+    if (media.matches && !open) sidebar.setAttribute('aria-hidden', 'true'); else sidebar.removeAttribute('aria-hidden');
+    if (open) { sidebar.setAttribute('role', 'dialog'); sidebar.setAttribute('aria-modal', 'true'); }
+    else { sidebar.removeAttribute('role'); sidebar.removeAttribute('aria-modal'); }
+    content.inert = open;
+    bar.inert = open;
+    if (restoreFocus && media.matches) opener.focus();
+  };
+  const dismiss = (restoreFocus = true) => { toggle.checked = false; sync(restoreFocus); };
+  opener.hidden = false;
+  close.hidden = false;
+  if (fallback) fallback.hidden = true;
+  opener.addEventListener('click', () => {
+    toggle.checked = true;
+    sync();
+    close.focus();
+  });
+  close.addEventListener('click', () => dismiss());
+  toggle.addEventListener('change', () => sync(!toggle.checked));
+  document.querySelector('.scrim').addEventListener('click', (e) => {
+    e.preventDefault(); // do not let the label toggle the checkbox again
+    dismiss();
+  });
+  sidebar.addEventListener('click', (e) => { if (e.target.closest('a[href]') && media.matches) dismiss(false); });
+  document.addEventListener('keydown', (e) => {
+    if (!media.matches || !toggle.checked) return;
+    if (e.key === 'Escape') { e.preventDefault(); dismiss(); return; }
+    if (e.key !== 'Tab') return;
+    const items = focusable(), first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && (document.activeElement === first || !sidebar.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (document.activeElement === last || !sidebar.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
+  });
+  media.addEventListener('change', () => dismiss(false));
+  window.addEventListener('pageshow', () => dismiss(false));
+  sync();
+})();
 
 // Selects that apply a filter as soon as they change.
 document.addEventListener('change', (e) => {

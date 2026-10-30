@@ -16,3 +16,29 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
       - run: CGO_ENABLED=0 go build -trimpath -o kaku ./cmd/kaku
+  ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install browser dependencies
+        run: |
+          python -m pip install playwright==1.62.0
+          python -m playwright install --with-deps chromium webkit
+      - name: Storefront and admin UI with real Go pages
+        run: go test -count=1 -timeout=5m -v ./internal/web -run '^TestLiveUIBrowser$'
+        env:
+          KAKU_UI_BROWSER_TEST: '1'
+          KAKU_UI_SCREENSHOTS: /tmp/kaku-ui-screenshots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kaku-ui-screenshots
+          path: /tmp/kaku-ui-screenshots
+          if-no-files-found: ignore
