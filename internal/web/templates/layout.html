@@ -116,7 +116,7 @@
 
 {{define "logo"}}<span class="logo">{{if .Settings.LogoURL}}<img src="{{.Settings.LogoURL}}" alt="">{{else}}<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#kaku-mark-k"/></svg>{{end}}</span>{{end}}
 
-{{define "navlink"}}<a class="nav-link {{if .On}}on{{end}}" href="{{.Href}}"><svg class="ic"><use href="#i-{{.Icon}}"/></svg>{{.Label}}</a>{{end}}
+{{define "navlink"}}<a class="nav-link {{if .On}}on{{end}}" href="{{.Href}}"{{if .On}} aria-current="page"{{end}}><svg class="ic"><use href="#i-{{.Icon}}"/></svg>{{.Label}}</a>{{end}}
 
 {{define "admin"}}<!doctype html>
 <html lang="zh-CN">
@@ -145,12 +145,13 @@
   <input type="checkbox" id="nav-toggle" class="nav-toggle" hidden>
   <header class="mbar">
     <label for="nav-toggle" class="mbar-btn" aria-label="菜单"><svg class="ic"><use href="#i-menu"/></svg></label>
+    <button type="button" class="mbar-btn nav-opener" data-nav-open aria-label="打开菜单" aria-controls="admin-navigation" aria-expanded="false" hidden><svg class="ic"><use href="#i-menu"/></svg></button>
     <a class="mbar-title" href="{{$p}}">{{template "logo" .}}<span>{{template "title" .}}</span></a>
     <a class="mbar-btn" href="/" target="_blank" rel="noopener" aria-label="查看商店"><svg class="ic"><use href="#i-bag"/></svg></a>
   </header>
   <label for="nav-toggle" class="scrim" aria-hidden="true"></label>
-  <aside class="sidebar">
-    <a class="brand" href="{{$p}}">{{template "logo" .}}<span>{{.Site}}</span></a>
+  <aside class="sidebar" id="admin-navigation" aria-label="后台导航" tabindex="-1">
+    <div class="sidebar-head"><a class="brand" href="{{$p}}">{{template "logo" .}}<span>{{.Site}}</span></a><button type="button" class="mbar-btn nav-close" data-nav-close aria-label="关闭菜单" hidden><svg class="ic"><use href="#i-x"/></svg></button></div>
     <div class="nav-group">经营</div>
     {{template "navlink" (nav "仪表盘" "home" $p .Path true)}}
     {{template "navlink" (nav "订单" "receipt" (printf "%s/orders" $p) .Path false)}}

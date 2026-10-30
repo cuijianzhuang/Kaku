@@ -214,6 +214,16 @@ go test -race ./...
 go vet ./...
 ```
 
+界面回归使用真实 Go 页面、临时 SQLite 数据和本地支付测试服务，覆盖 Chromium / WebKit、六套主题的深浅模式、手机/桌面与窄屏边界，以及菜单焦点、搜索、下单进入支付页。Linux WebKit 模拟不等于真机 iOS 验收；测试不会访问真实支付网关。
+
+```bash
+python3 -m pip install playwright==1.62.0
+python3 -m playwright install --with-deps chromium webkit
+KAKU_UI_BROWSER_TEST=1 go test -count=1 -timeout=5m -v ./internal/web -run '^TestLiveUIBrowser$'
+```
+
+可设置 `KAKU_UI_SCREENSHOTS=/tmp/kaku-ui` 保存截图，或 `KAKU_UI_BROWSERS=chromium` 仅检查一个引擎。未设置 `KAKU_UI_BROWSER_TEST=1` 时，普通 Go 测试会跳过该浏览器用例；CI 的独立 UI 任务会执行并保存截图。
+
 ## 发布
 
 每次合并到 `main` 自动发布：版本号在最新 tag 上递增补丁号，跑完测试后构建各系统二进制发布到 GitHub Release，并推送多架构镜像到 GHCR。提交信息带 `[skip release]` 可跳过；也可在 Actions 里手动运行 release 选择 minor / major，或直接推送 `v*` tag。
