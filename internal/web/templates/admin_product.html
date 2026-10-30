@@ -13,7 +13,7 @@
 </div>
 {{end}}
 <div class="card">
-  <form method="post" action="{{$p}}/products" class="stack" enctype="multipart/form-data">
+  <form method="post" action="{{$p}}/products" data-edit-form class="stack" enctype="multipart/form-data">
     <input type="hidden" name="id" value="{{$prod.ID}}">
     <div class="two">
       <label>名称 <input name="title" value="{{$prod.Title}}" required maxlength="200"></label>
@@ -69,7 +69,7 @@
       <label>状态 <select name="status"><option value="on" {{if eq $prod.Status "on"}}selected{{end}}>上架</option><option value="off" {{if eq $prod.Status "off"}}selected{{end}}>下架</option></select></label>
       <label>排序 <input type="number" name="sort" value="{{$prod.Sort}}"></label>
     </div>
-    <button>保存商品</button>
+    <div class="save-actions"><span class="edit-status" data-edit-status role="status" hidden>有未保存的修改</span><button>保存商品</button></div>
   </form>
 </div>
 

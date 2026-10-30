@@ -77,9 +77,20 @@ document.addEventListener('submit', (e) => {
     }
     const qty = form.querySelector('input[name=qty]');
     if (sku && qty) {
-      qty.max = sku.getAttribute('data-limit');
-      if (+qty.value > +qty.max) qty.value = qty.max;
+      const limit = Number(sku.getAttribute('data-limit'));
+      if (limit > 0) qty.max = String(limit); else qty.removeAttribute('max');
+      if (limit > 0 && +qty.value > limit) qty.value = String(limit);
     }
+    const method = form.querySelector('input[name=method]:checked');
+    const buy = form.querySelector('[data-buy-submit]');
+    if (buy) buy.disabled = !sku || !method || buy.hasAttribute('data-sold-out') || form.hasAttribute('data-submitting');
+    const feedback = form.querySelector('[data-order-feedback]');
+    if (feedback) {
+      feedback.hidden = !sku || !!method || !form.querySelector('input[name=method]');
+      feedback.textContent = feedback.hidden ? '' : '当前规格暂不支持商店已开通的支付方式，请选择其他规格或联系客服。';
+    }
+    const hint = form.querySelector('[data-quantity-hint]');
+    if (hint) hint.textContent = qty && qty.max ? '当前规格每单最多 ' + qty.max + ' 件' : '';
     total();
   };
   // Reference total: unit price × quantity in the chosen method's currency,
@@ -96,8 +107,11 @@ document.addEventListener('submit', (e) => {
     if (!out) return;
     const sku = form.querySelector('input[name=sku_id]:checked');
     const m = form.querySelector('input[name=method]:checked');
-    const qty = Math.max(1, parseInt(form.querySelector('input[name=qty]')?.value || '1', 10));
-    if (!sku || !m) { out.textContent = '—'; return; }
+    const field = form.querySelector('input[name=qty]');
+    const qty = Number(field.value);
+    form.querySelector('[data-step="-1"]').disabled = qty <= 1;
+    form.querySelector('[data-step="1"]').disabled = !!field.max && qty >= Number(field.max);
+    if (!sku || !m || !field.validity.valid) { out.textContent = '—'; return; }
     const cur = m.getAttribute('data-currency') || 'CNY';
     const unit = parseInt(sku.getAttribute('data-' + cur.toLowerCase()) || '0', 10);
     let pct = 100, best = 0;
@@ -111,8 +125,9 @@ document.addEventListener('submit', (e) => {
   form.addEventListener('input', total);
   form.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => {
     const q = form.querySelector('input[name=qty]');
-    const v = (parseInt(q.value, 10) || 1) + parseInt(b.getAttribute('data-step'), 10);
-    q.value = Math.min(Math.max(v, 1), parseInt(q.max || '99', 10));
+    const current = parseInt(q.value, 10);
+    const v = (Number.isFinite(current) ? current : 0) + Number(b.getAttribute('data-step'));
+    q.value = Math.min(Math.max(v, 1), q.max ? Number(q.max) : Infinity);
     total();
   }));
   update();
@@ -611,7 +626,7 @@ document.querySelectorAll('[data-cat-picker]').forEach((box) => {
   if (window.matchMedia('(max-width: 900px)').matches && body.scrollHeight > 260) {
     body.classList.add('clamped');
     more.hidden = false;
-    more.addEventListener('click', () => { body.classList.remove('clamped'); more.hidden = true; });
+    more.addEventListener('click', () => { body.classList.remove('clamped'); more.setAttribute('aria-expanded', 'true'); more.hidden = true; });
   }
 })();
 
@@ -645,3 +660,66 @@ document.addEventListener('click', (e) => {
     });
   }
 });
+
+
+// Keep draft values in memory only. The browser's native unload prompt protects
+// settings and product edits without persisting passwords or uploaded content.
+(function () {
+  const editors = [...document.querySelectorAll('form[data-edit-form]')];
+  const snapshots = new Map();
+  const buttons = new Map();
+  const submitterFields = new Set();
+  let navigating = false;
+  const values = (form) => JSON.stringify([...new FormData(form)].map(([key, value]) =>
+    [key, value instanceof File ? (value.name ? [value.name, value.size, value.lastModified] : '') : value]));
+  const dirty = (form) => values(form) !== snapshots.get(form);
+  const refresh = (form) => {
+    const status = form.querySelector('[data-edit-status]');
+    if (status) status.hidden = !dirty(form);
+  };
+  editors.forEach((form) => {
+    snapshots.set(form, values(form));
+    const later = () => setTimeout(() => refresh(form), 0);
+    form.addEventListener('input', later, true);
+    form.addEventListener('change', later, true);
+    form.addEventListener('click', later); // image removal, generated secrets, theme revert
+  });
+  window.addEventListener('beforeunload', (event) => {
+    if (!navigating && editors.some(dirty)) { event.preventDefault(); event.returnValue = ''; }
+  });
+  // Registered after the confirmation and asynchronous-action handlers. Canceled
+  // confirmations or fetch-based actions must not leave a form locked.
+  document.addEventListener('submit', (event) => {
+    const form = event.target;
+    if (event.defaultPrevented || (form.getAttribute('method') || 'get').toLowerCase() !== 'post') return;
+    if (form.hasAttribute('data-submitting')) { event.preventDefault(); return; }
+    navigating = true; // an intentional POST should not get a second unload prompt
+    if (!form.matches('[data-edit-form], [data-order]')) return;
+    form.setAttribute('data-submitting', '');
+    form.setAttribute('aria-busy', 'true');
+    // Paint busy state before native navigation suspends timers. Preserve a
+    // named submitter's value, since disabled controls are not serialized.
+    const submitter = event.submitter;
+    if (submitter && submitter.name) {
+      const field = document.createElement('input');
+      field.type = 'hidden'; field.name = submitter.name; field.value = submitter.value;
+      form.appendChild(field); submitterFields.add(field);
+    }
+    form.querySelectorAll('button:not([type]), button[type=submit], input[type=submit]').forEach((button) => {
+      buttons.set(button, { html: button.innerHTML, value: button.value, disabled: button.disabled });
+      button.disabled = true;
+      if (button.tagName === 'BUTTON') button.textContent = '提交中…'; else button.value = '提交中…';
+    });
+  });
+  window.addEventListener('pageshow', () => {
+    navigating = false;
+    buttons.forEach((state, button) => { button.innerHTML = state.html; button.value = state.value; button.disabled = state.disabled; });
+    buttons.clear();
+    submitterFields.forEach((field) => field.remove()); submitterFields.clear();
+    document.querySelectorAll('form[data-submitting]').forEach((form) => {
+      form.removeAttribute('data-submitting'); form.removeAttribute('aria-busy');
+      form.dispatchEvent(new Event('change'));
+    });
+    editors.forEach(refresh);
+  });
+})();

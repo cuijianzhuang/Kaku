@@ -21,15 +21,17 @@
         {{if not .InStock}}<span class="tag err">已售罄</span>{{else if not .Unlimited}}<span class="tag">库存 {{.StockLeft}}</span>{{end}}
       </div>
       <p class="info-promise muted">{{if manualOnly .Product}}付款后由店主处理，完成后在订单页和邮件中查看{{else}}付款后自动发货，可在订单页、邮件中随时查看{{end}}</p>
+      {{if and .InStock .Methods}}<a class="btn secondary purchase-jump" href="#purchase">选择规格与支付 <span aria-hidden="true">↓</span></a>{{end}}
     </div>
   </div>
   <div class="card desc" data-desc>
     <h2 class="desc-title">商品详情</h2>
-    <div class="desc-body" data-desc-body>{{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">{{if manualOnly .Product}}付款后由店主处理，完成后可在订单页查看。{{else}}付款成功后自动发货，可在订单页或订单查询中查看。{{end}}</p>{{end}}</div>
-    <button type="button" class="link desc-more" data-desc-more hidden>展开全部</button>
+    <div class="desc-body" id="product-description" data-desc-body>{{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">{{if manualOnly .Product}}付款后由店主处理，完成后可在订单页查看。{{else}}付款成功后自动发货，可在订单页或订单查询中查看。{{end}}</p>{{end}}</div>
+    <button type="button" class="link desc-more" data-desc-more aria-controls="product-description" aria-expanded="false" hidden>展开全部</button>
   </div>
 
-  <div class="card order-panel">
+  <div class="card order-panel" id="purchase" role="region" tabindex="-1" aria-labelledby="purchase-title">
+    <h2 id="purchase-title" class="purchase-title">购买信息</h2>
     {{if not .Methods}}
       <div class="flash err"><svg class="ic"><use href="#i-alert"/></svg><span>商店暂未开通任何支付方式</span></div>
     {{end}}
@@ -40,11 +42,11 @@
         <div class="options">
           {{range $i, $k := .SKUs}}
           <label class="option sku {{if eq $k.Stock 0}}disabled{{end}}">
-            <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{if and (gt $k.Stock 0) (lt $k.Stock $k.LimitPerOrder)}}{{$k.Stock}}{{else}}{{$k.LimitPerOrder}}{{end}}"
+            <input type="radio" name="sku_id" value="{{$k.ID}}" data-limit="{{$k.QuantityLimit}}"
               data-methods="{{range $j, $m := $k.Methods}}{{if $j}},{{end}}{{$m.ID}}{{end}}"
               data-ask="{{$k.Ask}}" data-note="{{$k.Note}}" data-tiers="{{$k.Tiers}}"
               data-cny="{{$k.PriceCNY}}" data-usdt="{{$k.PriceUSDT}}" data-xtr="{{$k.PriceStars}}"
-              {{if eq $k.Stock 0}}disabled{{else if $.Form.sku_id}}{{if eq (printf "%d" $k.ID) $.Form.sku_id}}checked{{end}}{{else if eq $i 0}}checked{{end}} required>
+              {{if eq $k.Stock 0}}disabled{{else if $k.Selected}}checked{{end}} required>
             <span class="sku-body">
               <span class="sku-top"><span class="name">{{$k.Name}}</span>{{if eq $k.Stock 0}}<span class="stock out">缺货</span>{{else if gt $k.Stock 0}}<span class="stock">剩 {{$k.Stock}}</span>{{end}}</span>
               <span class="price">{{if $k.PriceCNY}}{{money $k.PriceCNY "CNY"}}{{end}}{{if and $k.PriceCNY $k.PriceUSDT}} / {{end}}{{if $k.PriceUSDT}}{{money $k.PriceUSDT "USDT"}}{{end}}{{if and (not $k.PriceCNY) (not $k.PriceUSDT) $k.PriceStars}}{{money $k.PriceStars "XTR"}}{{end}}</span>
@@ -58,10 +60,12 @@
         <div class="field-label">购买数量</div>
         <div class="qty">
           <button type="button" data-step="-1" aria-label="减少">−</button>
-          <input type="number" name="qty" value="{{or .Form.qty "1"}}" min="1" max="10" required inputmode="numeric">
+          <input type="number" name="qty" aria-label="购买数量" value="{{or .Form.qty "1"}}" min="1" {{if gt .QuantityLimit 0}}max="{{.QuantityLimit}}"{{end}} required inputmode="numeric">
           <button type="button" data-step="1" aria-label="增加">+</button>
         </div>
+        <p class="muted quantity-hint" data-quantity-hint>{{if gt .QuantityLimit 0}}当前规格每单最多 {{.QuantityLimit}} 件{{end}}</p>
       </div>
+      <p class="checkout-feedback" data-order-feedback role="status" {{if or .CanPurchase (not .Methods) (not .InStock)}}hidden{{end}}>当前规格暂不支持商店已开通的支付方式，请选择其他规格或联系客服。</p>
       <label data-ask-field hidden><span data-ask-label></span><input name="ask" maxlength="100" disabled required value="{{.Form.ask}}"></label>
       <div class="notice" data-note-field hidden><svg class="ic"><use href="#i-info"/></svg><span data-note-text></span></div>
       <label>邮箱（接收发货通知，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com" value="{{.Form.email}}"></label>
@@ -90,7 +94,7 @@
           <span class="muted">应付（参考）</span>
           <span class="price big" data-total>—</span>
         </div>
-        {{if not .InStock}}<button class="lg block" disabled>暂时缺货</button>{{else}}<button class="lg block" {{if not .Methods}}disabled{{end}}>立即购买</button>{{end}}
+        {{if not .InStock}}<button class="lg block" data-buy-submit data-sold-out disabled>暂时缺货</button>{{else}}<button class="lg block" data-buy-submit {{if not .CanPurchase}}disabled{{end}}>立即购买</button>{{end}}
       </div>
       {{if not .InStock}}<p class="muted" style="margin:0">全部规格都已售罄，可以<a href="/ticket">提交工单</a>询问补货时间。</p>{{end}}
       <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。优惠码在下单时计算。</p>
