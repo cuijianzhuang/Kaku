@@ -212,14 +212,17 @@ func TestCouponAndWholesale(t *testing.T) {
 
 // fakeLicense is a minimal polaris-license admin API.
 type fakeLicense struct {
-	mu      sync.Mutex
-	secret  string
-	issued  map[string]string // order_no → license id
-	revoked map[string]bool
-	extend  map[string]int
-	months  map[string]int
-	issues  []map[string]any
-	fail    int
+	mu             sync.Mutex
+	secret         string
+	issued         map[string]string // order_no → license id
+	revoked        map[string]bool
+	extend         map[string]int
+	months         map[string]int
+	issues         []map[string]any
+	revokeKeys     map[string]string
+	revokeCalls    map[string][]string
+	revokeFailOnce string
+	fail           int
 }
 
 func (f *fakeLicense) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -264,7 +267,24 @@ func (f *fakeLicense) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		json.NewEncoder(w).Encode(map[string]any{"license_id": id, "expires_at": "2028-01-01"})
 	case strings.HasSuffix(r.URL.Path, "/revoke"):
-		f.revoked[strings.Split(r.URL.Path, "/")[4]] = true
+		id, no := strings.Split(r.URL.Path, "/")[4], req["order_no"].(string)
+		if f.revokeKeys == nil {
+			f.revokeKeys = map[string]string{}
+			f.revokeCalls = map[string][]string{}
+		}
+		f.revokeCalls[id] = append(f.revokeCalls[id], no)
+		if prev, ok := f.revokeKeys[no]; ok && prev != id {
+			w.WriteHeader(http.StatusConflict)
+			json.NewEncoder(w).Encode(map[string]string{"error": "refund order belongs to another license"})
+			return
+		}
+		f.revokeKeys[no] = id
+		f.revoked[id] = true
+		if f.revokeFailOnce == id {
+			f.revokeFailOnce = ""
+			w.WriteHeader(http.StatusBadGateway) // revoked remotely, confirmation was lost
+			return
+		}
 		json.NewEncoder(w).Encode(map[string]any{"revoked": true})
 	default:
 		w.WriteHeader(404)
@@ -437,5 +457,59 @@ func TestPolarisTemplateSKU(t *testing.T) {
 	runJobs(s)
 	if fake.months[b.LicenseID] != 6 || fake.extend[b.LicenseID] != 0 {
 		t.Fatalf("renewal months %v days %v", fake.months, fake.extend)
+	}
+}
+
+// A multi-key refund can lose confirmation after a remote revocation. Retrying
+// must finish the remaining binding using exactly the same per-license key.
+func TestPolarisRefundRetriesPartialRemoteSuccess(t *testing.T) {
+	s, _ := setup(t)
+	fake := &fakeLicense{secret: strings.Repeat("s", 32), issued: map[string]string{}, revoked: map[string]bool{}, extend: map[string]int{}}
+	ts := httptest.NewServer(fake)
+	defer ts.Close()
+	s.PolarisClient = &polaris.Client{BaseURL: ts.URL, Secret: fake.secret}
+	sku := mkSKU(t, s, "polaris", `{"plan":"pro","days":30}`, 100)
+	o := order(t, s, sku, 2, "")
+	ctx := context.Background()
+	if _, err := s.MarkPaid(ctx, PaidInput{OrderNo: o.OrderNo, Channel: model.PayManual, TradeNo: "refund-test", Trusted: true}); err != nil {
+		t.Fatal(err)
+	}
+	runJobs(s)
+	var bs []model.LicenseBinding
+	if err := s.Store.DB.Where("order_id = ?", o.ID).Order("id").Find(&bs).Error; err != nil || len(bs) != 2 {
+		t.Fatal(bs, err)
+	}
+	fake.revokeFailOnce = bs[1].LicenseID
+	if _, err := s.Refund(ctx, o.ID, "first try"); err == nil {
+		t.Fatal("lost confirmation accepted")
+	}
+	got, err := s.OrderByNo(o.OrderNo)
+	if err != nil || got.Status != model.OrderDelivered {
+		t.Fatal("failed refund cannot be retried", got, err)
+	}
+	if _, err = s.Refund(ctx, o.ID, "retry"); err != nil {
+		t.Fatal(err)
+	}
+	if len(fake.revokeKeys) != 2 || len(fake.revoked) != 2 {
+		t.Fatal("keys not scoped per license", fake.revokeKeys)
+	}
+	calls := fake.revokeCalls[bs[1].LicenseID]
+	if len(calls) != 2 || calls[0] != calls[1] {
+		t.Fatal("refund retry changed key", calls)
+	}
+	if len(fake.revokeCalls[bs[0].LicenseID]) != 1 {
+		t.Fatal("completed binding was revoked again")
+	}
+	if err = s.Store.DB.Where("order_id = ?", o.ID).Find(&bs).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, b := range bs {
+		if b.Status != model.LicenseRevoked {
+			t.Fatal("binding not revoked", b.ID)
+		}
+	}
+	got, err = s.OrderByNo(o.OrderNo)
+	if err != nil || got.Status != model.OrderRefunded {
+		t.Fatal(got, err)
 	}
 }
