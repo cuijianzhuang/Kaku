@@ -125,3 +125,44 @@ func TestProductListAndPage(t *testing.T) {
 		t.Fatal("product page tags")
 	}
 }
+
+// The list and its CSV export must match the fields advertised by the search
+// box and retain status/channel constraints when matching license bindings.
+func TestOrderLicenseFilters(t *testing.T) {
+	e := setup(t)
+	c := e.login()
+	order := e.stockOrder(500)
+	other := model.Order{OrderNo: "other_filter_order", SKUID: order.SKUID, Status: model.OrderPending, Channel: model.ChannelWeb}
+	if err := e.st.DB.Create(&other).Error; err != nil {
+		t.Fatal(err)
+	}
+	binding := model.LicenseBinding{OrderID: order.ID, LicenseID: "lic_search_ui", Status: model.LicenseIssued}
+	if err := e.st.DB.Create(&binding).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"/manage/orders", "/manage/orders.csv"} {
+		for _, tc := range []struct {
+			query string
+			found bool
+		}{
+			{"q=lic_search_ui", true},
+			{"q=lic_search_ui&status=pending&channel=web", true},
+			{"q=lic_search_ui&status=delivered", false},
+			{"q=lic_search_ui&channel=tg", false},
+			{"q=lic_search_missing", false},
+		} {
+			resp, err := c.Get(e.ts.URL + path + "?" + tc.query)
+			if err != nil {
+				t.Fatal(err)
+			}
+			body, err := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil || resp.StatusCode != http.StatusOK {
+				t.Fatalf("%s %s: %d %v", path, tc.query, resp.StatusCode, err)
+			}
+			if strings.Contains(string(body), order.OrderNo) != tc.found || strings.Contains(string(body), other.OrderNo) {
+				t.Fatalf("%s %s returned the wrong orders: %s", path, tc.query, body)
+			}
+		}
+	}
+}

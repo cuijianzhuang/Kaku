@@ -11,11 +11,92 @@ def screenshot(page,name):
     if OUTPUT: page.screenshot(path=str(Path(OUTPUT)/name),full_page=not name.endswith('-menu.png'))
 
 def assert_layout(page):
-    assert page.evaluate('document.documentElement.scrollWidth <= innerWidth'), 'page has horizontal overflow: '+page.url
+    if not page.evaluate('document.documentElement.scrollWidth <= innerWidth'):
+        screenshot(page,'layout-overflow.png')
+        details=page.evaluate("""[...document.querySelectorAll('.content *')].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&(r.right>innerWidth+1||r.left<0)}).slice(0,12).map(e=>({tag:e.tagName,cls:e.className,width:e.getBoundingClientRect().width,right:e.getBoundingClientRect().right}))""")
+        raise AssertionError('page has horizontal overflow: '+page.url+' '+str(details))
 
 def local_only(route):
     if urlparse(route.request.url).netloc == urlparse(BASE).netloc: route.continue_()
     else: route.abort()
+
+def check_filters(page, engine, width, theme, mode, interactions=False):
+    for name,path in [('products','/manage/products'),('orders','/manage/orders'),('licenses','/manage/licenses'),('cards','/manage/cards')]:
+        page.goto(BASE+path);assert_layout(page)
+        bar=page.locator('.filter-bar');expect(bar).to_be_visible()
+        for control in bar.locator('input:not([type=radio]),select,button').all():
+            box=control.bounding_box()
+            assert box['width']>=60 and box['x']>=0 and box['x']+box['width']<=width+1, (name,box,width)
+            assert box['height']>= (44 if width<=640 else 40)-1, (name,box)
+        if theme=='forest': screenshot(page,f'{engine}-{width}-{mode}-{name}-filters.png')
+    if not interactions: return
+    page.goto(BASE+'/manage/products')
+    bar=page.get_by_role('form',name='商品筛选')
+    search=bar.get_by_label('搜索商品');search.fill('Pro & Team + 2026')
+    bar.get_by_label('分类',exact=True).select_option(index=1)
+    # Radio arrows change only the draft. Apply submits all current values once.
+    bar.get_by_role('radio',name='全部',exact=True).focus();page.keyboard.press('ArrowRight')
+    expect(bar.get_by_role('radio',name='在售',exact=True)).to_be_checked()
+    assert not urlparse(page.url).query
+    bar.get_by_role('button',name='筛选',exact=True).click()
+    expect(page.locator('.list-summary')).to_contain_text('共 1 件商品')
+    expect(page.locator('.product-list .prod-cell')).to_have_count(1)
+    expect(page.get_by_label('搜索商品')).to_have_value('Pro & Team + 2026')
+    before=parse_qs(urlparse(page.url).query)
+    def accept_toggle(dialog): dialog.accept()
+    page.on('dialog',accept_toggle)
+    page.locator('.product-list button.toggle').click();page.wait_for_url(re.compile(re.escape(BASE)+r'/manage/products\?'))
+    after=parse_qs(urlparse(page.url).query)
+    assert all(after.get(key)==before.get(key) for key in ['q','category','status']), page.url
+    expect(page.locator('.list-summary')).to_contain_text('共 0 件商品')
+    # Restore sale state through its native form without the on-sale filter.
+    page.goto(BASE+'/manage/products?q=Pro+%26+Team+%2B+2026&status=off')
+    page.locator('.product-list button.toggle').click();page.wait_for_url(re.compile(re.escape(BASE)+r'/manage/products\?'))
+    page.remove_listener('dialog',accept_toggle)
+    page.locator('.filter-actions').get_by_role('link',name='清除筛选').click()
+    expect(page.locator('.list-summary')).to_have_text('共 7 件商品')
+    page.goto(BASE+'/manage/licenses')
+    bar=page.get_by_role('form',name='许可证筛选')
+    bar.get_by_label('搜索许可证').fill('filters+ui@example.com')
+    bar.get_by_label('许可证状态').select_option('activated')
+    bar.get_by_role('button',name='筛选').click()
+    expect(page.locator('table code').first).to_have_text('lic_ui_activated')
+    expect(page.locator('.pager')).to_contain_text('共 1 条')
+    bar=page.get_by_role('form',name='许可证筛选');bar.get_by_label('搜索许可证').fill('missing@example.com')
+    bar.get_by_role('button',name='筛选').click();expect(page.locator('table')).to_contain_text('没有符合条件的授权记录')
+    page.locator('.filter-actions').get_by_role('link',name='清除筛选').click();expect(page.locator('.pager')).to_contain_text('共 3 条')
+    page.goto(BASE+'/manage/orders')
+    bar=page.get_by_role('form',name='订单筛选');bar.get_by_label('搜索订单').fill('lic_ui_activated')
+    bar.get_by_label('订单状态').select_option('pending');bar.get_by_label('订单渠道').select_option('web')
+    bar.get_by_role('button',name='筛选').click();expect(page.locator('.pager')).to_contain_text('共 1 单')
+    page.goto(BASE+'/manage/cards')
+    bar=page.get_by_role('form',name='卡密筛选');original=bar.get_by_label('规格',exact=True).input_value()
+    expect(page.locator('.stock-counts dd')).to_have_text(['1','1','0','0'])
+    bar.get_by_label('卡密状态').select_option('void');bar.get_by_role('button',name='筛选').click()
+    expect(page.locator('table')).to_contain_text('没有符合条件的卡密')
+    expect(page.locator('.stock-counts dd')).to_have_text(['1','1','0','0'])
+    page.locator('.filter-actions').get_by_role('link',name='清除筛选').click()
+    expect(page.get_by_role('combobox',name='规格',exact=True)).to_have_value(original)
+    expect(page.get_by_role('combobox',name='卡密状态')).to_have_value('')
+    imp=page.locator('form[action$="/cards/import"]')
+    expect(imp.locator('[data-edit-status]')).not_to_be_visible()
+    imp.locator('[name=cards]').fill('SYNTHETIC-UNSAVED-CARD')
+    expect(imp.locator('[data-edit-status]')).to_be_visible()
+    dialogs=[]
+    def dismiss_import(dialog): dialogs.append(dialog.type);dialog.dismiss()
+    page.on('dialog',dismiss_import)
+    page.get_by_role('combobox',name='规格',exact=True).select_option(index=1)
+    page.get_by_role('form',name='卡密筛选').get_by_role('button',name='筛选').click()
+    expect(imp.locator('[name=cards]')).to_have_value('SYNTHETIC-UNSAVED-CARD')
+    assert dialogs==['beforeunload'],dialogs
+    imp.locator('[name=cards]').fill('');page.remove_listener('dialog',dismiss_import)
+    page.get_by_role('form',name='卡密筛选').get_by_role('button',name='筛选').click()
+    selected=page.get_by_role('combobox',name='规格',exact=True).input_value()
+    assert selected!=original
+    expect(page.locator('form[action$="/cards/import"] [name=sku_id]')).to_have_value(selected)
+    expect(page.locator('.stock-context')).to_contain_text('缺货规格')
+    expect(page.locator('.import-target')).to_contain_text('缺货规格')
+    assert_layout(page)
 
 with sync_playwright() as p:
     for engine in os.environ.get('KAKU_UI_BROWSERS','chromium,webkit').split(','):
@@ -83,6 +164,7 @@ with sync_playwright() as p:
                         page.locator('.sidebar').get_by_role('link',name='订单',exact=True).click()
                     expect(page.get_by_role('textbox',name='搜索订单')).to_be_visible()
                     expect(page.get_by_role('combobox',name='订单状态')).to_be_visible();assert_layout(page)
+                    check_filters(page,engine,width,theme,mode,interactions=theme=='' and mode=='light')
                     page.goto(BASE+'/manage/settings/appearance');expect(page.get_by_role('radio',name=re.compile('纸张'))).to_have_count(1);assert_layout(page)
                     page.goto(BASE+'/p/2');assert_layout(page)
                     if theme=='' and mode=='light':
@@ -162,7 +244,7 @@ with sync_playwright() as p:
         for width in [320,360,900,901]:
             context=browser.new_context(storage_state=state,viewport={'width':width,'height':844});context.route('**/*',local_only)
             page=context.new_page()
-            for path in ['/','/p/2','/manage','/manage/orders','/manage/settings/appearance']:
+            for path in ['/','/p/2','/manage','/manage/orders','/manage/products','/manage/cards','/manage/licenses','/manage/settings/appearance']:
                 page.goto(BASE+path);assert_layout(page)
             context.close()
         # The native setup disclosure and original label navigation still work without JS.
@@ -170,4 +252,12 @@ with sync_playwright() as p:
         page=context.new_page();page.goto(BASE+'/manage')
         page.locator('.setup-summary').click();expect(page.locator('.setup-list')).to_be_visible()
         page.locator('label.mbar-btn[for=nav-toggle]').click();expect(page.locator('.sidebar')).to_be_visible()
+        page.goto(BASE+'/manage/products');page.get_by_label('搜索商品').fill('Pro & Team + 2026')
+        page.get_by_role('form',name='商品筛选').get_by_role('button',name='筛选').click()
+        expect(page.locator('.prod-cell')).to_have_count(1);assert_layout(page)
+        page.goto(BASE+'/manage/cards');sku=page.get_by_role('combobox',name='规格',exact=True)
+        sku.select_option(index=1);selected=sku.input_value()
+        page.get_by_role('form',name='卡密筛选').get_by_role('button',name='筛选').click()
+        expect(page.locator('form[action$="/cards/import"] [name=sku_id]')).to_have_value(selected)
+        assert_layout(page)
         context.close();browser.close();print(f'PASS {engine} narrow breakpoints and no JavaScript',flush=True)

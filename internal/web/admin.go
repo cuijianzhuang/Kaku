@@ -770,7 +770,7 @@ func (s *Server) exportCards(c *gin.Context) {
 
 // ---- orders ----
 
-func (s *Server) orders(c *gin.Context) {
+func (s *Server) filteredOrders(c *gin.Context) *gorm.DB {
 	q := s.st.DB.Model(&model.Order{})
 	if st := c.Query("status"); st != "" {
 		q = q.Where("status = ?", st)
@@ -780,8 +780,14 @@ func (s *Server) orders(c *gin.Context) {
 	}
 	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
 		like := "%" + strings.ToLower(kw) + "%"
-		q = q.Where("order_no = ? OR email LIKE ? OR renew_of = ? OR client_ip = ?", kw, like, kw, kw)
+		bindings := s.st.DB.Model(&model.LicenseBinding{}).Select("order_id").Where("license_id = ?", kw)
+		q = q.Where("order_no = ? OR email LIKE ? OR renew_of = ? OR client_ip = ? OR id IN (?)", kw, like, kw, kw, bindings)
 	}
+	return q
+}
+
+func (s *Server) orders(c *gin.Context) {
+	q := s.filteredOrders(c)
 	var total int64
 	q.Count(&total)
 	p := page(c)

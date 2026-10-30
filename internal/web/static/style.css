@@ -569,8 +569,6 @@ body.admin { background: var(--bg); }
 a.plain { color: inherit; text-decoration: none; border-bottom: 1px dotted var(--line-2); }
 .swatch { box-shadow: 0 0 0 1px var(--line-2); }
 .theme-pending { font-size: 13px; color: var(--text-2); }
-.list-tools { align-items: center; }
-.list-tools input[name=q] { max-width: 240px; }
 .product-list td { vertical-align: middle; }
 .prod-cell { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; min-width: 0; }
 .prod-cell:hover b { text-decoration: underline; }
@@ -853,4 +851,46 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
 @media (max-width: 640px) {
   .purchase-jump { font-size: 13px; padding: 8px 12px; }
   .save-actions { bottom: 0; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}
+
+/* List filters share a clear field/action hierarchy and retain native controls. */
+.filter-bar { display: flex; align-items: end; flex-wrap: wrap; gap: 12px; padding: 16px; margin: 0 0 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+.filter-bar > label { flex: 1 1 140px; min-width: 0; }
+.filter-bar > .filter-search { flex: 2 1 280px; }
+.filter-bar input, .filter-bar select { width: 100%; min-width: 0; }
+.filter-bar select { max-width: 100%; overflow: hidden; appearance: none; -webkit-appearance: none; padding-right: 34px; text-overflow: ellipsis; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='none' stroke='%2371717a' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; }
+.filter-actions { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; min-height: 40px; }
+.filter-actions button { height: 40px; padding-top: 0; padding-bottom: 0; }
+.filter-actions a { font-size: 13px; }
+.filter-status { margin: 0; padding: 0; border: 0; min-width: 0; flex: 1 1 260px; }
+.filter-status legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: var(--text-2); }
+.seg-picker { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; padding: 3px; height: 40px; background: var(--bg-soft); border: 1px solid var(--line); border-radius: var(--radius-sm); }
+.seg-picker label { display: block; position: relative; min-width: 0; cursor: pointer; }
+.seg-picker input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.seg-picker span { display: flex; align-items: center; justify-content: center; height: 100%; border-radius: 5px; white-space: nowrap; color: var(--text-2); }
+.seg-picker label:hover span { color: var(--text); }
+.seg-picker input:checked + span { background: var(--card); color: var(--text); box-shadow: var(--shadow-sm); font-weight: 600; }
+.seg-picker input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+.list-summary { margin: -4px 0 12px; }
+.stock-summary { padding: 16px; }
+.stock-context h2 { font-size: 14px; margin: 0 0 4px; }
+.import-target { margin: 0; overflow-wrap: anywhere; }
+.stock-context p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.stock-context > .muted { display: block; margin-top: 4px; font-size: 12px; }
+.stock-counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); gap: 12px; }
+.stock-counts > div { min-width: 0; }
+.stock-counts dt { font-size: 12px; color: var(--muted); }
+.stock-counts dd { font-size: 22px; font-weight: 600; line-height: 1.4; margin: 2px 0 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .filter-bar { padding: 12px; gap: 12px 10px; }
+  .filter-bar > .filter-search, .filter-status { flex-basis: 100%; }
+  .filter-bar > label { flex-basis: 120px; }
+  .filter-bar input:not([type=radio]), .filter-bar select, .filter-actions, .filter-actions button, .seg-picker { min-height: 44px; }
+  .filter-actions { flex: 1 1 100%; }
+  .filter-actions button { flex: 1; }
+  .stock-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+}
+@media (forced-colors: active) {
+  .filter-bar select { max-width: 100%; overflow: hidden; appearance: auto; background-image: none; }
+  .seg-picker input:checked + span { outline: 2px solid Highlight; outline-offset: -2px; }
 }

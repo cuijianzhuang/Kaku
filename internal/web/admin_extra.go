@@ -85,17 +85,7 @@ func (s *Server) statsPage(c *gin.Context) {
 // exportOrders downloads the orders matching the list filters as CSV.
 // Delivered content is never exported.
 func (s *Server) exportOrders(c *gin.Context) {
-	q := s.st.DB.Model(&model.Order{})
-	if st := c.Query("status"); st != "" {
-		q = q.Where("status = ?", st)
-	}
-	if ch := c.Query("channel"); ch != "" {
-		q = q.Where("channel = ?", ch)
-	}
-	if kw := strings.TrimSpace(c.Query("q")); kw != "" {
-		like := "%" + strings.ToLower(kw) + "%"
-		q = q.Where("order_no = ? OR email LIKE ? OR renew_of = ? OR client_ip = ?", kw, like, kw, kw)
-	}
+	q := s.filteredOrders(c)
 	var orders []model.Order
 	if err := q.Order("id DESC").Limit(50000).Find(&orders).Error; err != nil {
 		redirectErr(c, s.cfg.AdminPath+"/orders", err)
