@@ -66,12 +66,14 @@ func (s *Server) home(c *gin.Context) {
 
 type skuView struct {
 	model.SKU
-	Stock   int
-	Methods []shop.Method
-	Ask     string // manual SKUs: what the buyer must fill in
-	Note    string // manual SKUs: when and how it is delivered
-	Tiers   string // "3:80,10:50" for the reference total
-	TierTip string // "满 3 件 8 折 · 满 10 件 5 折"
+	Stock         int
+	Selected      bool
+	QuantityLimit int
+	Methods       []shop.Method
+	Ask           string // manual SKUs: what the buyer must fill in
+	Note          string // manual SKUs: when and how it is delivered
+	Tiers         string // "3:80,10:50" for the reference total
+	TierTip       string // "满 3 件 8 折 · 满 10 件 5 折"
 }
 
 // tierText describes wholesale tiers for buyers.
@@ -102,9 +104,16 @@ func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, 
 		return
 	}
 	var skus []skuView
+	if form == nil {
+		form = map[string]string{}
+	}
 	for i := range p.SKUs {
 		k := &p.SKUs[i]
 		v := skuView{SKU: *k, Stock: s.shop.Stock(k), Methods: s.shop.MethodsFor(model.ChannelWeb, k)}
+		v.QuantityLimit = max(k.LimitPerOrder, 0)
+		if v.Stock > 0 && (v.QuantityLimit == 0 || v.Stock < v.QuantityLimit) {
+			v.QuantityLimit = v.Stock
+		}
 		v.Tiers, v.TierTip = tierText(k.Tiers())
 		if k.DelivererKind == "manual" {
 			if cfg, err := deliver.ParseManualCfg(k.DelivererCfg); err == nil {
@@ -119,8 +128,35 @@ func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, 
 			inStock = true
 		}
 	}
-	if form == nil {
-		form = map[string]string{}
+	selected := -1
+	for i, k := range skus {
+		if k.Stock != 0 && strconv.FormatUint(uint64(k.ID), 10) == form["sku_id"] {
+			selected = i
+			break
+		}
+	}
+	if selected < 0 {
+		for i, k := range skus {
+			if k.Stock != 0 && len(k.Methods) > 0 {
+				selected = i
+				break
+			}
+		}
+	}
+	if selected < 0 {
+		for i, k := range skus {
+			if k.Stock != 0 {
+				selected = i
+				break
+			}
+		}
+	}
+	quantityLimit := 0
+	canPurchase := false
+	if selected >= 0 {
+		skus[selected].Selected = true
+		quantityLimit = skus[selected].QuantityLimit
+		canPurchase = len(skus[selected].Methods) > 0
 	}
 	// sold count and remaining stock for the badges under the title
 	var sold int64
@@ -138,7 +174,7 @@ func (s *Server) renderProduct(c *gin.Context, id uint, form map[string]string, 
 		s.st.DB.Model(&model.Order{}).Where("sku_id IN ? AND status = ?", ids, model.OrderDelivered).Select("COALESCE(SUM(qty), 0)").Scan(&sold)
 	}
 	data := gin.H{"Product": p, "SKUs": skus, "Methods": s.shop.Methods(model.ChannelWeb), "InStock": inStock, "Form": form,
-		"Sold": sold, "StockLeft": stockLeft, "Unlimited": unlimited}
+		"Sold": sold, "StockLeft": stockLeft, "Unlimited": unlimited, "QuantityLimit": quantityLimit, "CanPurchase": canPurchase}
 	code := http.StatusOK
 	if orderErr != nil {
 		data["Error"] = orderErr.Error()

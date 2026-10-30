@@ -834,3 +834,23 @@ a:focus-visible, button:focus-visible, summary:focus-visible {
   .sidebar, .scrim, .product-card { transition: none; }
   .product-card:hover { transform: none; }
 }
+
+/* Clear checkout boundaries and reachable save actions on long edit pages. */
+.purchase-jump { display: none; }
+#purchase { scroll-margin-top: 76px; }
+.purchase-title { margin: 0 0 16px; }
+.quantity-hint { margin: 6px 0 0; min-height: 20px; }
+.checkout-feedback { margin: 0; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--warn-soft); color: var(--warn); padding: 10px 12px; font-size: 13px; }
+.save-actions { position: sticky; bottom: 12px; z-index: 8; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px; margin-top: 4px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
+.save-actions > button { margin-left: auto; min-width: 96px; }
+.edit-status { color: var(--warn); font-size: 13px; }
+.save-actions .theme-pending { flex-basis: 100%; font-size: 12px; }
+.save-actions:has([data-theme-pending]:not([hidden])) [data-edit-status] { display: none; }
+[data-edit-form] :is(input, textarea, select) { scroll-margin-bottom: 110px; }
+@media (max-width: 900px) {
+  .purchase-jump { display: inline-flex; align-self: flex-start; margin-top: 4px; }
+}
+@media (max-width: 640px) {
+  .purchase-jump { font-size: 13px; padding: 8px 12px; }
+  .save-actions { bottom: 0; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+}

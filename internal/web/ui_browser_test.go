@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"testing"
 
 	"github.com/cuijianzhuang/kaku/internal/model"
@@ -35,6 +36,22 @@ func TestLiveUIBrowser(t *testing.T) {
 			t.Fatal(err)
 		}
 		sku := model.SKU{ProductID: p.ID, Name: fmt.Sprintf("标准版 · 套餐 %d", i+1), PriceCNY: 1900, DelivererKind: "text", DelivererCfg: `{"text":"synthetic delivery"}`, LimitPerOrder: 10, Active: true}
+		if err := e.st.DB.Create(&sku).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Product 2 deliberately starts with a sold-out SKU and includes a SKU
+	// with no web payment method. The default must still be the usable one.
+	if err := e.st.DB.Model(&model.Product{}).Where("id = ?", 2).Update("description_md", strings.Repeat("商品说明：付款后在订单页领取内容，请保存订单号。\n\n", 18)).Error; err != nil {
+		t.Fatal(err)
+	}
+	if err := e.st.DB.Model(&model.SKU{}).Where("product_id = ?", 2).Update("limit_per_order", 2).Error; err != nil {
+		t.Fatal(err)
+	}
+	for _, sku := range []model.SKU{
+		{ProductID: 2, Name: "缺货规格", DelivererKind: "stock", PriceCNY: 100, LimitPerOrder: 1, Active: true, Sort: -1},
+		{ProductID: 2, Name: "仅支持未开通的支付方式", DelivererKind: "text", DelivererCfg: `{"text":"synthetic"}`, PriceStars: 10, Active: true, Sort: 1},
+	} {
 		if err := e.st.DB.Create(&sku).Error; err != nil {
 			t.Fatal(err)
 		}

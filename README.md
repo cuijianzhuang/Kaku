@@ -214,7 +214,7 @@ go test -race ./...
 go vet ./...
 ```
 
-界面回归使用真实 Go 页面、临时 SQLite 数据和本地支付测试服务，覆盖 Chromium / WebKit、六套主题的深浅模式、手机/桌面与窄屏边界，以及菜单焦点、搜索、下单进入支付页。Linux WebKit 模拟不等于真机 iOS 验收；测试不会访问真实支付网关。
+界面回归使用真实 Go 页面、临时 SQLite 数据和本地支付测试服务，覆盖 Chromium / WebKit、六套主题的深浅模式、手机/桌面与窄屏边界，以及菜单焦点、搜索、缺货首项的规格选择、数量/支付方式反馈、下单进入支付页，以及未保存离开、粘性保存栏和提交防重复点击。Linux WebKit 模拟不等于真机 iOS 验收；测试不会访问真实支付网关。
 
 ```bash
 python3 -m pip install playwright==1.62.0
