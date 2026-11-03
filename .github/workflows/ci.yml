@@ -5,6 +5,14 @@ on:
   pull_request:
   workflow_call:
 jobs:
+  mirror-tests:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test mirror selection, privacy and release publication guards
+        run: python3 -m unittest discover -s .github/scripts -p 'test_mirror_sync.py' -v
   go:
     runs-on: ubuntu-latest
     steps:
