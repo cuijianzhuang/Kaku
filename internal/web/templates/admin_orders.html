@@ -32,7 +32,7 @@
     <td><span class="badge {{.Status}}">{{status .Status}}</span>{{if .LastError}}<br><span class="muted">{{.LastError}}</span>{{end}}</td>
     <td class="nowrap muted">{{date .CreatedAt}}</td>
   </tr>
-  {{else}}<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">{{if or .Q .Status .Channel}}没有符合条件的订单。<a href="{{$p}}/orders">清除筛选</a>{{else}}还没有订单，买家下单后会显示在这里。{{end}}</td></tr>{{end}}
+  {{else}}<tr><td colspan="7" class="muted empty-cell">{{if or .Q .Status .Channel}}没有符合条件的订单。<a href="{{$p}}/orders">清除筛选</a>{{else}}还没有订单，买家下单后会显示在这里。{{end}}</td></tr>{{end}}
 </table>
 <div class="pager">
   {{if gt .Page 1}}<a href="?q={{query .Q}}&status={{.Status}}&channel={{.Channel}}&page={{add .Page -1}}">上一页</a>{{end}}

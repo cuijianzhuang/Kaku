@@ -72,7 +72,7 @@
       <label>查询密码（查单时使用，至少 4 位）<input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
       <details {{if or .Form.coupon .Form.remark}}open{{end}}>
         <summary>优惠码 / 备注</summary>
-        <div class="stack" style="margin-top:12px; display:flex; flex-direction:column; gap:12px">
+        <div class="stack mt-3">
           <label>优惠码<input name="coupon" maxlength="64" value="{{.Form.coupon}}"></label>
           <label>备注<input name="remark" maxlength="200" value="{{.Form.remark}}"></label>
         </div>
@@ -96,8 +96,8 @@
         </div>
         {{if not .InStock}}<button class="lg block" data-buy-submit data-sold-out disabled>暂时缺货</button>{{else}}<button class="lg block" data-buy-submit {{if not .CanPurchase}}disabled{{end}}>立即购买</button>{{end}}
       </div>
-      {{if not .InStock}}<p class="muted" style="margin:0">全部规格都已售罄，可以<a href="/ticket">提交工单</a>询问补货时间。</p>{{end}}
-      <p class="muted" style="margin:0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。优惠码在下单时计算。</p>
+      {{if not .InStock}}<p class="muted m0">全部规格都已售罄，可以<a href="/ticket">提交工单</a>询问补货时间。</p>{{end}}
+      <p class="muted m0">请在 {{.Settings.OrderTTL}} 分钟内完成支付，超时自动关闭。优惠码在下单时计算。</p>
     </form>
   </div>
 </div>

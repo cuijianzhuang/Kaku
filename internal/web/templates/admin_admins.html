@@ -9,10 +9,10 @@
     <tr>
       <td>{{.Username}}{{if .Self}} <span class="badge plain">我</span>{{end}}</td>
       <td>{{if .TOTPEnabled}}<span class="badge on">已开启</span>{{else}}<span class="badge pending">未开启</span>{{end}}</td>
-      <td>{{range .Identities}}<span class="row" style="justify-content:flex-start;gap:6px;display:inline-flex;margin-right:10px">{{template "brand-icon" .Provider}}{{.Name}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+      <td>{{range .Identities}}<span class="identity">{{template "brand-icon" .Provider}}{{.Name}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
       <td class="nowrap">{{with .LastLogin}}{{date .}}{{else}}<span class="muted">从未</span>{{end}}{{if .LastIP}} <span class="muted">· {{.LastIP}}</span>{{end}}</td>
       <td class="nowrap muted">{{date .CreatedAt}}</td>
-      <td style="text-align:right">
+      <td class="text-right">
         <details class="row-actions">
           <summary>管理</summary>
           <div class="row-actions-body">
@@ -37,9 +37,9 @@
   </table>
 </div>
 
-<div class="card" style="max-width:640px">
-  <h2 style="margin-top:0">添加管理员</h2>
-  <p class="muted" style="margin-top:-4px;font-size:13px">所有管理员都有完整的后台权限。对方用初始密码登录后，可以在「安全」页面修改密码、开启两步验证、绑定 GitHub / Google。</p>
+<div class="card card-narrow">
+  <h2>添加管理员</h2>
+  <p class="muted sub-line">所有管理员都有完整的后台权限。对方用初始密码登录后，可以在「安全」页面修改密码、开启两步验证、绑定 GitHub / Google。</p>
   <form method="post" action="{{$p}}/admins" class="stack">
     <div class="fields">
       <label>用户名 <input name="username" required maxlength="64" pattern="[A-Za-z0-9_.@-]{2,64}" autocomplete="off"></label>

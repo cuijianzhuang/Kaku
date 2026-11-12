@@ -5,7 +5,7 @@
 <div class="page-head"><h1>订单 <code>{{$o.OrderNo}}</code> <span class="badge {{$o.Status}}">{{status $o.Status}}</span></h1><a class="btn secondary" href="{{$p}}/orders"><svg class="ic"><use href="#i-arrow-left"/></svg>订单列表</a></div>
 {{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}
 <div class="card manual-card">
-  <h2 style="margin-top:0">等待你手动发货</h2>
+  <h2>等待你手动发货</h2>
   {{if .AskLabel}}<div class="ask-box"><span class="muted">买家填写的{{.AskLabel}}</span><div class="secret-row"><span class="secret">{{.AskValue}}</span><button type="button" class="secondary" data-copy="{{.AskValue}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div></div>{{end}}
   <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/manual" class="stack">
     <label>发货内容 <span class="hint">· 买家会在订单页、邮件和 Telegram 收到</span><textarea name="content" required placeholder="例如：已充值到 {{if .AskValue}}{{.AskValue}}{{else}}买家账号{{end}}，有效期至 …"></textarea></label>
@@ -35,10 +35,10 @@
     </table>
   </div>
   <div class="card stack">
-    <h2 style="margin-top:0">操作</h2>
+    <h2>操作</h2>
     {{if and (or (eq $o.Status "pending") (eq $o.Status "expired")) (or (eq $o.PayMethod "alipay") (eq $o.PayMethod "wxpay"))}}
     <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/epay-check" class="stack">
-      <p class="muted" style="margin:0">买家说已付款？先向支付平台查一下，确认付款后会自动发货。</p>
+      <p class="muted m0">买家说已付款？先向支付平台查一下，确认付款后会自动发货。</p>
       <button class="secondary"><svg class="ic"><use href="#i-refresh"/></svg>向支付平台查询</button>
     </form>
     {{end}}
@@ -62,8 +62,8 @@
     {{if eq $o.Status "delivered"}}
     <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/resend"><button class="secondary">重发邮件 / 消息</button></form>
     {{end}}
-    {{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}<p class="muted" style="margin:0">在上方填写发货内容后点「确认发货」。</p>{{end}}
-    {{if eq $o.Status "refunded"}}<p class="muted" style="margin:0">订单已退款，没有可用操作。</p>{{end}}
+    {{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}<p class="muted m0">在上方填写发货内容后点「确认发货」。</p>{{end}}
+    {{if eq $o.Status "refunded"}}<p class="muted m0">订单已退款，没有可用操作。</p>{{end}}
     {{if or (eq $o.Status "paid") (eq $o.Status "delivered") (eq $o.Status "failed")}}
     <div class="op-danger">
       <h3>退款</h3>
@@ -79,7 +79,7 @@
 
 {{if .Items}}
 <div class="card">
-  <h2 style="margin-top:0">发货内容</h2>
+  <h2>发货内容</h2>
   {{range $i, $it := .Items}}
   <div class="secret-row"><span>{{add $i 1}}.</span>
     {{if $it.FileName}}<span>文件 {{$it.FileName}}</span><details><summary>查看</summary><pre>{{$it.Content}}</pre></details>
@@ -92,7 +92,7 @@
 
 {{if .Bindings}}
 <div class="card table-wrap">
-  <h2 style="margin-top:0">授权</h2>
+  <h2>授权</h2>
   <table><tr><th>license_id</th><th>套餐</th><th>到期</th><th>实例</th><th>状态</th></tr>
   {{range .Bindings}}<tr><td><a href="{{$p}}/licenses?q={{.LicenseID}}">{{.LicenseID}}</a></td><td>{{.Plan}}{{if .Offline}} · 离线{{end}}</td><td>{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td><td>{{.Instance}}</td><td><span class="badge {{.Status}}">{{status .Status}}</span></td></tr>{{end}}
   </table>
@@ -100,7 +100,7 @@
 {{end}}
 
 <div class="card table-wrap">
-  <h2 style="margin-top:0">支付流水</h2>
+  <h2>支付流水</h2>
   <table><tr><th>渠道</th><th>流水号</th><th>金额</th><th>状态</th><th>时间</th></tr>
   {{range .Payments}}<tr><td>{{method .Channel}}</td><td><code>{{.TradeNo}}</code></td><td>{{money .Amount .Currency}}</td><td>{{if eq .Status "paid"}}已支付{{else if eq .Status "refunded"}}已退款{{else}}{{.Status}}{{end}}</td><td>{{date .CreatedAt}}</td></tr>
   {{else}}<tr><td colspan="5" class="muted">暂无</td></tr>{{end}}

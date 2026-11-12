@@ -7,32 +7,32 @@
   {{range .Categories}}
   <tr>
     <td>
-      <form method="post" action="{{$p}}/categories" class="filters" style="margin:0">
+      <form method="post" action="{{$p}}/categories" class="filters m0">
         <input type="hidden" name="id" value="{{.ID}}">
         <input name="name" value="{{.Name}}" required>
-        <input type="number" name="sort" value="{{.Sort}}" style="width:80px">
+        <input type="number" name="sort" value="{{.Sort}}" class="w-80">
         <label class="check"><input type="checkbox" name="visible" {{if .Visible}}checked{{end}}> 显示</label>
         <button class="secondary">保存</button>
       </form>
     </td>
     <td>{{index $.Counts .ID}}</td>
-    <td style="text-align:right"><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类？"><button class="link">删除</button></form></td>
+    <td class="text-right"><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类？"><button class="link">删除</button></form></td>
   </tr>
-  {{else}}<tr><td colspan="3" class="muted" style="text-align:center;padding:28px">还没有分类</td></tr>{{end}}
+  {{else}}<tr><td colspan="3" class="muted empty-cell">还没有分类</td></tr>{{end}}
 </table></div>
 <div class="card">
-  <h2 style="margin-top:0">常用分类</h2>
-  <p class="muted" style="margin-top:-4px;font-size:13px">勾选后一键创建，之后可以改名和排序。</p>
+  <h2>常用分类</h2>
+  <p class="muted sub-line">勾选后一键创建，之后可以改名和排序。</p>
   <form method="post" action="{{$p}}/categories/presets" class="stack">
     <div class="preset-list">{{range .Presets}}<label class="check {{if index $.Have .}}muted{{end}}"><input type="checkbox" name="preset" value="{{.}}" {{if index $.Have .}}disabled checked{{end}}> {{.}}{{if index $.Have .}}（已有）{{end}}</label>{{end}}</div>
     <div><button class="secondary"><svg class="ic"><use href="#i-plus"/></svg>创建勾选的分类</button></div>
   </form>
 </div>
 <div class="card">
-  <h2 style="margin-top:0">新增分类</h2>
-  <form method="post" action="{{$p}}/categories" class="filters" style="margin:0">
+  <h2>新增分类</h2>
+  <form method="post" action="{{$p}}/categories" class="filters m0">
     <input name="name" placeholder="分类名称" required>
-    <input type="number" name="sort" value="0" style="width:80px">
+    <input type="number" name="sort" value="0" class="w-80">
     <label class="check"><input type="checkbox" name="visible" checked> 显示</label>
     <button>新增</button>
   </form>

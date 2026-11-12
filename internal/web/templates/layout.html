@@ -1,4 +1,4 @@
-{{define "icons"}}<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+{{define "icons"}}<svg class="svg-sprite" width="0" height="0" aria-hidden="true">
 <symbol id="kaku-mark-k" viewBox="0 0 64 64"><rect x="15" y="14" width="10" height="36" rx="3.5" fill="var(--k-fg, #fff)"/><path d="M29.5 31.5 44 16.5" stroke="var(--k-fg, #fff)" stroke-width="9" stroke-linecap="round" fill="none"/><path d="M31.5 34.5 44 47.5" stroke="var(--k-leg, #a3e635)" stroke-width="9" stroke-linecap="round" fill="none"/></symbol>
 <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
 <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-2 2-2-2-2 2-2-2-3 2z"/><path d="M9 8h6M9 12h6M9 16h4"/></symbol>
@@ -55,11 +55,11 @@
 
 {{define "steps"}}
 <div class="steps">
-  <div class="step done"><span class="dot"><svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg></span><span class="label">下单</span></div>
+  <div class="step done"><span class="dot"><svg class="ic sm"><use href="#i-check"/></svg></span><span class="label">下单</span></div>
   <div class="step-line {{if ge . 3}}done{{end}}"></div>
-  <div class="step {{if ge . 3}}done{{else if eq . 2}}now{{end}}"><span class="dot">{{if ge . 3}}<svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg>{{else}}2{{end}}</span><span class="label">支付</span></div>
+  <div class="step {{if ge . 3}}done{{else if eq . 2}}now{{end}}"><span class="dot">{{if ge . 3}}<svg class="ic sm"><use href="#i-check"/></svg>{{else}}2{{end}}</span><span class="label">支付</span></div>
   <div class="step-line {{if ge . 4}}done{{end}}"></div>
-  <div class="step {{if ge . 4}}done{{else if eq . 3}}now{{end}}"><span class="dot">{{if ge . 4}}<svg class="ic" style="width:14px;height:14px"><use href="#i-check"/></svg>{{else}}3{{end}}</span><span class="label">发货</span></div>
+  <div class="step {{if ge . 4}}done{{else if eq . 3}}now{{end}}"><span class="dot">{{if ge . 4}}<svg class="ic sm"><use href="#i-check"/></svg>{{else}}3{{end}}</span><span class="label">发货</span></div>
 </div>
 {{end}}
 

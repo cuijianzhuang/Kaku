@@ -8,7 +8,7 @@
   {{range .Logs}}<tr><td class="nowrap">{{date .CreatedAt}}</td><td>{{or .Admin "—"}}</td><td><a class="plain" href="?action={{.Action}}" title="只看这类操作">{{auditLabel .Action}}</a></td>
     <td>{{if and (hasPrefix .Action "order_") .Target}}<a href="{{$p}}/orders/{{.Target}}">{{.Target}}</a>{{else if and (or (eq .Action "product_save") (eq .Action "product_quick") (eq .Action "product_announce") (eq .Action "product_import_polaris")) .Target}}<a href="{{$p}}/products/{{.Target}}">商品 #{{.Target}}</a>{{else if and (eq .Action "sku_save") .Target}}<a href="{{$p}}/skus/{{.Target}}">规格 #{{.Target}}</a>{{else}}{{.Target}}{{end}}</td>
     <td class="muted">{{.Detail}}</td><td class="muted">{{.IP}}</td></tr>
-  {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">暂无记录</td></tr>{{end}}
+  {{else}}<tr><td colspan="6" class="muted empty-cell">暂无记录</td></tr>{{end}}
 </table>
 <div class="pager">
   {{if gt .Page 1}}<a href="?action={{.Action}}&page={{add .Page -1}}">上一页</a>{{end}}

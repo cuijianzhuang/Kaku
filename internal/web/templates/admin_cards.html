@@ -33,9 +33,9 @@
   </dl>
 </div>
 
-<div style="margin-top:16px">
+<div class="mt-4">
   <div class="card">
-    <h2 style="margin-top:0">导入卡密</h2>
+    <h2>导入卡密</h2>
     <form method="post" action="{{$p}}/cards/import" enctype="multipart/form-data" class="stack" data-edit-form>
       <p class="muted import-target">导入到：{{index .Titles .SKU.ProductID}} · {{.SKU.Name}}</p>
       <input type="hidden" name="sku_id" value="{{.SKUID}}">
@@ -48,7 +48,7 @@
   <div class="card">
     <details class="export-box">
       <summary><b>导出卡密</b> <span class="muted">· 需要输入密码，会记录到日志</span></summary>
-      <form method="post" action="{{$p}}/cards/export" class="stack" style="margin-top:12px">
+      <form method="post" action="{{$p}}/cards/export" class="stack mt-3">
         <input type="hidden" name="sku_id" value="{{.SKUID}}">
         <label>状态 <select name="status"><option value="available">可售</option><option value="sold">已售</option><option value="void">已作废</option></select></label>
         <label>确认密码 <input type="password" name="confirm_password" required autocomplete="current-password"></label>
@@ -68,7 +68,7 @@
       <td>{{if .OrderNo}}<a href="{{$p}}/orders/{{.OrderNo}}">{{.OrderNo}}</a>{{else}}—{{end}}</td><td class="nowrap muted">{{date .CreatedAt}}</td>
       <td>{{if eq .Status "available"}}<form method="post" action="{{$p}}/cards/{{.ID}}/void" class="inline" data-confirm="作废这条卡密？"><button class="link">作废</button></form>{{end}}</td>
     </tr>
-    {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">{{if .Status}}没有符合条件的卡密。<a href="{{$p}}/cards?sku={{.SKUID}}">清除筛选</a>{{else}}当前规格还没有卡密，可在上方粘贴或上传文件导入。{{end}}</td></tr>{{end}}
+    {{else}}<tr><td colspan="6" class="muted empty-cell">{{if .Status}}没有符合条件的卡密。<a href="{{$p}}/cards?sku={{.SKUID}}">清除筛选</a>{{else}}当前规格还没有卡密，可在上方粘贴或上传文件导入。{{end}}</td></tr>{{end}}
   </table>
   <div class="pager">
     {{if gt .Page 1}}<a href="?sku={{.SKUID}}&status={{.Status}}&page={{add .Page -1}}">上一页</a>{{end}}
