@@ -37,28 +37,28 @@ const sansStack = `-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
 var baseLight = palette{
 	"bg": "#fafafa", "bg-soft": "#f4f4f5", "card": "#ffffff", "text": "#09090b", "text-2": "#3f3f46", "muted": "#71717a",
 	"line": "#e4e4e7", "line-2": "#d4d4d8",
-	"accent": "#18181b", "accent-hover": "#27272a", "accent-soft": "#f4f4f5", "accent-ink": "#18181b", "accent-text": "#ffffff", "link": "#18181b",
+	"accent": "#0E7490", "accent-hover": "#155E75", "accent-soft": "#ECF8FA", "accent-ink": "#155E75", "accent-text": "#ffffff", "link": "#0E7490",
 	"ok": "#15803d", "ok-soft": "#f0fdf4", "warn": "#b45309", "warn-soft": "#fffbeb", "err": "#b91c1c", "err-soft": "#fef2f2",
 	"blue": "#1d4ed8", "blue-soft": "#eff6ff", "info": "#3f3f46", "info-soft": "#f4f4f5", "code": "#f4f4f5", "price": "#09090b",
 	"shadow-sm": "0 1px 2px rgba(0,0,0,.04)", "shadow": "0 1px 2px rgba(0,0,0,.04), 0 2px 8px rgba(0,0,0,.04)", "shadow-lg": "0 8px 24px rgba(0,0,0,.08)",
 	"radius": "12px", "radius-sm": "8px", "font-head": sansStack,
 	"ph-fg": "42%", "ph-bg": "93%", "ph-hi": "98%", "ph-sat": "8%",
-	"logo-bg": "#18181b", "logo-fg": "#ffffff", "logo-leg": "#a3e635",
+	"logo-bg": "#0E7490", "logo-fg": "#ffffff", "logo-leg": "#a3e635",
 }
 
 var baseDark = palette{
 	"bg": "#09090b", "bg-soft": "#18181b", "card": "#111113", "text": "#fafafa", "text-2": "#d4d4d8", "muted": "#a1a1aa",
 	"line": "#27272a", "line-2": "#3f3f46",
-	"accent": "#fafafa", "accent-hover": "#e4e4e7", "accent-soft": "#27272a", "accent-ink": "#fafafa", "accent-text": "#09090b", "link": "#fafafa",
+	"accent": "#2DD4BF", "accent-hover": "#5EEAD4", "accent-soft": "#0F2E2B", "accent-ink": "#5EEAD4", "accent-text": "#042F2E", "link": "#5EEAD4",
 	"ok": "#4ade80", "ok-soft": "#0f2417", "warn": "#fbbf24", "warn-soft": "#291f0b", "err": "#f87171", "err-soft": "#2a1213",
 	"blue": "#93c5fd", "blue-soft": "#0f1d36", "info": "#d4d4d8", "info-soft": "#18181b", "code": "#18181b", "price": "#fafafa",
 	"shadow-sm": "none", "shadow": "none", "shadow-lg": "0 8px 24px rgba(0,0,0,.5)",
 	"ph-fg": "66%", "ph-bg": "14%", "ph-hi": "19%", "ph-sat": "6%",
-	"logo-bg": "#fafafa", "logo-fg": "#09090b", "logo-leg": "#65a30d",
+	"logo-bg": "#2DD4BF", "logo-fg": "#042F2E", "logo-leg": "#65a30d",
 }
 
 var themes = []Theme{
-	{Key: "", Label: "简约", Note: "中性灰，干净克制"},
+	{Key: "", Label: "简约", Note: "清爽青色，干净克制"},
 	{Key: "paper", Label: "纸张", Note: "暖白纸色，衬线标题",
 		Light: palette{"bg": "#f6f3ee", "bg-soft": "#eee8de", "card": "#fffdf9", "text": "#1f1a14", "text-2": "#4a4136", "muted": "#857a6a",
 			"line": "#e6ddcf", "line-2": "#d6cab8", "accent": "#3b2f24", "accent-hover": "#2a2119", "accent-soft": "#eee8de", "accent-ink": "#3b2f24",
@@ -101,6 +101,9 @@ var themes = []Theme{
 
 var accents = []Accent{
 	{Key: "", Label: "跟随主题"},
+	{Key: "teal", Label: "青色", Swatch: "#0E7490",
+		Light: palette{"accent": "#0E7490", "accent-hover": "#155E75", "accent-soft": "#ECF8FA", "accent-ink": "#155E75", "link": "#155E75", "accent-text": "#ffffff"},
+		Dark:  palette{"accent": "#2DD4BF", "accent-hover": "#5EEAD4", "accent-soft": "#0F2E2B", "accent-ink": "#5EEAD4", "link": "#5EEAD4", "accent-text": "#042F2E"}},
 	{Key: "ink", Label: "墨黑", Swatch: "#18181b",
 		Light: palette{"accent": "#18181b", "accent-hover": "#27272a", "accent-soft": "#f4f4f5", "accent-ink": "#18181b", "link": "#18181b", "accent-text": "#ffffff"},
 		Dark:  palette{"accent": "#fafafa", "accent-hover": "#e4e4e7", "accent-soft": "#27272a", "accent-ink": "#fafafa", "link": "#fafafa", "accent-text": "#09090b"}},

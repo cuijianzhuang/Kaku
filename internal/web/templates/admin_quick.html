@@ -4,7 +4,7 @@
 <div class="page-head"><h1>从模板创建商品</h1><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品</a></div>
 {{template "tpl-tabs" .}}
 <div class="card">
-  <p class="muted" style="margin-top:0">选一种商品类型，Kaku 按它建好商品和规格（发货方式已配好）。创建后商品暂不上架，补全内容后再上架。</p>
+  <p class="muted">选一种商品类型，Kaku 按它建好商品和规格（发货方式已配好）。创建后商品暂不上架，补全内容后再上架。</p>
   <form method="post" action="{{$p}}/products/quick" class="stack" data-quick>
     <div class="pc-templates">
       {{range .Templates}}

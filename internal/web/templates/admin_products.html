@@ -38,6 +38,6 @@
     </td>
     <td class="nowrap list-actions"><a href="{{$p}}/products/{{.ID}}">编辑</a>{{if eq .Status "on"}} · <a href="/p/{{.ID}}" target="_blank" rel="noopener">查看</a>{{end}}</td>
   </tr>
-  {{else}}<tr><td colspan="6" class="muted" style="text-align:center;padding:28px">{{if or .Q .Cat .Status}}没有符合条件的商品。<a href="{{$p}}/products">清除筛选</a>{{else}}还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充、Polaris 授权、面板套餐都能一键建好。{{end}}</td></tr>{{end}}
+  {{else}}<tr><td colspan="6" class="muted empty-cell">{{if or .Q .Cat .Status}}没有符合条件的商品。<a href="{{$p}}/products">清除筛选</a>{{else}}还没有商品。<a href="{{$p}}/products/quick">从模板创建</a>最快：卡密、账号、下载、代充、Polaris 授权、面板套餐都能一键建好。{{end}}</td></tr>{{end}}
 </table></div>
 {{end}}

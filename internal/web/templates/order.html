@@ -12,7 +12,7 @@
     {{else if eq $o.Status "paid"}}
       <div class="status-hero"><div class="icon"><svg class="ic"><use href="#i-refresh"/></svg></div><h1>正在发货</h1>
         <p class="muted">{{if or .Manual (eq $o.LastError "等待人工发货")}}{{or .ManualNote "该商品为人工发货，我们会尽快处理"}}{{else if $o.LastError}}发货遇到问题，系统会自动重试{{else}}已收到付款，请稍候，本页会自动刷新{{end}}</p>
-        <p class="muted" style="font-size:13px;margin-top:6px">有问题？<a href="/ticket?no={{$o.OrderNo}}">提交工单</a></p></div>
+        <p class="muted mt-2">有问题？<a href="/ticket?no={{$o.OrderNo}}">提交工单</a></p></div>
     {{else if eq $o.Status "failed"}}
       <div class="status-hero err"><div class="icon"><svg class="ic"><use href="#i-alert"/></svg></div><h1>发货遇到问题</h1><p class="muted">管理员已收到通知，会尽快处理</p></div>
       <a class="btn secondary block" href="/ticket?no={{$o.OrderNo}}">提交工单</a>
@@ -44,12 +44,12 @@
         {{end}}
       {{end}}
       {{with .PanelHelp}}
-        <div class="notice" style="margin-top:14px"><svg class="ic"><use href="#i-info"/></svg><span>兑换方法：{{.}}</span></div>
+        <div class="notice mt-3"><svg class="ic"><use href="#i-info"/></svg><span>兑换方法：{{.}}</span></div>
       {{end}}
       {{if .PolarisHelp}}
-        <div class="notice" style="margin-top:14px"><svg class="ic"><use href="#i-info"/></svg><span>激活方法：打开 Polaris 面板「许可证」页，粘贴激活码并点击激活。到期前面板会提醒续费，续费后无需重新激活。</span></div>
+        <div class="notice mt-3"><svg class="ic"><use href="#i-info"/></svg><span>激活方法：打开 Polaris 面板「许可证」页，粘贴激活码并点击激活。到期前面板会提醒续费，续费后无需重新激活。</span></div>
       {{end}}
-      <p class="muted" style="margin-top:12px">请妥善保管。遇到问题可 <a href="/ticket?no={{$o.OrderNo}}">提交工单</a>。</p>
+      <p class="muted mt-3">请妥善保管。遇到问题可 <a href="/ticket?no={{$o.OrderNo}}">提交工单</a>。</p>
     </div>
     {{else}}
     <div class="card">
