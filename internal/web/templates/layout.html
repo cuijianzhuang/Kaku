@@ -106,6 +106,7 @@
   <span class="spacer"></span>
   <a href="/query">订单查询</a>
   <a href="/ticket">售后工单</a>
+  {{if .Settings.PolarisURL}}<a href="/renew">续费</a>{{end}}
   {{if .Settings.SupportURL}}<a href="{{.Settings.SupportURL}}" rel="noopener" target="_blank">联系客服</a>{{end}}
   {{if .Settings.AdminEntry}}<a href="{{.AdminPath}}/login" rel="nofollow">后台登录</a>{{end}}
 </footer>
@@ -116,7 +117,7 @@
 
 {{define "logo"}}<span class="logo">{{if .Settings.LogoURL}}<img src="{{.Settings.LogoURL}}" alt="">{{else}}<svg viewBox="0 0 64 64" aria-hidden="true"><use href="#kaku-mark-k"/></svg>{{end}}</span>{{end}}
 
-{{define "navlink"}}<a class="nav-link {{if .On}}on{{end}}" href="{{.Href}}"{{if .On}} aria-current="page"{{end}}><svg class="ic"><use href="#i-{{.Icon}}"/></svg>{{.Label}}</a>{{end}}
+{{define "navlink"}}<a class="nav-link {{if .On}}on{{end}}" href="{{.Href}}"{{if .On}} aria-current="page"{{end}}><svg class="ic"><use href="#i-{{.Icon}}"/></svg>{{.Label}}{{if .Badge}}<span class="nav-badge">{{.Badge}}</span>{{end}}</a>{{end}}
 
 {{define "admin"}}<!doctype html>
 <html lang="zh-CN">
@@ -155,22 +156,23 @@
     <div class="nav-group">经营</div>
     {{template "navlink" (nav "仪表盘" "home" $p .Path true)}}
     {{template "navlink" (nav "订单" "receipt" (printf "%s/orders" $p) .Path false)}}
+    {{template "navlink" (nav "工单" "message" (printf "%s/tickets" $p) .Path false)}}
     {{template "navlink" (nav "统计" "chart" (printf "%s/stats" $p) .Path false)}}
     <div class="nav-group">商品</div>
     {{template "navlink" (nav "商品" "box" (printf "%s/products" $p) .Path false)}}
+    {{template "navlink" (nav "分类" "list" (printf "%s/categories" $p) .Path false)}}
     {{template "navlink" (nav "卡密" "key" (printf "%s/cards" $p) .Path false)}}
     {{if .ShowLicenses}}{{template "navlink" (nav "许可证" "shield" (printf "%s/licenses" $p) .Path false)}}{{end}}
     {{template "navlink" (nav "优惠码" "tag" (printf "%s/coupons" $p) .Path false)}}
-    <div class="nav-group">服务</div>
-    {{template "navlink" (nav "工单" "message" (printf "%s/tickets" $p) .Path false)}}
     <div class="nav-group">系统</div>
     {{template "navlink" (nav "设置" "settings" (printf "%s/settings" $p) .Path false)}}
     {{if hasPrefix .Path (printf "%s/settings" $p)}}<div class="nav-sub">{{$path := .Path}}{{range settingsTabs}}{{$href := printf "%s/settings/%s" $p .ID}}<a class="nav-sublink {{if or (eq $path $href) (and (eq .ID "site") (eq $path (printf "%s/settings" $p)))}}on{{end}}" href="{{$href}}">{{.Name}}</a>{{end}}</div>{{end}}
     {{template "navlink" (nav "备份" "database" (printf "%s/backups" $p) .Path false)}}
     {{template "navlink" (nav "管理员" "users" (printf "%s/admins" $p) .Path false)}}
     {{template "navlink" (nav "安全" "lock" (printf "%s/security" $p) .Path false)}}
-    {{template "navlink" (nav "日志" "list" (printf "%s/audit" $p) .Path false)}}
-    {{template "navlink" (nav "升级" "upgrade" (printf "%s/update" $p) .Path false)}}
+    {{template "navlink" (nav "审计日志" "clock" (printf "%s/audit" $p) .Path false)}}
+    {{$upBadge := ""}}{{if .NewRelease}}{{$upBadge = "新版本"}}{{end}}
+    {{template "navlink" (navBadge "升级" "upgrade" (printf "%s/update" $p) .Path $upBadge false)}}
     <div class="bottom">
       <a class="nav-link" href="/" target="_blank" rel="noopener"><svg class="ic"><use href="#i-bag"/></svg>查看商店</a>
       <form method="post" action="{{$p}}/logout"><button><svg class="ic"><use href="#i-logout"/></svg><span>退出登录</span></button></form>

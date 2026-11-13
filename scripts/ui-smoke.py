@@ -157,7 +157,10 @@ with sync_playwright() as p:
                             page.go_back();expect(page.get_by_role('button',name='打开菜单')).to_have_attribute('aria-expanded','false')
                             page.get_by_role('button',name='打开菜单').click()
                             page.set_viewport_size({'width':1100,'height':844})
-                            expect(page.locator('.sidebar')).to_be_visible();assert not page.locator('.content').evaluate('(e)=>e.inert')
+                            expect(page.locator('.sidebar')).to_be_visible()
+                            # the drawer closes via an async matchMedia change event; wait for content to become interactive again instead of asserting immediately
+                            page.wait_for_function("() => !document.querySelector('.content').inert")
+                            assert not page.locator('.content').evaluate('(e)=>e.inert')
                             page.set_viewport_size({'width':width,'height':844});expect(page.locator('.sidebar')).not_to_be_visible()
                         page.goto(BASE+'/manage/orders')
                     else:

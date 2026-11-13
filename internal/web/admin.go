@@ -155,7 +155,7 @@ func (s *Server) dashboard(c *gin.Context) {
 		}
 	}
 	s.render(c, 200, "admin_dashboard", gin.H{"Today": rToday, "Month": r30, "Counts": counts, "Low": low, "LowTitles": titles,
-		"Attention": attention, "Recent": recent, "OpenTickets": openTickets, "NewRelease": s.availableUpdate(), "Setup": s.setupChecks()})
+		"Attention": attention, "Recent": recent, "OpenTickets": openTickets, "Setup": s.setupChecks()})
 }
 
 // ---- categories ----

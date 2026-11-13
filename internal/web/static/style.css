@@ -403,6 +403,7 @@ body.admin { background: var(--bg); }
 .nav-link:hover { background: var(--bg-soft); text-decoration: none; }
 .nav-link.on { background: var(--bg-soft); color: var(--text); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
 .nav-link .ic { width: 17px; height: 17px; }
+.nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; line-height: 1; color: var(--accent-text); background: var(--accent); border-radius: 999px; padding: 3px 7px; white-space: nowrap; }
 .nav-sub { display: flex; flex-direction: column; gap: 1px; margin: 2px 0 6px 19px; padding-left: 10px; border-left: 1px solid var(--line); }
 .nav-sublink { padding: 6px 10px; border-radius: 7px; font-size: 13px; color: var(--text-2); text-decoration: none; }
 .nav-sublink:hover { background: var(--bg-soft); color: var(--text); text-decoration: none; }
