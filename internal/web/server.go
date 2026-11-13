@@ -147,6 +147,7 @@ var funcs = template.FuncMap{
 	"hasPrefix": strings.HasPrefix,
 	"initial":   initial,
 	"nav":       navItem,
+	"navBadge":  navBadge,
 	// manualOnly: every active spec of the product is delivered by hand
 	"manualOnly": func(v any) bool {
 		var p model.Product
@@ -274,6 +275,7 @@ func initial(s string) string {
 type navLink struct {
 	Label, Icon, Href string
 	On                bool
+	Badge             string // shown as a pill on the right, e.g. 新版本 on 升级
 }
 
 // navItem builds a sidebar link; it is active on its page and sub-pages
@@ -287,6 +289,13 @@ func navItem(label, icon, href, path string, exact bool) navLink {
 		on = true
 	}
 	return navLink{Label: label, Icon: icon, Href: href, On: on}
+}
+
+// navBadge is navItem with a badge pill (an empty badge shows nothing).
+func navBadge(label, icon, href, path, badge string, exact bool) navLink {
+	n := navItem(label, icon, href, path, exact)
+	n.Badge = badge
+	return n
 }
 
 // fromPrice is a product's lowest price, preferring CNY, for cards.
@@ -373,6 +382,9 @@ func (s *Server) render(c *gin.Context, code int, page string, data gin.H) {
 			s.st.DB.Model(&model.SKU{}).Where("deliverer_kind = ?", "polaris").Count(&n)
 		}
 		data["ShowLicenses"] = st.PolarisURL != "" || n > 0
+		// the sidebar 升级 entry shows a 新版本 badge when one is available;
+		// availableUpdate only reads the cached check, it never hits the network
+		data["NewRelease"] = s.availableUpdate()
 	}
 	// only messages this site put in the URL are shown, so a crafted link
 	// can't make the shop display arbitrary text
