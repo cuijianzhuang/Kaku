@@ -16,7 +16,7 @@
       </form>
     </td>
     <td>{{index $.Counts .ID}}</td>
-    <td class="text-right"><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类？"><button class="link">删除</button></form></td>
+    <td class="text-right"><form method="post" action="{{$p}}/categories/{{.ID}}/delete" class="inline" data-confirm="删除分类「{{.Name}}」？"><button class="link danger-link">删除</button></form></td>
   </tr>
   {{else}}<tr><td colspan="3" class="muted empty-cell">还没有分类</td></tr>{{end}}
 </table></div>

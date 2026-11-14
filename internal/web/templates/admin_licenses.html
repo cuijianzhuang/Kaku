@@ -24,15 +24,15 @@
     <td class="nowrap">{{if .ExpiresAt}}{{.ExpiresAt}}{{else}}永久{{end}}</td>
     <td>{{if .Instance}}<code>{{.Instance}}</code>{{else}}<span class="muted">—</span>{{end}}</td>
     <td><span class="badge {{.Status}}">{{status .Status}}</span></td>
-    <td>
+    <td><div class="row-ops">
       <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/refresh" class="inline"><button class="link">同步</button></form>
       {{if ne .Status "revoked"}}
-      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/extend" class="inline nowrap">
-        <input name="days" type="number" min="1" max="3650" value="30" class="w-70"> 天 <label class="check inline-flex-sm" title="同时延长更新服务期"><input type="checkbox" name="updates" checked>含更新</label> <button class="link">续期</button>
+      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/extend" class="inline nowrap extend-form">
+        <input name="days" type="number" min="1" max="3650" value="30" class="w-70" inputmode="numeric" aria-label="续期天数"> 天 <label class="check inline-flex-sm" title="同时延长更新服务期"><input type="checkbox" name="updates" checked>含更新</label> <button class="link">续期</button>
       </form>
-      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/revoke" class="inline" data-confirm="吊销后面板下次校验会回落社区版，确认？"><button class="link">吊销</button></form>
+      <form method="post" action="{{$p}}/licenses/{{.LicenseID}}/revoke" class="inline op-danger-link" data-confirm="吊销许可证 {{.LicenseID}}？吊销后面板下次校验会回落社区版，确认？"><button class="link danger-link">吊销</button></form>
       {{end}}
-    </td>
+    </div></td>
   </tr>
   {{else}}<tr><td colspan="8" class="muted empty-cell">{{if or .Q .Status}}没有符合条件的授权记录。<a href="{{$p}}/licenses">清除筛选</a>{{else}}还没有授权记录，许可证发货后会显示在这里。{{end}}</td></tr>{{end}}
 </table>

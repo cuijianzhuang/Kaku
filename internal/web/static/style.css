@@ -933,3 +933,75 @@ input.w-280 { max-width: 280px; }
 .h3-tight { margin: 0 0 2px; font-size: 15px; }
 .svg-sprite { position: absolute; }
 .auth-card h1 { text-align: center; font-size: 19px; }
+
+/* ---------- mobile checkout & touch targets ---------- */
+/* Breadcrumb keeps "全部商品" on one line; the long current title truncates
+   (the full title is the page heading right below). */
+.crumbs { min-width: 0; }
+.crumbs > a, .crumbs > span[aria-hidden] { flex: none; white-space: nowrap; }
+.crumb-current { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label { display: block; }
+.field-hint { margin: 0; font-size: 12.5px; }
+[aria-invalid="true"] { border-color: var(--err); }
+.buy-summary { display: none; }
+.copy-cell { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.copy-inline { font-size: 13px; }
+.delivery-tools { display: flex; gap: 8px; flex-wrap: wrap; margin: -4px 0 6px; }
+.order-results h2 { margin-bottom: 8px; }
+.order-list { list-style: none; margin: 0; padding: 0; }
+.order-list li + li { border-top: 1px solid var(--line); }
+.order-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; color: var(--text); font-weight: 400; min-height: 56px; }
+.order-link:hover { text-decoration: none; }
+.order-link:hover b { text-decoration: underline; }
+.order-link-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.order-link-main .mono { font-size: 12.5px; }
+.order-link-side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
+.row-ops { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; }
+.row-ops form { margin: 0; }
+button.link.danger-link, .danger-link { color: var(--err); }
+.op-danger-link { margin-left: 8px; padding-left: 14px; border-left: 1px solid var(--line); }
+
+@media (max-width: 900px) {
+  /* The purchase bar stays on screen while the buyer reads the page; the
+     native required-field check scrolls to whatever is still missing. */
+  .buy-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; margin: 0;
+    padding: 10px max(14px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    background: var(--card); border-top: 1px solid var(--line); border-radius: 0;
+    box-shadow: 0 -6px 18px rgba(0, 0, 0, .06);
+    display: flex; flex-direction: row; align-items: center; gap: 12px;
+  }
+  .buy-bar .total-line { flex: 1 1 auto; flex-direction: column; align-items: flex-start; gap: 0; padding: 0; border: 0; margin: 0; min-width: 0; }
+  .buy-bar .total-line .muted { font-size: 12px; }
+  .buy-bar .price.big { font-size: 20px; line-height: 1.25; }
+  .buy-bar .buy-summary:not(:empty) { display: block; max-width: 100%; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buy-bar button { flex: 0 1 auto; width: auto; min-width: 140px; min-height: 48px; }
+  body:has(.buy-bar) .foot { padding-bottom: calc(108px + env(safe-area-inset-bottom)); }
+  form[data-order] :is(input, select, textarea, summary, button) { scroll-margin-bottom: 112px; }
+  /* app.js flags an open on-screen keyboard; the bar steps aside so it never
+     covers the focused field, and returns as soon as the keyboard closes. */
+  html[data-keyboard] .buy-bar { visibility: hidden; }
+}
+@media (max-width: 640px) {
+  .chip { min-height: 40px; display: inline-flex; align-items: center; }
+  details > summary:not(.setup-summary) { padding-block: 11px; }
+  .secret-input button { min-width: 64px; }
+  .copy-inline { min-height: 44px; padding: 0 4px; }
+  .delivery-tools button { flex: 1 1 140px; min-height: 44px; }
+  .secret-row button, .rich-actions > * { min-height: 44px; }
+  /* Row actions and pagers in card-style tables are thumb-sized. */
+  table.rt td:not(:first-child) a:not(.badge), table.rt button.link, .list-actions a, .pager a { min-height: 44px; display: inline-flex; align-items: center; }
+  table.rt button.link { padding: 0 6px; }
+  .pager { gap: 8px 20px; flex-wrap: wrap; }
+  .row-ops { justify-content: flex-end; }
+  .row-ops .extend-form { display: inline-flex; align-items: center; gap: 6px; }
+  .row-ops .extend-form input[type=number] { height: 44px; }
+  .op-danger-link { flex-basis: 100%; display: flex; justify-content: flex-end; margin: 4px 0 0; padding: 6px 0 0; border-left: 0; border-top: 1px dashed var(--line-2); }
+}
+.flash-tip { display: block; margin-top: 2px; font-size: 12.5px; opacity: .85; }
+@media (max-width: 640px) {
+  .purchase-jump { min-height: 44px; }
+  .desc-more { min-height: 44px; padding: 0 2px; }
+}
+.kv { align-items: baseline; }

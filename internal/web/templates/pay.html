@@ -27,9 +27,10 @@
       {{if .BotURL}}<a class="btn lg block" href="{{.BotURL}}">打开机器人</a>{{end}}
     {{end}}
     <dl class="kv">
-      <dt>订单号</dt><dd><code>{{$o.OrderNo}}</code></dd>
+      <dt>订单号</dt><dd class="copy-cell"><code>{{$o.OrderNo}}</code><button type="button" class="link copy-inline" data-copy="{{$o.OrderNo}}" aria-label="复制订单号">复制</button></dd>
       <dt>支付方式</dt><dd>{{method $o.PayMethod}}</dd>
     </dl>
+    <p class="muted note">请保存订单号。关闭本页后，可在<a href="/query">「查单」</a>用订单号或邮箱加查询密码找回订单。</p>
   </div>
 </div>
 {{end}}
