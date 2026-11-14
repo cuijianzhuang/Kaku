@@ -65,14 +65,14 @@
     {{if and .Manual (or (eq $o.Status "paid") (eq $o.Status "failed"))}}<p class="muted m0">在上方填写发货内容后点「确认发货」。</p>{{end}}
     {{if eq $o.Status "refunded"}}<p class="muted m0">订单已退款，没有可用操作。</p>{{end}}
     {{if or (eq $o.Status "paid") (eq $o.Status "delivered") (eq $o.Status "failed")}}
-    <div class="op-danger">
-      <h3>退款</h3>
+    <details class="op-danger">
+      <summary><h3>退款</h3><span class="muted">{{if eq .SKU.DelivererKind "polaris"}}会同时吊销授权，{{end}}展开后填写</span></summary>
       <p class="muted">{{.RefundNote}}</p>
       <form method="post" action="{{$p}}/orders/{{$o.OrderNo}}/refund" class="stack" data-confirm="{{.RefundNote}} 确认继续？">
         <label>退款原因 <input name="reason" maxlength="200" placeholder="可选，记录在日志里"></label>
         <div><button class="danger">{{if eq $o.PayMethod "stars"}}退款（Stars 原路退回）{{else}}标记为已退款{{end}}{{if eq .SKU.DelivererKind "polaris"}}并吊销授权{{end}}</button></div>
       </form>
-    </div>
+    </details>
     {{end}}
   </div>
 </div>

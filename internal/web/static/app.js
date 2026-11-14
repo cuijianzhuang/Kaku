@@ -1,12 +1,105 @@
 // Small progressive enhancements; every page works without JavaScript.
+// Copy with a fallback for plain-HTTP shops and in-app browsers, where the
+// async clipboard API is missing or rejected. The button always reports back.
+const copyText = (text) => {
+  const legacy = () => {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (err) { ok = false; }
+    ta.remove();
+    return ok ? Promise.resolve() : Promise.reject(new Error('copy'));
+  };
+  return navigator.clipboard && window.isSecureContext ? navigator.clipboard.writeText(text).catch(legacy) : legacy();
+};
+const flashLabel = (btn, label) => {
+  if (!btn.hasAttribute('data-label')) btn.setAttribute('data-label', btn.innerHTML);
+  btn.textContent = label;
+  clearTimeout(btn._labelTimer);
+  btn._labelTimer = setTimeout(() => { btn.innerHTML = btn.getAttribute('data-label'); btn.removeAttribute('data-label'); }, 1500);
+};
+const copyFrom = (btn, text) => copyText(text).then(() => flashLabel(btn, '已复制'), () => flashLabel(btn, '请长按手动复制'));
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-copy]');
   if (!btn) return;
   e.preventDefault();
-  const text = btn.getAttribute('data-copy');
-  const done = () => { const t = btn.innerHTML; btn.textContent = '已复制'; setTimeout(() => (btn.innerHTML = t), 1200); };
-  if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, () => {});
+  copyFrom(btn, btn.getAttribute('data-copy'));
 });
+
+// Delivered order: copy every plain-text item at once, or save them as a file.
+(function () {
+  const tools = document.querySelector('[data-delivery-tools]');
+  if (!tools) return;
+  const card = tools.closest('.card');
+  const items = () => [...card.querySelectorAll('[data-item-text]')].map((el) => el.textContent);
+  if (!items().length) return;
+  tools.hidden = false;
+  tools.querySelector('[data-copy-all]').addEventListener('click', (e) => copyFrom(e.currentTarget, items().join('\n')));
+  tools.querySelector('[data-save-text]').addEventListener('click', (e) => {
+    const btn = e.currentTarget;
+    const url = URL.createObjectURL(new Blob([items().join('\n') + '\n'], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = btn.getAttribute('data-save-text');
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    flashLabel(btn, '已保存');
+  });
+})();
+
+// Show / hide a password the buyer is about to rely on for every later lookup.
+document.querySelectorAll('[data-reveal]').forEach((btn) => {
+  const input = document.getElementById(btn.getAttribute('data-reveal'));
+  if (!input) return;
+  btn.hidden = false;
+  btn.addEventListener('click', () => {
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? '隐藏' : '显示';
+    btn.setAttribute('aria-pressed', String(show));
+  });
+});
+
+// Phones: note when the on-screen keyboard takes part of the viewport so the
+// fixed purchase bar does not float over the field being typed in.
+(function () {
+  const vv = window.visualViewport;
+  if (!vv || !document.querySelector('.buy-bar')) return;
+  const sync = () => {
+    const el = document.activeElement;
+    const typing = el && el.matches && el.matches('input:not([type=radio]):not([type=checkbox]), textarea, select');
+    const open = typing && vv.height < window.innerHeight - 120;
+    if (open) document.documentElement.setAttribute('data-keyboard', ''); else document.documentElement.removeAttribute('data-keyboard');
+  };
+  vv.addEventListener('resize', sync);
+  document.addEventListener('focusin', () => setTimeout(sync, 300));
+  document.addEventListener('focusout', () => setTimeout(sync, 0));
+})();
+
+// A rejected order re-renders the product page with the error at the top;
+// on phones that is two screens away from the form. Put it inside the
+// purchase panel and bring the panel into view.
+(function () {
+  const form = document.querySelector('form[data-order]');
+  const err = document.querySelector('main.page > .flash.err');
+  if (!form || !err) return;
+  const panel = form.closest('#purchase') || form.parentElement;
+  panel.insertBefore(err, form);
+  err.setAttribute('role', 'alert');
+  if (/优惠码/.test(err.textContent)) {
+    const coupon = form.querySelector('[name=coupon]');
+    if (coupon) { coupon.setAttribute('aria-invalid', 'true'); coupon.closest('details')?.setAttribute('open', ''); }
+  }
+  const pw = form.querySelector('input[type=password][name=password]');
+  if (pw && !pw.value) {
+    const tip = document.createElement('small');
+    tip.className = 'flash-tip';
+    tip.textContent = '为了安全，查询密码需要重新填写。';
+    (err.querySelector('span') || err).appendChild(tip);
+  }
+  // after the description fold below has changed the page height
+  if (window.matchMedia('(max-width: 900px)').matches) requestAnimationFrame(() => panel.scrollIntoView({ block: 'start' }));
+})();
 
 document.addEventListener('submit', (e) => {
   const msg = e.target.getAttribute('data-confirm');
@@ -111,6 +204,11 @@ document.addEventListener('submit', (e) => {
     const qty = Number(field.value);
     form.querySelector('[data-step="-1"]').disabled = qty <= 1;
     form.querySelector('[data-step="1"]').disabled = !!field.max && qty >= Number(field.max);
+    const summary = form.querySelector('[data-buy-summary]');
+    if (summary) {
+      const name = sku && sku.closest('.option') && sku.closest('.option').querySelector('.name');
+      summary.textContent = name ? name.textContent.trim() + ' × ' + (field.validity.valid ? qty : '?') : '';
+    }
     if (!sku || !m || !field.validity.valid) { out.textContent = '—'; return; }
     const cur = m.getAttribute('data-currency') || 'CNY';
     const unit = parseInt(sku.getAttribute('data-' + cur.toLowerCase()) || '0', 10);
@@ -193,6 +291,11 @@ document.addEventListener('submit', (e) => {
         while (c.firstChild) v.appendChild(c.firstChild);
         c.appendChild(v);
       });
+      // A row whose only control is the link in its first cell opens on a tap
+      // anywhere in the card, not just on the (small) link text.
+      const main = row.cells[0] && row.cells[0].querySelector('a[href]');
+      const others = [...row.querySelectorAll('a[href], button, input, select, textarea, form')].filter((el) => el !== main);
+      if (main && !others.length) { row.classList.add('rt-link'); main.classList.add('rt-main'); }
     }
     t.classList.add('rt');
   });
@@ -650,9 +753,7 @@ document.addEventListener('click', (e) => {
   const cp = e.target.closest('[data-copy-from]');
   if (cp) {
     const src = document.querySelector(cp.getAttribute('data-copy-from'));
-    if (src && navigator.clipboard) navigator.clipboard.writeText(src.textContent).then(() => {
-      const t = cp.innerHTML; cp.textContent = '已复制'; setTimeout(() => (cp.innerHTML = t), 1200);
-    });
+    if (src) copyFrom(cp, src.textContent);
   }
 });
 

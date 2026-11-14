@@ -23,7 +23,7 @@
       <div class="status-hero"><div class="icon"><svg class="ic"><use href="#i-x"/></svg></div><h1>已退款</h1></div>
     {{end}}
     <dl class="kv">
-      <dt>订单号</dt><dd><code>{{$o.OrderNo}}</code></dd>
+      <dt>订单号</dt><dd class="copy-cell"><code>{{$o.OrderNo}}</code><button type="button" class="link copy-inline" data-copy="{{$o.OrderNo}}" aria-label="复制订单号">复制</button></dd>
       <dt>商品</dt><dd>{{$o.ProductTitle}} · {{$o.SKUName}} ×{{$o.Qty}}</dd>
       <dt>金额</dt><dd>{{money $o.Amount $o.Currency}}</dd>
       <dt>下单时间</dt><dd>{{date $o.CreatedAt}}</dd>
@@ -35,12 +35,16 @@
     {{if .Access}}
     <div class="card">
       <div class="card-head"><h2>发货内容</h2><span class="muted">{{len .Items}} 项</span></div>
+      <div class="delivery-tools" data-delivery-tools hidden>
+        <button type="button" class="secondary" data-copy-all><svg class="ic"><use href="#i-copy"/></svg>复制全部</button>
+        <button type="button" class="secondary" data-save-text="{{$o.OrderNo}}.txt"><svg class="ic"><use href="#i-download"/></svg>保存为 TXT</button>
+      </div>
       {{range $i, $it := .Items}}
         {{if $it.FileName}}
           <div class="secret-row"><span class="secret">{{$it.FileName}}</span><a class="btn secondary" href="/order/{{$o.OrderNo}}/item/{{$it.ID}}"><svg class="ic"><use href="#i-download"/></svg>下载</a></div>
         {{else if $it.Rich}}{{template "rich-item" $it.Rich}}
         {{else}}
-          <div class="secret-row"><span class="secret">{{$it.Content}}</span><button type="button" class="secondary" data-copy="{{$it.Content}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div>
+          <div class="secret-row"><span class="secret" data-item-text>{{$it.Content}}</span><button type="button" class="secondary" data-copy="{{$it.Content}}"><svg class="ic"><use href="#i-copy"/></svg>复制</button></div>
         {{end}}
       {{end}}
       {{with .PanelHelp}}
@@ -55,6 +59,7 @@
     <div class="card">
       <h2>查看发货内容</h2>
       <form method="post" action="/order/{{$o.OrderNo}}" class="stack">
+        <p class="muted m0">为保护卡密，查看前需要输入下单时设置的查询密码。</p>
         <label>查询密码<input type="password" name="password" required autocomplete="current-password"></label>
         <button class="block">查看</button>
       </form>

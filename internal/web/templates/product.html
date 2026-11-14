@@ -8,7 +8,7 @@
 {{if .Product.Cover}}<meta property="og:image" content="{{abs .BaseURL .Product.Cover}}"><meta name="twitter:card" content="summary_large_image">{{else}}<meta property="og:image" content="{{.BaseURL}}/static/apple-touch-icon.png">{{end}}
 {{end}}
 {{define "content"}}
-<div class="crumbs"><a href="/">商品</a><span>/</span><span>{{.Product.Title}}</span></div>
+<nav class="crumbs" aria-label="位置"><a href="/">全部商品</a><span aria-hidden="true">/</span><span class="crumb-current">{{.Product.Title}}</span></nav>
 <div class="product-layout">
   <div class="card info">
     {{if .Product.Cover}}<img class="cover" src="{{.Product.Cover}}" alt="">{{else}}<div class="cover ph" style="--h: {{hue .Product.ID}}">{{initial .Product.Title}}</div>{{end}}
@@ -68,12 +68,16 @@
       <p class="checkout-feedback" data-order-feedback role="status" {{if or .CanPurchase (not .Methods) (not .InStock)}}hidden{{end}}>当前规格暂不支持商店已开通的支付方式，请选择其他规格或联系客服。</p>
       <label data-ask-field hidden><span data-ask-label></span><input name="ask" maxlength="100" disabled required value="{{.Form.ask}}"></label>
       <div class="notice" data-note-field hidden><svg class="ic"><use href="#i-info"/></svg><span data-note-text></span></div>
-      <label>邮箱（接收发货通知，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" placeholder="you@example.com" value="{{.Form.email}}"></label>
-      <label>查询密码（查单时使用，至少 4 位）<input type="password" name="password" required minlength="4" maxlength="64" autocomplete="new-password"></label>
+      <label>邮箱（接收发货通知，用于查单）<input type="email" name="email" required maxlength="200" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false" placeholder="you@example.com" value="{{.Form.email}}"></label>
+      <div class="field">
+        <label for="buy-password">查询密码（查单时使用，至少 4 位）</label>
+        <div class="secret-input"><input type="password" id="buy-password" name="password" required minlength="4" maxlength="64" autocomplete="new-password" aria-describedby="buy-password-hint"><button type="button" class="secondary" data-reveal="buy-password" aria-pressed="false" hidden>显示</button></div>
+        <p class="muted field-hint" id="buy-password-hint">请记住它：查单、看卡密、提交工单都要用到。</p>
+      </div>
       <details {{if or .Form.coupon .Form.remark}}open{{end}}>
         <summary>优惠码 / 备注</summary>
         <div class="stack mt-3">
-          <label>优惠码<input name="coupon" maxlength="64" value="{{.Form.coupon}}"></label>
+          <label>优惠码<input name="coupon" maxlength="64" autocomplete="off" autocapitalize="characters" spellcheck="false" value="{{.Form.coupon}}"></label>
           <label>备注<input name="remark" maxlength="200" value="{{.Form.remark}}"></label>
         </div>
       </details>
@@ -93,6 +97,7 @@
         <div class="total-line">
           <span class="muted">应付（参考）</span>
           <span class="price big" data-total>—</span>
+          <span class="buy-summary" data-buy-summary></span>
         </div>
         {{if not .InStock}}<button class="lg block" data-buy-submit data-sold-out disabled>暂时缺货</button>{{else}}<button class="lg block" data-buy-submit {{if not .CanPurchase}}disabled{{end}}>立即购买</button>{{end}}
       </div>

@@ -6,12 +6,13 @@
     <p class="muted">描述你遇到的问题，我们会通过邮件回复。</p>
     <form method="post" action="/ticket" class="stack mt-2">
       <div class="two">
-        <label>订单号（可选）<input name="order_no" value="{{.OrderNo}}" maxlength="40"></label>
-        <label>查询密码（填写订单号时必填）<input type="password" name="password" maxlength="64"></label>
+        <label>订单号（可选）<input name="order_no" value="{{.OrderNo}}" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false"></label>
+        <label>查询密码（填写订单号时必填）<input type="password" name="password" maxlength="64" autocomplete="current-password"></label>
       </div>
-      <label>联系邮箱<input type="email" name="email" required maxlength="200" value="{{.Email}}" autocomplete="email"></label>
+      <label>联系邮箱<input type="email" name="email" required maxlength="200" value="{{.Email}}" autocomplete="email" inputmode="email" autocapitalize="off" spellcheck="false"></label>
       <label>问题描述<textarea name="content" required maxlength="2000" class="ta-plain">{{.Content}}</textarea></label>
-      <button class="lg block">提交</button>
+      <button class="lg block">提交工单</button>
+      <p class="muted m0">还没找到订单号？在<a href="/query">「查单」</a>用邮箱和查询密码可以查到。</p>
     </form>
   </div>
 </div>
