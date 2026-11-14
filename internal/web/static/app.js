@@ -291,6 +291,11 @@ document.addEventListener('submit', (e) => {
         while (c.firstChild) v.appendChild(c.firstChild);
         c.appendChild(v);
       });
+      // A row whose only control is the link in its first cell opens on a tap
+      // anywhere in the card, not just on the (small) link text.
+      const main = row.cells[0] && row.cells[0].querySelector('a[href]');
+      const others = [...row.querySelectorAll('a[href], button, input, select, textarea, form')].filter((el) => el !== main);
+      if (main && !others.length) { row.classList.add('rt-link'); main.classList.add('rt-main'); }
     }
     t.classList.add('rt');
   });

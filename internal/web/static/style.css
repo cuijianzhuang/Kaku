@@ -607,6 +607,14 @@ a.plain { color: inherit; text-decoration: none; border-bottom: 1px dotted var(-
 .op-danger { margin-top: 8px; padding-top: 14px; border-top: 1px dashed var(--line-2); display: flex; flex-direction: column; gap: 8px; }
 .op-danger h3 { margin: 0; font-size: 14px; color: var(--err); }
 .op-danger p { margin: 0; font-size: 13px; }
+details.op-danger { display: block; }
+details.op-danger > summary { display: flex; align-items: center; gap: 10px; cursor: pointer; min-height: 40px; list-style: none; }
+details.op-danger > summary::-webkit-details-marker { display: none; }
+details.op-danger > summary::before { content: "›"; color: var(--err); font-size: 18px; line-height: 1; transition: transform .15s; }
+details.op-danger[open] > summary::before { transform: rotate(90deg); }
+details.op-danger > summary .muted { font-size: 12.5px; }
+details.op-danger[open] > summary .muted { display: none; }
+details.op-danger > :not(summary) { margin-top: 8px; }
 .upd-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
 .upd-actions form { margin: 0; }
 .upd-foot { margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line); font-size: 13px; }
@@ -1001,7 +1009,28 @@ button.link.danger-link, .danger-link { color: var(--err); }
 }
 .flash-tip { display: block; margin-top: 2px; font-size: 12.5px; opacity: .85; }
 @media (max-width: 640px) {
-  .purchase-jump { min-height: 44px; }
-  .desc-more { min-height: 44px; padding: 0 2px; }
+  .btn.purchase-jump { min-height: 44px; height: auto; }
+  button.link.desc-more { min-height: 44px; padding: 0 2px; }
+  /* Card rows with a single destination: the whole card is the link. */
+  table.rt tr.rt-link { position: relative; padding-right: 34px; }
+  table.rt tr.rt-link a.rt-main::after { content: ""; position: absolute; inset: 0; }
+  table.rt tr.rt-link::after { content: "›"; position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 22px; line-height: 1; pointer-events: none; }
+  table.rt tr.rt-link:active { background: var(--line); }
+  /* Secondary columns stay on desktop; the detail page shows them on phones. */
+  table.rt td.rt-minor { display: none !important; }
+  table.rt .rt-only { display: inline-flex; }
 }
+.rt-only { display: none; }
+table.rt td:first-child .rt-only { margin-left: auto; font-weight: 500; }
 .kv { align-items: baseline; }
+/* Dashboard counters that lead somewhere: tap anywhere on the card. */
+.stat.stat-link a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.stat.stat-link:hover { border-color: var(--line-2); }
+.stat.stat-link:active { background: var(--bg-soft); }
+@media (max-width: 640px) {
+  /* Tabs, row toggles and the Markdown toolbar: thumb-sized. */
+  .seg a { display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; }
+  button.toggle { min-height: 40px; }
+  .md-tools button { min-height: 40px; padding: 0 11px; }
+  .op-more > summary { min-height: 44px; display: flex; align-items: center; }
+}
