@@ -271,6 +271,36 @@ document.addEventListener('submit', (e) => {
   window.addEventListener('pageshow', update);
 })();
 
+// Phones: list filters keep the main field (search / SKU) and the apply
+// button; the other conditions fold behind 「更多条件」 so results start on the
+// first screen. Folding only applies while none of those conditions is set.
+// Without JavaScript every field stays visible.
+(function () {
+  document.querySelectorAll('form.filter-bar').forEach((bar) => {
+    const extras = [...bar.children].filter((el) => !el.matches('.filter-search, .filter-actions'));
+    const actions = bar.querySelector('.filter-actions');
+    if (!extras.length || !actions) return;
+    const isSet = (el) => [...el.querySelectorAll('select, input')].some((c) =>
+      c.type === 'radio' || c.type === 'checkbox' ? c.checked && c.value !== '' : c.value !== '');
+    const count = extras.filter(isSet).length;
+    extras.forEach((el) => el.classList.add('filter-extra'));
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'secondary filter-more';
+    const ids = extras.map((el, i) => el.id || (el.id = (bar.getAttribute('aria-label') || 'filter') + '-extra-' + i));
+    btn.setAttribute('aria-controls', ids.join(' '));
+    const label = () => {
+      const open = !bar.classList.contains('folded');
+      btn.textContent = open ? '收起条件' : count ? '更多条件（' + count + '）' : '更多条件';
+      btn.setAttribute('aria-expanded', String(open));
+    };
+    if (!count) bar.classList.add('folded');
+    btn.addEventListener('click', () => { bar.classList.toggle('folded'); label(); });
+    actions.insertBefore(btn, actions.firstChild);
+    label();
+  });
+})();
+
 // Phones show list tables as cards: copy each column's header onto its
 // cells (CSS shows it as a label). Tables whose first row is not a header
 // row, such as key-value tables, are left alone.
