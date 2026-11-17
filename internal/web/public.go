@@ -510,7 +510,7 @@ func (s *Server) createTicket(c *gin.Context) {
 		s.ticketFail(c, http.StatusTooManyRequests, "提交过于频繁，请稍后再试")
 		return
 	}
-	no, email := strings.TrimSpace(c.PostForm("order_no")), strings.TrimSpace(c.PostForm("email"))
+	no, email := strings.TrimSpace(c.PostForm("order_no")), strings.ToLower(strings.TrimSpace(c.PostForm("email")))
 	content := strings.TrimSpace(c.PostForm("content"))
 	if content == "" || len([]rune(content)) > 2000 || email == "" || len(email) > 200 {
 		s.ticketFail(c, http.StatusUnprocessableEntity, "请填写邮箱和问题描述（最多 2000 字）")
@@ -519,14 +519,14 @@ func (s *Server) createTicket(c *gin.Context) {
 	// Only the buyer can open a ticket about an order.
 	if no != "" {
 		found, _ := s.shop.FindOrders(no, "", c.PostForm("password"))
-		if len(found) == 0 {
+		if len(found) == 0 || found[0].Email != email {
 			s.ticketLimit.hit(ip, now)
-			s.ticketFail(c, http.StatusUnprocessableEntity, "订单号或查询密码不正确")
+			s.ticketFail(c, http.StatusUnprocessableEntity, "订单号、下单邮箱或查询密码不正确")
 			return
 		}
 	}
 	s.ticketLimit.hit(ip, now)
-	t := model.Ticket{OrderNo: no, Email: strings.ToLower(email), Content: content, Status: model.TicketOpen, ClientIP: ip}
+	t := model.Ticket{OrderNo: no, Email: email, Content: content, Status: model.TicketOpen, ClientIP: ip}
 	if err := s.st.DB.Create(&t).Error; err != nil {
 		s.fail(c, err)
 		return

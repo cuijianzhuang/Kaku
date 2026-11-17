@@ -210,8 +210,26 @@ func (s *Store) Settings() Settings {
 	return *s.settings
 }
 
+// UpdateSettings applies one change against the latest settings snapshot.
+// Admin sections use this to avoid overwriting simultaneous changes elsewhere.
+func (s *Store) UpdateSettings(update func(*Settings) error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	st := *s.settings
+	if err := update(&st); err != nil {
+		return err
+	}
+	return s.saveSettingsLocked(st)
+}
+
 // SaveSettings stores settings, encrypting the secret fields.
 func (s *Store) SaveSettings(st Settings) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.saveSettingsLocked(st)
+}
+
+func (s *Store) saveSettingsLocked(st Settings) error {
 	b, _ := json.Marshal(st)
 	var raw map[string]any
 	json.Unmarshal(b, &raw)
@@ -225,9 +243,7 @@ func (s *Store) SaveSettings(st Settings) error {
 	if err := s.DB.Save(&row).Error; err != nil {
 		return err
 	}
-	s.mu.Lock()
 	s.settings = &st
-	s.mu.Unlock()
 	return nil
 }
 

@@ -19,6 +19,7 @@ import (
 	"github.com/cuijianzhuang/kaku/internal/polaris"
 	"github.com/cuijianzhuang/kaku/internal/secure"
 	"github.com/cuijianzhuang/kaku/internal/shop"
+	"github.com/cuijianzhuang/kaku/internal/store"
 	"github.com/cuijianzhuang/kaku/internal/tgapi"
 )
 
@@ -374,7 +375,11 @@ func (s *Server) saveProduct(c *gin.Context) {
 	if id == 0 {
 		err = s.st.DB.Create(&p).Error
 	} else {
-		err = s.st.DB.Model(&model.Product{ID: id}).Select("category_id", "title", "description_md", "cover", "status", "sort").Updates(&p).Error
+		result := s.st.DB.Model(&model.Product{ID: id}).Select("category_id", "title", "description_md", "cover", "status", "sort").Updates(&p)
+		err = result.Error
+		if err == nil && result.RowsAffected == 0 {
+			err = errors.New("商品不存在，请返回商品列表重新选择")
+		}
 	}
 	if err != nil {
 		s.renderProductForm(c, &p, err)
@@ -479,8 +484,12 @@ func (s *Server) saveSKU(c *gin.Context) {
 	if sku.ID == 0 {
 		err = s.st.DB.Create(sku).Error
 	} else {
-		err = s.st.DB.Model(&model.SKU{ID: sku.ID}).Select("name", "price_cny", "price_usdt", "price_stars", "deliverer_kind",
-			"deliverer_cfg", "wholesale", "limit_per_order", "low_stock", "active", "sort").Updates(sku).Error
+		result := s.st.DB.Model(&model.SKU{ID: sku.ID, ProductID: sku.ProductID}).Select("name", "price_cny", "price_usdt", "price_stars", "deliverer_kind",
+			"deliverer_cfg", "wholesale", "limit_per_order", "low_stock", "active", "sort").Updates(sku)
+		err = result.Error
+		if err == nil && result.RowsAffected == 0 {
+			err = errors.New("规格不存在，请返回商品重新选择")
+		}
 	}
 	if err != nil {
 		s.renderSKUForm(c, sku, err)
@@ -1152,11 +1161,13 @@ func (s *Server) closeTicket(c *gin.Context) {
 // ---- settings ----
 
 // settingsTab is one page of the settings (one card each).
-type settingsTab struct{ ID, Name string }
+type settingsTab struct{ ID, Name, Group string }
 
 var settingsTabs = []settingsTab{
-	{"site", "站点"}, {"appearance", "外观"}, {"payment", "支付"}, {"mail", "邮件"}, {"telegram", "Telegram"},
-	{"login", "登录方式"}, {"panel", "面板对接"}, {"polaris", "授权服务"},
+	{"site", "站点", "store"}, {"appearance", "外观", "store"},
+	{"payment", "支付", "trade"}, {"mail", "邮件", "trade"},
+	{"telegram", "Telegram", "integrations"}, {"panel", "面板对接", "integrations"}, {"polaris", "授权服务", "integrations"},
+	{"login", "登录方式", "account"},
 }
 
 func validSettingsTab(id string) bool {
@@ -1203,7 +1214,6 @@ func (s *Server) saveSettings(c *gin.Context) {
 	if validSettingsTab(c.PostForm("section")) {
 		back = s.settingsURL(c.PostForm("section"))
 	}
-	st := s.st.Settings()
 	str := func(k string) string { return strings.TrimSpace(c.PostForm(k)) }
 	secret := func(k string, cur *string) {
 		if v := str(k); v != "" {
@@ -1214,83 +1224,79 @@ func (s *Server) saveSettings(c *gin.Context) {
 		}
 	}
 	on := func(k string) bool { return c.PostForm(k) == "on" }
-	switch c.PostForm("section") {
-	case "site":
-		st.SiteName, st.PublicURL, st.Notice, st.SupportURL = str("site_name"), strings.TrimRight(str("public_url"), "/"), c.PostForm("notice"), str("support_url")
-		st.OrderTTL, _ = strconv.Atoi(str("order_ttl"))
-		st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
-		st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
-		st.RemindEnabled = on("remind_enabled")
-		st.TurnstileSite = str("turnstile_site")
-		secret("turnstile_secret", &st.TurnstileSecret)
-		if st.SiteName == "" {
-			st.SiteName = "Kaku 发卡"
+	err := s.st.UpdateSettings(func(st *store.Settings) error {
+		switch c.PostForm("section") {
+		case "site":
+			st.SiteName, st.PublicURL, st.Notice, st.SupportURL = str("site_name"), strings.TrimRight(str("public_url"), "/"), c.PostForm("notice"), str("support_url")
+			st.OrderTTL, _ = strconv.Atoi(str("order_ttl"))
+			st.MaxUnpaid, _ = strconv.Atoi(str("max_unpaid"))
+			st.OrderTTL, st.MaxUnpaid = min(max(st.OrderTTL, 5), 120), min(max(st.MaxUnpaid, 1), 20)
+			st.RemindEnabled = on("remind_enabled")
+			st.TurnstileSite = str("turnstile_site")
+			secret("turnstile_secret", &st.TurnstileSecret)
+			if st.SiteName == "" {
+				st.SiteName = "Kaku 发卡"
+			}
+		case "payment":
+			st.EPayURL, st.EPayPID = str("epay_url"), str("epay_pid")
+			secret("epay_key", &st.EPayKey)
+			st.EPayAlipay, st.EPayWxpay = on("epay_alipay"), on("epay_wxpay")
+			st.USDTAddress, st.USDTEnabled, st.StarsEnabled = str("usdt_address"), on("usdt_enabled"), on("stars_enabled")
+			secret("trongrid_key", &st.TronGridKey)
+			if st.USDTAddress != "" && !payment.ValidTRONAddress(st.USDTAddress) {
+				return errors.New("USDT 收款地址不是有效的 TRON 主网地址")
+			}
+			if st.EPayURL != "" && !(&payment.EPay{BaseURL: st.EPayURL, PID: "x", Key: "x"}).Ready() {
+				return errors.New("易支付地址需为 HTTPS，且不能带查询参数")
+			}
+		case "mail":
+			st.SMTPHost, st.SMTPUser, st.SMTPFrom = str("smtp_host"), str("smtp_user"), str("smtp_from")
+			st.SMTPPort, _ = strconv.Atoi(str("smtp_port"))
+			secret("smtp_pass", &st.SMTPPass)
+		case "telegram":
+			secret("tg_token", &st.TGToken)
+			st.TGChannel = str("tg_channel")
+			st.TGAdminChat, _ = strconv.ParseInt(str("tg_admin_chat"), 10, 64)
+			if st.TGWebhookSecret == "" {
+				st.TGWebhookSecret = strings.NewReplacer("-", "a", "_", "b").Replace(secure.RandomToken(24))
+			}
+		case "polaris":
+			st.PolarisURL = strings.TrimRight(str("polaris_url"), "/")
+			secret("polaris_secret", &st.PolarisSecret)
+			if st.PolarisSecret != "" && len(st.PolarisSecret) < 32 {
+				return errors.New("授权服务密钥至少 32 位（与 polaris-license 的 KAKU_API_SECRET 一致）")
+			}
+		case "appearance":
+			if t, a, m := str("theme"), str("accent"), str("mode"); validTheme(t) && validAccent(a) && validMode(m) {
+				st.Theme, st.Accent, st.Mode = t, a, m
+			}
+			st.LogoURL = str("logo_url")
+			if up, err := s.saveUpload(c, "logo_file"); err != nil {
+				return err
+			} else if up != "" {
+				st.LogoURL = up
+			}
+			if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
+				return errors.New("Logo 地址需以 https:// 或 / 开头")
+			}
+		case "panel":
+			st.PanelURL = strings.TrimRight(str("panel_url"), "/")
+			secret("panel_token", &st.PanelToken)
+			st.PanelRedeemHint = strings.TrimSpace(c.PostForm("panel_redeem_hint"))
+			if st.PanelToken != "" && !strings.HasPrefix(st.PanelToken, "plt_") {
+				return errors.New("API 令牌应以 plt_ 开头（在面板「扩展 → API 令牌」创建）")
+			}
+		case "login":
+			st.GitHubClientID, st.GoogleClientID = str("github_client_id"), str("google_client_id")
+			secret("github_client_secret", &st.GitHubClientSecret)
+			secret("google_client_secret", &st.GoogleClientSecret)
+			st.AdminEntry = on("admin_link_in_footer")
+		default:
+			return errors.New("未知设置分组")
 		}
-	case "payment":
-		st.EPayURL, st.EPayPID = str("epay_url"), str("epay_pid")
-		secret("epay_key", &st.EPayKey)
-		st.EPayAlipay, st.EPayWxpay = on("epay_alipay"), on("epay_wxpay")
-		st.USDTAddress, st.USDTEnabled, st.StarsEnabled = str("usdt_address"), on("usdt_enabled"), on("stars_enabled")
-		secret("trongrid_key", &st.TronGridKey)
-		if st.USDTAddress != "" && !payment.ValidTRONAddress(st.USDTAddress) {
-			redirectErr(c, back, errors.New("USDT 收款地址不是有效的 TRON 主网地址"))
-			return
-		}
-		if st.EPayURL != "" && !(&payment.EPay{BaseURL: st.EPayURL, PID: "x", Key: "x"}).Ready() {
-			redirectErr(c, back, errors.New("易支付地址需为 HTTPS，且不能带查询参数"))
-			return
-		}
-	case "mail":
-		st.SMTPHost, st.SMTPUser, st.SMTPFrom = str("smtp_host"), str("smtp_user"), str("smtp_from")
-		st.SMTPPort, _ = strconv.Atoi(str("smtp_port"))
-		secret("smtp_pass", &st.SMTPPass)
-	case "telegram":
-		secret("tg_token", &st.TGToken)
-		st.TGChannel = str("tg_channel")
-		st.TGAdminChat, _ = strconv.ParseInt(str("tg_admin_chat"), 10, 64)
-		if st.TGWebhookSecret == "" {
-			st.TGWebhookSecret = strings.NewReplacer("-", "a", "_", "b").Replace(secure.RandomToken(24))
-		}
-	case "polaris":
-		st.PolarisURL = strings.TrimRight(str("polaris_url"), "/")
-		secret("polaris_secret", &st.PolarisSecret)
-		if st.PolarisSecret != "" && len(st.PolarisSecret) < 32 {
-			redirectErr(c, back, errors.New("授权服务密钥至少 32 位（与 polaris-license 的 KAKU_API_SECRET 一致）"))
-			return
-		}
-	case "appearance":
-		if t, a, m := str("theme"), str("accent"), str("mode"); validTheme(t) && validAccent(a) && validMode(m) {
-			st.Theme, st.Accent, st.Mode = t, a, m
-		}
-		st.LogoURL = str("logo_url")
-		if up, err := s.saveUpload(c, "logo_file"); err != nil {
-			redirectErr(c, back, err)
-			return
-		} else if up != "" {
-			st.LogoURL = up
-		}
-		if st.LogoURL != "" && !strings.HasPrefix(st.LogoURL, "https://") && !strings.HasPrefix(st.LogoURL, "/") {
-			redirectErr(c, back, errors.New("Logo 地址需以 https:// 或 / 开头"))
-			return
-		}
-	case "panel":
-		st.PanelURL = strings.TrimRight(str("panel_url"), "/")
-		secret("panel_token", &st.PanelToken)
-		st.PanelRedeemHint = strings.TrimSpace(c.PostForm("panel_redeem_hint"))
-		if st.PanelToken != "" && !strings.HasPrefix(st.PanelToken, "plt_") {
-			redirectErr(c, back, errors.New("API 令牌应以 plt_ 开头（在面板「扩展 → API 令牌」创建）"))
-			return
-		}
-	case "login":
-		st.GitHubClientID, st.GoogleClientID = str("github_client_id"), str("google_client_id")
-		secret("github_client_secret", &st.GitHubClientSecret)
-		secret("google_client_secret", &st.GoogleClientSecret)
-		st.AdminEntry = on("admin_link_in_footer")
-	default:
-		redirectErr(c, back, errors.New("未知设置分组"))
-		return
-	}
-	if err := s.st.SaveSettings(st); err != nil {
+		return nil
+	})
+	if err != nil {
 		redirectErr(c, back, err)
 		return
 	}
@@ -1336,8 +1342,16 @@ func (s *Server) setWebhook(c *gin.Context) {
 			"scope": map[string]any{"type": "chat", "chat_id": st.TGAdminChat}}, nil)
 	}
 	bot.Call(ctx, "setChatMenuButton", map[string]any{"menu_button": map[string]string{"type": "commands"}}, nil)
-	st.TGBotUsername = me.Username
-	s.st.SaveSettings(st)
+	if err := s.st.UpdateSettings(func(current *store.Settings) error {
+		if current.TGToken != st.TGToken {
+			return errors.New("Bot Token 已变更，请重试设置 Webhook")
+		}
+		current.TGBotUsername = me.Username
+		return nil
+	}); err != nil {
+		done(err, "")
+		return
+	}
 	s.audit(c, "telegram_webhook", me.Username, "")
 	done(nil, "Webhook 已设置：@"+me.Username+"，买家现在可以在 Telegram 里下单")
 }

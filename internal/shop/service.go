@@ -547,24 +547,45 @@ func (s *Service) Items(orderID uint) ([]ItemView, error) {
 // FindOrders looks orders up for the buyer: by order number, or every
 // order of an email, keeping only those the query password opens.
 func (s *Service) FindOrders(orderNo, email, password string) ([]model.Order, error) {
-	var orders []model.Order
-	q := s.Store.DB.Order("id DESC").Limit(20)
-	switch {
-	case strings.TrimSpace(orderNo) != "":
-		q = q.Where("order_no = ?", strings.TrimSpace(orderNo))
-	case strings.TrimSpace(email) != "":
-		q = q.Where("email = ?", strings.ToLower(strings.TrimSpace(email)))
-	default:
+	if no := strings.TrimSpace(orderNo); no != "" {
+		var orders []model.Order
+		if err := s.Store.DB.Where("order_no = ?", no).Limit(1).Find(&orders).Error; err != nil {
+			return nil, err
+		}
+		if len(orders) == 1 && orders[0].QueryPwdHash != "" && secure.CheckPassword(orders[0].QueryPwdHash, password) {
+			return orders, nil
+		}
+		return nil, nil
+	}
+	email = strings.ToLower(strings.TrimSpace(email))
+	if email == "" {
 		return nil, userErr("请填写订单号或邮箱")
 	}
-	if err := q.Find(&orders).Error; err != nil {
-		return nil, err
-	}
-	out := orders[:0]
-	for _, o := range orders {
-		if o.QueryPwdHash != "" && secure.CheckPassword(o.QueryPwdHash, password) {
-			out = append(out, o)
+	// Password hashes have per-order salts, so filter first and limit the
+	// matching orders afterwards. Walk in bounded batches to keep memory low.
+	out := make([]model.Order, 0, 20)
+	var before uint
+	for len(out) < 20 {
+		var batch []model.Order
+		q := s.Store.DB.Where("email = ?", email).Order("id DESC").Limit(100)
+		if before != 0 {
+			q = q.Where("id < ?", before)
 		}
+		if err := q.Find(&batch).Error; err != nil {
+			return nil, err
+		}
+		for _, o := range batch {
+			if o.QueryPwdHash != "" && secure.CheckPassword(o.QueryPwdHash, password) {
+				out = append(out, o)
+				if len(out) == 20 {
+					break
+				}
+			}
+		}
+		if len(batch) < 100 {
+			break
+		}
+		before = batch[len(batch)-1].ID
 	}
 	return out, nil
 }

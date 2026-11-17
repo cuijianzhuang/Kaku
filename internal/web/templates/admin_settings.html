@@ -4,7 +4,8 @@
 {{$s := .S}}
 {{$tab := .Tab}}
 <div class="page-head"><h1>设置</h1></div>
-<nav class="tabs settings-tabs" aria-label="设置分类">{{range settingsTabs}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}</nav>
+<details class="settings-mobile-nav"><summary>设置分类：{{range settingsTabs}}{{if eq .ID $tab}}{{.Name}}{{end}}{{end}}</summary><nav aria-label="设置分类">{{template "settings-groups" .}}</nav></details>
+<nav class="settings-desktop-nav" aria-label="设置分类">{{template "settings-groups" .}}</nav>
 
 {{if eq $tab "site"}}
 <div class="card" id="site">
@@ -269,3 +270,10 @@ KAKU_RENEW_BOT={{.RenewBot}}{{end}}</pre>
   <svg class="ic" data-result-icon><use href="#i-{{if .}}{{if .OK}}check{{else}}alert{{end}}{{else}}info{{end}}"/></svg>
   <div><b data-result-title>{{if .}}{{if .OK}}成功{{else}}失败{{end}}{{end}}</b><span data-result-msg>{{if .}}{{.Msg}}{{end}}</span><small class="muted" data-result-when>{{if .}}上次：{{.When}}{{end}}</small></div>
 </div>{{end}}
+
+{{define "settings-groups"}}{{$p := .AdminPath}}{{$tab := .Tab}}
+  <div class="settings-group"><h2>店铺</h2>{{range settingsTabs}}{{if eq .Group "store"}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}{{end}}</div>
+  <div class="settings-group"><h2>交易</h2>{{range settingsTabs}}{{if eq .Group "trade"}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}{{end}}</div>
+  <div class="settings-group"><h2>集成</h2>{{range settingsTabs}}{{if eq .Group "integrations"}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}{{end}}</div>
+  <div class="settings-group"><h2>账户</h2>{{range settingsTabs}}{{if eq .Group "account"}}<a href="{{$p}}/settings/{{.ID}}" {{if eq .ID $tab}}class="on" aria-current="page"{{end}}>{{.Name}}</a>{{end}}{{end}}</div>
+{{end}}

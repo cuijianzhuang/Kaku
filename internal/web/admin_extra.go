@@ -12,6 +12,7 @@ import (
 
 	"github.com/cuijianzhuang/kaku/internal/model"
 	"github.com/cuijianzhuang/kaku/internal/payment"
+	"github.com/cuijianzhuang/kaku/internal/store"
 )
 
 func (s *Server) extraRoutes(a *gin.RouterGroup) {
@@ -160,13 +161,14 @@ func (s *Server) runBackup(c *gin.Context) {
 
 func (s *Server) saveBackupSettings(c *gin.Context) {
 	back := s.cfg.AdminPath + "/backups"
-	st := s.st.Settings()
-	st.BackupEnabled = c.PostForm("backup_enabled") == "on"
-	st.BackupTelegram = c.PostForm("backup_telegram") == "on"
 	hour, _ := strconv.Atoi(c.PostForm("backup_hour"))
 	keep, _ := strconv.Atoi(c.PostForm("backup_keep"))
-	st.BackupHour, st.BackupKeep = min(max(hour, 0), 23), min(max(keep, 1), 90)
-	if err := s.st.SaveSettings(st); err != nil {
+	if err := s.st.UpdateSettings(func(st *store.Settings) error {
+		st.BackupEnabled = c.PostForm("backup_enabled") == "on"
+		st.BackupTelegram = c.PostForm("backup_telegram") == "on"
+		st.BackupHour, st.BackupKeep = min(max(hour, 0), 23), min(max(keep, 1), 90)
+		return nil
+	}); err != nil {
 		redirectErr(c, back, err)
 		return
 	}

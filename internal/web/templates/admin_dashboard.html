@@ -19,15 +19,15 @@
   </ul>
 </details>
 {{end}}
-<div class="stats">
-  {{range .Today}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>
-  {{else}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入</span><b>0</b><span class="muted">还没有付款订单</span></div>{{end}}
-  {{range .Month}}<div class="stat"><span class="stat-ic"><svg class="ic"><use href="#i-chart"/></svg></span><span class="muted">近 30 天 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{end}}
-  <div class="stat stat-link warn"><span class="stat-ic"><svg class="ic"><use href="#i-clock"/></svg></span><span class="muted">待支付</span><b>{{index .Counts "pending"}}</b><a class="muted" href="{{$p}}/orders?status=pending">查看订单 →</a></div>
-  <div class="stat stat-link"><span class="stat-ic"><svg class="ic"><use href="#i-refresh"/></svg></span><span class="muted">待发货</span><b>{{index .Counts "paid"}}</b><a class="muted" href="{{$p}}/orders?status=paid">查看订单 →</a></div>
-  <div class="stat stat-link err"><span class="stat-ic"><svg class="ic"><use href="#i-alert"/></svg></span><span class="muted">发货失败</span><b>{{index .Counts "failed"}}</b><a class="muted" href="{{$p}}/orders?status=failed">查看订单 →</a></div>
-  <div class="stat stat-link"><span class="stat-ic"><svg class="ic"><use href="#i-message"/></svg></span><span class="muted">待回复工单</span><b>{{.OpenTickets}}</b><a class="muted" href="{{$p}}/tickets">查看工单 →</a></div>
-</div>
+<section class="dashboard-section" aria-labelledby="dashboard-attention-title">
+  <div class="dashboard-section-head"><div><h2 id="dashboard-attention-title">待处理</h2><p class="muted">先处理发货和买家消息，避免订单被耽搁。</p></div></div>
+  <div class="stats priority-stats">
+    <div class="stat stat-link err"><span class="stat-ic"><svg class="ic"><use href="#i-alert"/></svg></span><span class="muted">发货失败</span><b>{{index .Counts "failed"}}</b><a class="muted" href="{{$p}}/orders?status=failed">查看失败订单 →</a></div>
+    <div class="stat stat-link"><span class="stat-ic"><svg class="ic"><use href="#i-refresh"/></svg></span><span class="muted">待发货</span><b>{{index .Counts "paid"}}</b><a class="muted" href="{{$p}}/orders?status=paid">查看待发货订单 →</a></div>
+    <div class="stat stat-link"><span class="stat-ic"><svg class="ic"><use href="#i-message"/></svg></span><span class="muted">待回复工单</span><b>{{.OpenTickets}}</b><a class="muted" href="{{$p}}/tickets">查看工单 →</a></div>
+    <div class="stat stat-link warn"><span class="stat-ic"><svg class="ic"><use href="#i-box"/></svg></span><span class="muted">库存预警</span><b>{{len .Low}}</b><a class="muted" href="{{$p}}/cards">查看卡密库存 →</a></div>
+  </div>
+</section>
 
 {{if .Attention}}
 <div class="card table-wrap mt-4">
@@ -51,6 +51,16 @@
   </table>
 </div>
 {{end}}
+
+<section class="dashboard-section" aria-labelledby="dashboard-sales-title">
+  <div class="dashboard-section-head"><div><h2 id="dashboard-sales-title">经营概览</h2><p class="muted">按支付币种分别统计收入；待支付订单由买家完成付款。</p></div><a href="{{$p}}/stats">查看销售统计 →</a></div>
+  <div class="stats sales-stats">
+    {{range .Today}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>
+    {{else}}<div class="stat ok"><span class="stat-ic"><svg class="ic"><use href="#i-wallet"/></svg></span><span class="muted">今日收入</span><b>0</b><span class="muted">还没有付款订单</span></div>{{end}}
+    {{range .Month}}<div class="stat"><span class="stat-ic"><svg class="ic"><use href="#i-chart"/></svg></span><span class="muted">近 30 天 · {{.Currency}}</span><b>{{money .Amount .Currency}}</b><span class="muted">{{.Orders}} 单</span></div>{{end}}
+    <div class="stat stat-link"><span class="stat-ic"><svg class="ic"><use href="#i-clock"/></svg></span><span class="muted">待支付订单</span><b>{{index .Counts "pending"}}</b><a class="muted" href="{{$p}}/orders?status=pending">查看订单 →</a></div>
+  </div>
+</section>
 
 <div class="card table-wrap mt-4">
   <h2>最近订单</h2>

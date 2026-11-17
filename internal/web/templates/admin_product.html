@@ -3,6 +3,12 @@
 {{$p := .AdminPath}}
 {{$prod := .Product}}
 <div class="page-head"><h1>{{if $prod.ID}}编辑商品{{else}}新增商品{{end}}{{if $prod.ID}} <span class="badge {{if eq $prod.Status "on"}}on{{end}}">{{if eq $prod.Status "on"}}在售{{else}}下架{{end}}</span>{{end}}</h1>{{if $prod.ID}}<div class="actions">{{if eq $prod.Status "on"}}<a class="btn secondary" href="/p/{{$prod.ID}}" target="_blank" rel="noopener">在商店查看 ↗</a>{{end}}<form method="post" action="{{$p}}/products/{{$prod.ID}}/toggle" class="inline"{{if eq $prod.Status "on"}} data-confirm="下架这个商品？"{{end}}><input type="hidden" name="back" value="{{$p}}/products/{{$prod.ID}}"><button class="{{if eq $prod.Status "on"}}secondary{{end}}">{{if eq $prod.Status "on"}}下架{{else}}上架{{end}}</button></form><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>{{else}}<div class="actions"><a class="btn secondary" href="{{$p}}/products"><svg class="ic"><use href="#i-arrow-left"/></svg>商品列表</a></div>{{end}}</div>
+<div class="product-setup" role="list" aria-label="商品上架步骤">
+  <div role="listitem" class="product-setup-step {{if $prod.ID}}done{{else}}current{{end}}"><span class="product-setup-number">1</span><span><b>商品资料</b><small>{{if $prod.ID}}已保存，可继续编辑{{else}}填写名称、分类和详情后保存{{end}}</small></span></div>
+  <div role="listitem" class="product-setup-step {{if not $prod.ID}}upcoming{{else if $prod.SKUs}}done{{else}}current{{end}}"><span class="product-setup-number">2</span><span><b>规格与售价</b><small>{{if not $prod.ID}}保存商品后可添加{{else if $prod.SKUs}}已添加 {{len $prod.SKUs}} 个规格{{else}}添加至少一个规格{{end}}</small></span></div>
+  <div role="listitem" class="product-setup-step {{if and $prod.SKUs (eq $prod.Status "on") (not .Todo)}}done{{else if $prod.SKUs}}current{{else}}upcoming{{end}}"><span class="product-setup-number">3</span><span><b>交付与上架</b><small>{{if and $prod.SKUs (eq $prod.Status "on") (not .Todo)}}已上架，继续关注库存{{else}}检查发货方式、库存和支付设置{{end}}</small></span></div>
+</div>
+{{if not $prod.ID}}<p class="product-setup-hint">先保存商品资料，再添加规格、价格和发货方式；设置完成后商品才会在商店展示。</p>{{end}}
 {{if or .Todo .Warn}}
 <div class="card todo-card">
   <h2>{{if .Todo}}上架前还需要完成{{else}}请留意{{end}}</h2>
@@ -75,7 +81,7 @@
 
 {{if $prod.ID}}
 <div class="card">
-  <div class="row mb-3"><h2 class="m0">规格（SKU）</h2><a class="btn secondary" href="{{$p}}/skus/new?product={{$prod.ID}}"><svg class="ic"><use href="#i-plus"/></svg>新增规格</a></div>
+  <div class="row mb-3"><div><h2 class="m0">规格与发货</h2><p class="muted m0">每个规格分别设置售价、发货方式和库存；卡密规格还需要录入库存。</p></div><a class="btn" href="{{$p}}/skus/new?product={{$prod.ID}}"><svg class="ic"><use href="#i-plus"/></svg>新增规格</a></div>
   <div class="table-wrap"><table>
     <tr><th>名称</th><th>价格</th><th>发货方式</th><th>库存</th><th>每单上限</th><th>状态</th><th></th></tr>
     {{range $prod.SKUs}}
