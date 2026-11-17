@@ -25,12 +25,12 @@ func TestSettingsTabs(t *testing.T) {
 	if !strings.Contains(pay, `id="payment"`) || strings.Contains(pay, `id="site"`) {
 		t.Fatal("payment tab shows other cards")
 	}
-	// sidebar: the settings entry opens its sub-menu, current tab marked
-	if !strings.Contains(pay, `class="nav-sublink on" href="/manage/settings/payment"`) || !strings.Contains(pay, `>授权服务</a>`) {
-		t.Fatal("sidebar sub-menu missing")
+	// The grouped settings navigation marks the current page and stays inside settings.
+	if !strings.Contains(pay, `class="on" aria-current="page">支付</a>`) || !strings.Contains(pay, `<h2>集成</h2>`) || !strings.Contains(pay, `>授权服务</a>`) {
+		t.Fatal("grouped settings navigation missing or current tab unmarked")
 	}
-	if strings.Contains(get("/manage/orders"), "nav-sublink") {
-		t.Fatal("sub-menu shown outside settings")
+	if strings.Contains(get("/manage/orders"), "settings-desktop-nav") {
+		t.Fatal("settings navigation shown outside settings")
 	}
 	if resp, _ := c.Get(e.ts.URL + "/manage/settings/nope"); location(resp) != "/manage/settings/site" {
 		t.Fatalf("unknown tab not redirected: %s", location(resp))

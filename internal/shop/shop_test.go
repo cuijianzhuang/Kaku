@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -139,6 +140,30 @@ func TestStockOrderFlow(t *testing.T) {
 	}
 	if found, _ := s.FindOrders(o.OrderNo, "", "wrong"); len(found) != 0 {
 		t.Fatal("wrong password matched")
+	}
+}
+
+func TestFindOrdersChecksPasswordBeforeResultLimit(t *testing.T) {
+	s, _ := setup(t)
+	oldHash, newHash := secure.HashPassword("older-secret"), secure.HashPassword("newer-secret")
+	for i := range 26 {
+		hash := newHash
+		if i == 0 || i == 4 {
+			hash = oldHash
+		}
+		o := model.Order{OrderNo: fmt.Sprintf("lookup-%02d", i), Email: "buyer@example.com", QueryPwdHash: hash,
+			SKUID: 1, Qty: 1, Currency: model.CNY, PayMethod: model.PayEPayAlipay, Status: model.OrderDelivered}
+		if err := s.Store.DB.Create(&o).Error; err != nil {
+			t.Fatal(err)
+		}
+	}
+	found, err := s.FindOrders("", "BUYER@example.com", "older-secret")
+	if err != nil || len(found) != 2 || found[0].OrderNo != "lookup-04" || found[1].OrderNo != "lookup-00" {
+		t.Fatalf("older orders disappeared: %+v, %v", found, err)
+	}
+	newer, err := s.FindOrders("", "buyer@example.com", "newer-secret")
+	if err != nil || len(newer) != 20 || newer[0].OrderNo != "lookup-25" || newer[19].OrderNo != "lookup-06" {
+		t.Fatalf("latest matching orders: %d, %v", len(newer), err)
 	}
 }
 

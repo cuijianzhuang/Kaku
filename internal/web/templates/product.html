@@ -1,5 +1,5 @@
 {{define "title"}}{{.Product.Title}} · {{.Site}}{{end}}
-{{define "meta"}}{{$desc := or (plain .Product.DescriptionMD 120) (printf "%s · %s" (fromPrice .Product) (or (and (manualOnly .Product) "人工发货") "自动发货"))}}
+{{define "meta"}}{{$desc := or (plain .Product.DescriptionMD 120) (printf "%s · 按规格选择交付方式" (fromPrice .Product))}}
 <meta name="description" content="{{$desc}}">
 <meta property="og:type" content="product">
 <meta property="og:title" content="{{.Product.Title}} · {{fromPrice .Product}}">
@@ -8,30 +8,41 @@
 {{if .Product.Cover}}<meta property="og:image" content="{{abs .BaseURL .Product.Cover}}"><meta name="twitter:card" content="summary_large_image">{{else}}<meta property="og:image" content="{{.BaseURL}}/static/apple-touch-icon.png">{{end}}
 {{end}}
 {{define "content"}}
+{{$hasManual := false}}{{$hasAuto := false}}{{range .Product.SKUs}}{{if eq .DelivererKind "manual"}}{{$hasManual = true}}{{else}}{{$hasAuto = true}}{{end}}{{end}}
 <nav class="crumbs" aria-label="位置"><a href="/">全部商品</a><span aria-hidden="true">/</span><span class="crumb-current">{{.Product.Title}}</span></nav>
 <div class="product-layout">
   <div class="card info">
     {{if .Product.Cover}}<img class="cover" src="{{.Product.Cover}}" alt="">{{else}}<div class="cover ph" style="--h: {{hue .Product.ID}}">{{initial .Product.Title}}</div>{{end}}
     <div class="info-text">
       <h1>{{.Product.Title}}</h1>
+      {{if .Product.DescriptionMD}}<p class="info-description">{{plain .Product.DescriptionMD 120}}</p>{{end}}
       <div class="price info-price">{{fromPrice .Product}}</div>
       <div class="info-tags">
-        {{if manualOnly .Product}}<span class="tag warn"><svg class="ic"><use href="#i-clock"/></svg>人工发货</span>{{else}}<span class="tag ok"><svg class="ic"><use href="#i-check"/></svg>自动发货</span>{{end}}
+        {{if and $hasManual $hasAuto}}<span class="tag warn"><svg class="ic"><use href="#i-clock"/></svg>交付方式依规格而定</span>{{else if $hasManual}}<span class="tag warn"><svg class="ic"><use href="#i-clock"/></svg>人工发货</span>{{else}}<span class="tag ok"><svg class="ic"><use href="#i-check"/></svg>自动发货</span>{{end}}
         {{if .Sold}}<span class="tag">已售 {{.Sold}}</span>{{end}}
         {{if not .InStock}}<span class="tag err">已售罄</span>{{else if not .Unlimited}}<span class="tag">库存 {{.StockLeft}}</span>{{end}}
       </div>
-      <p class="info-promise muted">{{if manualOnly .Product}}付款后由店主处理，完成后在订单页和邮件中查看{{else}}付款后自动发货，可在订单页、邮件中随时查看{{end}}</p>
+      <p class="info-promise muted">{{if and $hasManual $hasAuto}}有自动与人工发货规格，具体交付方式请查看所选规格的说明{{else if $hasManual}}付款后由店主处理，完成后在订单页查看，邮件接收通知{{else}}付款后自动发货，可在订单页查看，邮件接收通知{{end}}</p>
       {{if and .InStock .Methods}}<a class="btn secondary purchase-jump" href="#purchase">选择规格与支付 <span aria-hidden="true">↓</span></a>{{end}}
     </div>
   </div>
   <div class="card desc" data-desc>
     <h2 class="desc-title">商品详情</h2>
-    <div class="desc-body" id="product-description" data-desc-body>{{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">{{if manualOnly .Product}}付款后由店主处理，完成后可在订单页查看。{{else}}付款成功后自动发货，可在订单页或订单查询中查看。{{end}}</p>{{end}}</div>
+    <div class="desc-body" id="product-description" data-desc-body>{{if .Product.DescriptionMD}}<div class="md">{{markdown .Product.DescriptionMD}}</div>{{else}}<p class="muted">{{if and $hasManual $hasAuto}}交付方式取决于所选规格；发货完成后可在订单页查看。{{else if $hasManual}}付款后由店主处理，完成后可在订单页查看。{{else}}付款成功后自动发货，可在订单页或订单查询中查看。{{end}}</p>{{end}}</div>
     <button type="button" class="link desc-more" data-desc-more aria-controls="product-description" aria-expanded="false" hidden>展开全部</button>
   </div>
 
   <div class="card order-panel" id="purchase" role="region" tabindex="-1" aria-labelledby="purchase-title">
     <h2 id="purchase-title" class="purchase-title">购买信息</h2>
+    <div class="purchase-overview">
+      <div class="purchase-product">{{.Product.Title}}</div>
+      {{if .Product.DescriptionMD}}<p class="purchase-description">{{plain .Product.DescriptionMD 90}}</p>{{end}}
+      <div class="purchase-facts">
+        <div class="purchase-fact"><span class="purchase-fact-label">{{if gt (len .SKUs) 1}}起售价格{{else}}商品价格{{end}}</span><span class="price">{{fromPrice .Product}}</span></div>
+        <div class="purchase-fact"><span class="purchase-fact-label">交付方式</span><span>{{if and $hasManual $hasAuto}}按规格选择{{else if $hasManual}}人工发货{{else}}自动发货{{end}}</span></div>
+        <div class="purchase-fact"><span class="purchase-fact-label">发货内容</span><span>订单页查看，邮件接收通知</span></div>
+      </div>
+    </div>
     {{if not .Methods}}
       <div class="flash err"><svg class="ic"><use href="#i-alert"/></svg><span>商店暂未开通任何支付方式</span></div>
     {{end}}

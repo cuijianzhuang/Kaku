@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/cuijianzhuang/kaku/internal/store"
 	"github.com/cuijianzhuang/kaku/internal/update"
 )
 
@@ -113,12 +114,13 @@ func (s *Server) runUpdate(c *gin.Context) {
 
 func (s *Server) saveUpdateSettings(c *gin.Context) {
 	back := s.cfg.AdminPath + "/update"
-	st := s.st.Settings()
-	st.AutoUpdate = c.PostForm("auto_update") == "on"
-	st.UpdateNotify = c.PostForm("update_notify") == "on"
 	hour, _ := strconv.Atoi(c.PostForm("auto_update_hour"))
-	st.AutoUpdateHour = min(max(hour, 0), 23)
-	if err := s.st.SaveSettings(st); err != nil {
+	if err := s.st.UpdateSettings(func(st *store.Settings) error {
+		st.AutoUpdate = c.PostForm("auto_update") == "on"
+		st.UpdateNotify = c.PostForm("update_notify") == "on"
+		st.AutoUpdateHour = min(max(hour, 0), 23)
+		return nil
+	}); err != nil {
 		redirectErr(c, back, err)
 		return
 	}

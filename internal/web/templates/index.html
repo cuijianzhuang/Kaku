@@ -24,15 +24,16 @@
     <h2 class="section-title">{{.Name}} <span class="count">{{len .Products}} 件商品</span></h2>
     <div class="grid">
       {{range .Products}}
-      <a class="product-card" href="/p/{{.ID}}" data-title="{{.Title}} {{range .SKUs}}{{.Name}} {{end}}">
+      {{$hasManual := false}}{{$hasAuto := false}}{{$out := true}}{{range .SKUs}}{{if eq .DelivererKind "manual"}}{{$hasManual = true}}{{else}}{{$hasAuto = true}}{{end}}{{if ne (index $.Stock .ID) 0}}{{$out = false}}{{end}}{{end}}
+      <a class="product-card" href="/p/{{.ID}}" data-title="{{.Title}} {{plain .DescriptionMD 100}} {{range .SKUs}}{{.Name}} {{end}}">
         {{if .Cover}}<img class="cover" src="{{.Cover}}" alt="" loading="lazy">{{else}}<div class="cover ph" style="--h: {{hue .ID}}">{{initial .Title}}</div>{{end}}
         <div class="body">
           <div class="title">{{.Title}}</div>
-          <div class="muted">{{range $i, $k := .SKUs}}{{if $i}} · {{end}}{{$k.Name}}{{end}}</div>
+          {{if .DescriptionMD}}<p class="product-card-description">{{plain .DescriptionMD 92}}</p>{{end}}
+          <div class="product-card-specs"><span class="product-card-specs-label">可选规格</span><span>{{range $i, $k := .SKUs}}{{if $i}} · {{end}}{{$k.Name}}{{end}}</span></div>
           <div class="meta">
-            <span class="price">{{fromPrice .}}</span>
-            {{$out := true}}{{range .SKUs}}{{if ne (index $.Stock .ID) 0}}{{$out = false}}{{end}}{{end}}
-            {{if $out}}<span class="badge failed">缺货</span>{{else if manualOnly .}}<span class="badge pending">人工发货</span>{{else}}<span class="badge delivered">自动发货</span>{{end}}
+            <span class="product-card-price"><span class="product-card-price-label">{{if gt (len .SKUs) 1}}起售价格{{else}}商品价格{{end}}</span><span class="price">{{fromPrice .}}</span></span>
+            {{if $out}}<span class="badge failed">缺货</span>{{else if and $hasManual $hasAuto}}<span class="badge pending">多种交付方式</span>{{else if $hasManual}}<span class="badge pending">人工发货</span>{{else}}<span class="badge delivered">自动发货</span>{{end}}
           </div>
         </div>
       </a>
