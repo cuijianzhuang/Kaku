@@ -20,17 +20,33 @@ def local_only(route):
     if urlparse(route.request.url).netloc == urlparse(BASE).netloc: route.continue_()
     else: route.abort()
 
+def open_filters(page):
+    """Phones fold secondary list filters behind 「更多条件」; unfold them."""
+    more=page.locator('.filter-bar .filter-more')
+    if more.count() and more.is_visible() and more.get_attribute('aria-expanded')=='false':
+        more.click();expect(more).to_have_attribute('aria-expanded','true')
+
 def check_filters(page, engine, width, theme, mode, interactions=False):
     for name,path in [('products','/manage/products'),('orders','/manage/orders'),('licenses','/manage/licenses'),('cards','/manage/cards')]:
         page.goto(BASE+path);assert_layout(page)
         bar=page.locator('.filter-bar');expect(bar).to_be_visible()
+        more=bar.locator('.filter-more')
+        if width<=640:
+            # Results start on the first screen: only the main field is open.
+            expect(more).to_be_visible();expect(more).to_have_attribute('aria-expanded','false')
+            expect(bar.locator('.filter-extra').first).not_to_be_visible()
+            if theme=='forest': screenshot(page,f'{engine}-{width}-{mode}-{name}-filters-folded.png')
+            open_filters(page);expect(bar.locator('.filter-extra').first).to_be_visible();assert_layout(page)
+        else:
+            expect(more).not_to_be_visible();expect(bar.locator('.filter-extra').first).to_be_visible()
         for control in bar.locator('input:not([type=radio]),select,button').all():
+            if not control.is_visible(): continue  # 「更多条件」 is phone-only
             box=control.bounding_box()
             assert box['width']>=60 and box['x']>=0 and box['x']+box['width']<=width+1, (name,box,width)
             assert box['height']>= (44 if width<=640 else 40)-1, (name,box)
         if theme=='forest': screenshot(page,f'{engine}-{width}-{mode}-{name}-filters.png')
     if not interactions: return
-    page.goto(BASE+'/manage/products')
+    page.goto(BASE+'/manage/products');open_filters(page)
     bar=page.get_by_role('form',name='商品筛选')
     search=bar.get_by_label('搜索商品');search.fill('Pro & Team + 2026')
     bar.get_by_label('分类',exact=True).select_option(index=1)
@@ -55,7 +71,7 @@ def check_filters(page, engine, width, theme, mode, interactions=False):
     page.remove_listener('dialog',accept_toggle)
     page.locator('.filter-actions').get_by_role('link',name='清除筛选').click()
     expect(page.locator('.list-summary')).to_have_text('共 7 件商品')
-    page.goto(BASE+'/manage/licenses')
+    page.goto(BASE+'/manage/licenses');open_filters(page)
     bar=page.get_by_role('form',name='许可证筛选')
     bar.get_by_label('搜索许可证').fill('filters+ui@example.com')
     bar.get_by_label('许可证状态').select_option('activated')
@@ -65,17 +81,18 @@ def check_filters(page, engine, width, theme, mode, interactions=False):
     bar=page.get_by_role('form',name='许可证筛选');bar.get_by_label('搜索许可证').fill('missing@example.com')
     bar.get_by_role('button',name='筛选').click();expect(page.locator('table')).to_contain_text('没有符合条件的授权记录')
     page.locator('.filter-actions').get_by_role('link',name='清除筛选').click();expect(page.locator('.pager')).to_contain_text('共 3 条')
-    page.goto(BASE+'/manage/orders')
+    page.goto(BASE+'/manage/orders');open_filters(page)
     bar=page.get_by_role('form',name='订单筛选');bar.get_by_label('搜索订单').fill('lic_ui_activated')
     bar.get_by_label('订单状态').select_option('pending');bar.get_by_label('订单渠道').select_option('web')
     bar.get_by_role('button',name='筛选').click();expect(page.locator('.pager')).to_contain_text('共 1 单')
-    page.goto(BASE+'/manage/cards')
+    page.goto(BASE+'/manage/cards');open_filters(page)
     bar=page.get_by_role('form',name='卡密筛选');original=bar.get_by_label('规格',exact=True).input_value()
     expect(page.locator('.stock-counts dd')).to_have_text(['1','1','0','0'])
     bar.get_by_label('卡密状态').select_option('void');bar.get_by_role('button',name='筛选').click()
     expect(page.locator('table')).to_contain_text('没有符合条件的卡密')
     expect(page.locator('.stock-counts dd')).to_have_text(['1','1','0','0'])
     page.locator('.filter-actions').get_by_role('link',name='清除筛选').click()
+    page.wait_for_url(re.compile(re.escape(BASE)+r'/manage/cards\?sku=\d+$'));open_filters(page)
     expect(page.get_by_role('combobox',name='规格',exact=True)).to_have_value(original)
     expect(page.get_by_role('combobox',name='卡密状态')).to_have_value('')
     imp=page.locator('form[action$="/cards/import"]')
@@ -166,7 +183,7 @@ with sync_playwright() as p:
                     else:
                         page.locator('.sidebar').get_by_role('link',name='订单',exact=True).click()
                     expect(page.get_by_role('textbox',name='搜索订单')).to_be_visible()
-                    expect(page.get_by_role('combobox',name='订单状态')).to_be_visible();assert_layout(page)
+                    open_filters(page);expect(page.get_by_role('combobox',name='订单状态')).to_be_visible();assert_layout(page)
                     check_filters(page,engine,width,theme,mode,interactions=theme=='' and mode=='light')
                     page.goto(BASE+'/manage/settings/appearance');expect(page.get_by_role('radio',name=re.compile('纸张'))).to_have_count(1);assert_layout(page)
                     page.goto(BASE+'/p/2');assert_layout(page)

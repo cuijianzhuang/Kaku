@@ -1034,3 +1034,9 @@ table.rt td:first-child .rt-only { margin-left: auto; font-weight: 500; }
   .md-tools button { min-height: 40px; padding: 0 11px; }
   .op-more > summary { min-height: 44px; display: flex; align-items: center; }
 }
+/* 「更多条件」 only exists on phones; desktop always shows every condition. */
+.filter-more { display: none; }
+@media (max-width: 640px) {
+  .filter-more { display: inline-flex; align-items: center; justify-content: center; }
+  .filter-bar.folded > .filter-extra { display: none; }
+}
