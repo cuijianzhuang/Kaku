@@ -26,6 +26,16 @@ def open_filters(page):
     if more.count() and more.is_visible() and more.get_attribute('aria-expanded')=='false':
         more.click();expect(more).to_have_attribute('aria-expanded','true')
 
+def click_settings_tab(page, tab):
+    """Use the visible grouped navigation on both phone and desktop."""
+    mobile=page.locator('.settings-mobile-nav')
+    if mobile.is_visible():
+        if mobile.get_attribute('open') is None:
+            mobile.locator('summary').click()
+        mobile.locator(f'a[href$="/{tab}"]').click()
+    else:
+        page.locator(f'.settings-desktop-nav a[href$="/{tab}"]').click()
+
 def check_filters(page, engine, width, theme, mode, interactions=False):
     for name,path in [('products','/manage/products'),('orders','/manage/orders'),('licenses','/manage/licenses'),('cards','/manage/cards')]:
         page.goto(BASE+path);assert_layout(page)
@@ -224,11 +234,11 @@ with sync_playwright() as p:
         def dismiss_leave(dialog):
             dialogs.append(dialog.type);dialog.dismiss()
         page.on('dialog',dismiss_leave)
-        page.locator('.settings-tabs a[href$="/appearance"]').click()
+        click_settings_tab(page,'appearance')
         expect(site).to_have_value(original+' · 编辑中')
         assert urlparse(page.url).path=='/manage/settings/site' and dialogs==['beforeunload']
         site.fill(original);expect(status).not_to_be_visible()
-        page.locator('.settings-tabs a[href$="/payment"]').click();page.wait_for_url(BASE+'/manage/settings/payment')
+        click_settings_tab(page,'payment');page.wait_for_url(BASE+'/manage/settings/payment')
         assert len(dialogs)==1
         page.goto(BASE+'/manage/settings/site');form=page.locator('form[data-edit-form]');site=form.locator('[name=site_name]')
         site.fill(original+' · 已保存')
